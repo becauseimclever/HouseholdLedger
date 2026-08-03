@@ -1,0 +1,78 @@
+:root {
+    color-scheme: light;
+    font-family: Aptos, "Trebuchet MS", sans-serif;
+    color: #242b27;
+    background: #f7f8f5;
+    font-synthesis: none;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    min-width: 20rem;
+    background: #f7f8f5;
+}
+
+body {
+    min-height: 100vh;
+    margin: 0;
+    background: linear-gradient(180deg, #eef4ef 0, #f7f8f5 18rem);
+}
+
+button,
+a {
+    font: inherit;
+}
+
+a {
+    color: #0b6358;
+}
+
+a:hover {
+    color: #084b43;
+}
+
+:focus-visible {
+    outline: 0.1875rem solid #b83b2d;
+    outline-offset: 0.1875rem;
+}
+
+.boot-status {
+    display: grid;
+    min-height: 100vh;
+    place-items: center;
+    color: #3d4b43;
+}
+
+#blazor-error-ui {
+    position: fixed;
+    z-index: 1000;
+    right: 1rem;
+    bottom: 1rem;
+    left: 1rem;
+    padding: 1rem;
+    border: 0.0625rem solid #a52f25;
+    background: #fff4f1;
+    color: #651d17;
+    box-shadow: 0 0.5rem 1.5rem rgb(36 43 39 / 18%);
+}
+
+#blazor-error-ui[hidden] {
+    display: none;
+}
+
+#blazor-error-ui .reload {
+    margin-left: 0.5rem;
+    font-weight: 700;
+}
+
+#blazor-error-ui .dismiss {
+    float: right;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-weight: 700;
+}

@@ -5,7 +5,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
-    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit" PrivateAssets="all" />
     <PackageReference Include="NUnit3TestAdapter" PrivateAssets="all" />
     <ProjectReference Include="../../src/HouseholdLedger.Infrastructure/HouseholdLedger.Infrastructure.csproj" />
   </ItemGroup>

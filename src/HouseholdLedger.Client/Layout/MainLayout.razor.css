@@ -1,0 +1,108 @@
+.shell {
+    display: grid;
+    min-height: 100vh;
+    grid-template-rows: auto 1fr auto;
+}
+
+.skip-link {
+    position: fixed;
+    z-index: 100;
+    top: 0.75rem;
+    left: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    transform: translateY(-200%);
+    background: #ffffff;
+    color: #17352e;
+    font-weight: 700;
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+}
+
+.shell-header {
+    border-bottom: 0.0625rem solid #cbd7cf;
+    background: rgb(255 255 255 / 90%);
+}
+
+.header-inner {
+    display: flex;
+    width: min(100% - 2rem, 76rem);
+    min-height: 4.5rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-inline: auto;
+    gap: 1.5rem;
+}
+
+.wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    color: #17352e;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.wordmark-mark {
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+    border: 0.125rem solid #b83b2d;
+    color: #8f2d23;
+    font-family: Aptos, "Trebuchet MS", sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+}
+
+nav a {
+    display: inline-block;
+    padding: 0.55rem 0.1rem;
+    border-bottom: 0.1875rem solid transparent;
+    color: #315047;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+nav a.active {
+    border-bottom-color: #b83b2d;
+    color: #17352e;
+}
+
+.shell-content {
+    width: min(100% - 2rem, 76rem);
+    margin-inline: auto;
+}
+
+.shell-footer {
+    display: flex;
+    width: min(100% - 2rem, 76rem);
+    justify-content: space-between;
+    margin: 3rem auto 0;
+    padding-block: 1.5rem;
+    border-top: 0.0625rem solid #cbd7cf;
+    color: #526159;
+    font-size: 0.875rem;
+}
+
+@media (max-width: 36rem) {
+    .header-inner {
+        min-height: 4rem;
+    }
+
+    .wordmark {
+        font-size: 1rem;
+    }
+
+    .wordmark-mark {
+        width: 2rem;
+        height: 2rem;
+    }
+
+    .footer-note {
+        display: none;
+    }
+}

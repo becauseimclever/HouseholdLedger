@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Xml.Linq;
 
 using HouseholdLedger.Api.Contracts;
+using Microsoft.OpenApi;
 using NUnit.Framework;
 
 /// <summary>
@@ -21,35 +22,65 @@ public sealed class ApiContractTests
     /// <summary>
     /// Verifies that the checked OpenAPI document describes the health transport contract.
     /// </summary>
+    /// <returns>A task representing the asynchronous operation.</returns>
     [Test]
-    public void CheckedOpenApiDescribesHealthTransportContract()
+    public async Task CheckedOpenApiDescribesHealthTransportContract()
     {
-        using var document = LoadOpenApiDocument();
-        var root = document.RootElement;
-        var operation = root.GetProperty("paths").GetProperty("/api/v1/health").GetProperty("get");
-        var responses = operation.GetProperty("responses");
-        var healthSchema = root.GetProperty("components").GetProperty("schemas")
-            .GetProperty("HealthResponse");
-        var requiredProperties = healthSchema.GetProperty("required")
-            .EnumerateArray()
-            .Select(property => property.GetString());
+        await using var stream = File.OpenRead(GetOpenApiArtifactPath());
+        var readResult = await OpenApiDocument.LoadAsync(
+            stream,
+            "json",
+            settings: null,
+            TestContext.CurrentContext.CancellationToken);
+        var document = readResult.Document
+            ?? throw new InvalidDataException("The checked OpenAPI artifact did not produce a document.");
+        var diagnostic = readResult.Diagnostic
+            ?? throw new InvalidDataException("The checked OpenAPI artifact did not produce parser diagnostics.");
 
         Assert.Multiple(() =>
         {
-            Assert.That(root.GetProperty("openapi").GetString(), Is.EqualTo("3.1.1"));
+            Assert.That(diagnostic.SpecificationVersion, Is.EqualTo(OpenApiSpecVersion.OpenApi3_1));
+            Assert.That(diagnostic.Errors, Is.Empty);
+            Assert.That(diagnostic.Warnings, Is.Empty);
+        });
+
+        var paths = document.Paths
+            ?? throw new InvalidDataException("The checked OpenAPI artifact does not define paths.");
+        Assert.That(paths, Contains.Key("/api/v1/health"));
+        var pathItem = paths["/api/v1/health"];
+        var operations = pathItem.Operations
+            ?? throw new InvalidDataException("The health path does not define operations.");
+        Assert.That(operations, Contains.Key(HttpMethod.Get));
+        var operation = operations[HttpMethod.Get];
+        var responses = operation.Responses
+            ?? throw new InvalidDataException("The health GET operation does not define responses.");
+        Assert.That(responses, Does.ContainKey("200").And.ContainKey("500"));
+        var successContent = responses["200"].Content
+            ?? throw new InvalidDataException("The health success response does not define content.");
+        Assert.That(successContent, Contains.Key("application/json"));
+        var errorContent = responses["500"].Content
+            ?? throw new InvalidDataException("The health error response does not define content.");
+        Assert.That(errorContent, Contains.Key("application/problem+json"));
+        var healthSchema = document.Components?.Schemas?["HealthResponse"]
+            ?? throw new InvalidDataException("The checked OpenAPI artifact does not define HealthResponse.");
+        var successSchema = successContent["application/json"].Schema;
+        var errorSchema = errorContent["application/problem+json"].Schema;
+        var successSchemaReference = successSchema as OpenApiSchemaReference;
+        var errorSchemaReference = errorSchema as OpenApiSchemaReference;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(successSchemaReference, Is.Not.Null);
             Assert.That(
-                responses.GetProperty("200").GetProperty("content").GetProperty("application/json")
-                    .GetProperty("schema").GetProperty("$ref").GetString(),
+                successSchemaReference?.Reference.ReferenceV3,
                 Is.EqualTo("#/components/schemas/HealthResponse"));
+            Assert.That(errorSchemaReference, Is.Not.Null);
             Assert.That(
-                responses.GetProperty("500").GetProperty("content").GetProperty("application/problem+json")
-                    .GetProperty("schema").GetProperty("$ref").GetString(),
+                errorSchemaReference?.Reference.ReferenceV3,
                 Is.EqualTo("#/components/schemas/ProblemDetails"));
-            Assert.That(healthSchema.GetProperty("type").GetString(), Is.EqualTo("object"));
-            Assert.That(requiredProperties, Is.EqualTo(RequiredHealthProperties));
-            Assert.That(
-                healthSchema.GetProperty("properties").GetProperty("status").GetProperty("type").GetString(),
-                Is.EqualTo("string"));
+            Assert.That(healthSchema.Type, Is.EqualTo(JsonSchemaType.Object));
+            Assert.That(healthSchema.Required, Is.EqualTo(RequiredHealthProperties));
+            Assert.That(healthSchema.Properties?["status"].Type, Is.EqualTo(JsonSchemaType.String));
         });
     }
 
@@ -61,7 +92,7 @@ public sealed class ApiContractTests
     {
         const string languageNeutralJson = """{"status":"available"}""";
 
-        using var openApiDocument = LoadOpenApiDocument();
+        using var openApiDocument = LoadOpenApiJsonDocument();
         var schemaProperties = openApiDocument.RootElement.GetProperty("components").GetProperty("schemas")
             .GetProperty("HealthResponse").GetProperty("properties")
             .EnumerateObject()
@@ -109,15 +140,19 @@ public sealed class ApiContractTests
         });
     }
 
-    private static JsonDocument LoadOpenApiDocument()
+    private static JsonDocument LoadOpenApiJsonDocument()
     {
-        var artifactPath = Path.Combine(
+        return JsonDocument.Parse(File.ReadAllText(GetOpenApiArtifactPath()));
+    }
+
+    private static string GetOpenApiArtifactPath()
+    {
+        return Path.Combine(
             FindRepositoryRoot(),
             "src",
             "HouseholdLedger.Api",
             "openapi",
             "v1.json");
-        return JsonDocument.Parse(File.ReadAllText(artifactPath));
     }
 
     private static string FindRepositoryRoot()

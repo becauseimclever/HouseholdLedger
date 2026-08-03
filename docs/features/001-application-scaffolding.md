@@ -2,19 +2,26 @@
 
 ## Status
 
-Status: Approved / All Six Waves Approved / Wave 1 Complete
+Status: Approved / All Six Waves Approved / Waves 1-2 Complete / Waves 3-5
+Partially Implemented / Wave 6 Audited but Incomplete
 
 - Approval authority: the user. The orchestrator cannot approve this document
   on the user's behalf.
 - Approval record: the user approved the complete Feature 001 specification and
   implementation of all six waves on 2026-08-02.
-- Implementation readiness: Wave 1 is completed and validated. Waves 2-6 are
-  approved to proceed in dependency order without another user approval gate;
-  all documented scope, exclusive ownership, resource isolation, validation,
-  and Definition of Done requirements remain binding.
+- Implementation readiness: Waves 1 and 2 are completed and validated. Waves
+  3-5 have implementation evidence but remain incomplete at the package,
+  PostgreSQL, or clean-workflow gates described below. The exact
+  Firefox/geckodriver runtime was provisioned and verified, runtime hashes are
+  enforced before launch, and two consecutive complete direct-W3C browser runs
+  passed 3/3. Podman 5.8.3 is installed, but its engine is unavailable because
+  upgrading WSL to the required 2.7.11 release needs administrator elevation.
+  Wave 6 was audited on 2026-08-03 and is not complete. All six waves remain
+  approved; documented scope, exclusive ownership, resource isolation,
+  validation, and Definition of Done requirements remain binding.
 - Scope type: foundational application scaffold; no household-ledger feature
   behavior is included.
-- Research date: 2026-08-02.
+- Research date: 2026-08-02; user decisions updated 2026-08-03.
 
 ## Context and Problem
 
@@ -455,19 +462,25 @@ policy.
 | Component | Client.ComponentTests | The WebAssembly shell renders honest states without a live API. |
 | Infrastructure integration | Infrastructure.IntegrationTests | Runs after an approved PostgreSQL provisioning method exists. |
 | API integration | Api.IntegrationTests | `WebApplicationFactory` proves startup, MVC health, OpenAPI, CORS, and replacement configuration. |
-| End to end, smallest | EndToEndTests | An approved browser tool loads the independently served client against the API. |
+| HTTP system smoke | EndToEndTests | A separate process proves the published API through HTTP without product project references. |
+| Browser end to end, smallest | EndToEndTests | A package-free direct-W3C client proves the published Client and API at desktop and mobile viewports. |
 
 Do not use AutoFixture. Tests use readable explicit builders, object mothers
 only where appropriate, or focused factory methods that expose meaningful
 defaults. Do not hide setup behind reflection-driven specimen generation.
 
 PostgreSQL tests use reviewed Podman provisioning with deterministic isolation
-and cleanup; Testcontainers is excluded. Browser mechanisms remain blocked
-until the complete automation, browser artifact, and license inventory passes
-policy. After that full review, the user approves only the narrow browser-runtime
-license exception necessary for E2E execution. Microsoft.Playwright remains
-provisional until that evidence exists: its NuGet package is MIT, but downloaded
-browser binaries carry separate licenses. Direct NuGet metadata is insufficient.
+and cleanup. Podman 5.8.3 is installed, but the engine cannot start until an
+administrator upgrades WSL from the evidenced 2.3.26 release to required
+2.7.11. Testcontainers is excluded. Browser E2E uses manually provisioned
+Firefox 153.0.1 Windows x64
+en-US EME-free and geckodriver 0.37.1 Windows x64 under the narrow test-runtime
+exception recorded below. Their artifact provenance, hashes, signatures where
+available, installed licenses, versions, and vulnerability status were verified
+before the successful browser runs.
+`Selenium.WebDriver`, Selenium Manager, telemetry, and runtime downloaders are
+excluded; the tests must use direct W3C WebDriver HTTP/JSON through built-in
+.NET APIs. Microsoft.Playwright remains blocked.
 
 The Test Architecture specialist owns the final pyramid review and all
 component/integration/E2E test implementation. Domain, Application, API, UI,
@@ -525,11 +538,13 @@ For compound expressions:
 ### Free and Open-Source Commercial-Model Rule
 
 Dependencies, tools required to build or test, downloaded runtime assets, and
-their upstream projects must be free and open source. Exclude a library or
-project that offers a paid, proprietary, commercial edition, commercial tier,
-hosted commercial counterpart, or dual commercial licensing, even when the
-specific package or community edition is free and uses an allowlisted license.
-Donations, grants, and sponsorship alone do not constitute a commercial tier.
+their upstream projects must be free and open source. Optional vendor-provided
+paid support for otherwise identical free and open-source software does not
+disqualify it. Exclude a library or project that offers paid product tiers,
+features, editions, hosted commercial counterparts, or dual commercial
+licensing, even when the specific package or community edition is free and uses
+an allowlisted license. Donations, grants, sponsorship, and optional support
+alone do not constitute a commercial tier.
 
 Automation can inventory packages, parse declared SPDX expressions, detect
 known vulnerabilities, and compare approved metadata. It cannot reliably prove
@@ -606,35 +621,33 @@ transitive or runtime dependency, or relax the package policy beyond this
 one-time Wave 3 use. A version change or different prerelease dependency
 requires a new explicit user decision.
 
-### Candidate Baseline as of 2026-08-02
+### Resolved Baseline as of 2026-08-02
 
-Unless a row records an explicit policy exception, these are candidates rather
-than approved dependencies. An exception approves only the stated policy
-deviation; versions, full transitive graphs, provenance, licenses, commercial
-models, vulnerabilities, and runtime downloads must still be checked
-immediately before implementation.
+The rows marked introduced reflect current direct project references or an
+identified transitive dependency. Introduction is not proof that the complete
+transitive/runtime closure satisfies policy. The dated manual direct-family
+review and its limits are in
+[`dependency-governance.md`](../development/dependency-governance.md).
 
-| Package or tool | Candidate / declared license | Reconciliation |
+| Package or tool | Resolved / declared license | Reconciliation |
 | --- | --- | --- |
-| .NET SDK and ASP.NET Core shared framework | 10.0.302 / MIT source baseline | Provisional; verify distributed components and no required proprietary tooling. |
-| .NET / ASP.NET Core runtime line | 10.0.10 / MIT source baseline | Provisional; stay on supported servicing patches. |
-| `StyleCop.Analyzers` | 1.2.0-beta.556 / MIT | Deliberate prerelease exception; C# 14 probe and complete package review still required. |
-| `Microsoft.EntityFrameworkCore` | 10.0.10 / MIT | Provisional after transitive and commercial-model review. |
-| `Microsoft.EntityFrameworkCore.Relational` | 10.0.10 / MIT | Provisional; align all Microsoft EF packages exactly. |
-| `Microsoft.EntityFrameworkCore.Design` | 10.0.10 / MIT | Provisional; private assets only. |
-| `dotnet-ef` | 10.0.10 / MIT | Provisional local tool; align with EF Core. |
-| `Npgsql.EntityFrameworkCore.PostgreSQL` | 10.0.3 / PostgreSQL | Provisional under the narrow standing license exception; full dependency, FOSS, and no-paid-option review remains required. |
-| `Npgsql` | Provider-compatible stable version / PostgreSQL | Provisional under the same narrow exception; version, provenance, transitive/runtime, FOSS, and no-paid-option review remain required. |
-| PostgreSQL server | Supported release / PostgreSQL | Provisional under the narrow standing license exception; distribution, provenance, FOSS, and no-paid-option review remain required. |
-| `xunit.v3` | 3.2.2 / Apache-2.0 | Provisional; full graph and project model require review. |
-| `Microsoft.NET.Test.Sdk` | 18.8.1 / MIT | Provisional after full graph and project-model review. |
-| `coverlet.collector` | 10.0.1 / MIT | Include only after complete dependency review, including transitive Mono.Cecil licensing; establish no coverage threshold. |
-| `bunit` | 2.8.6 / MIT | One-time Wave 3 stable-policy exception approved; adoption remains gated on all existing reviews and is not approval for future versions. |
-| `AngleSharp.Css` | 1.0.0-beta.224 / license review required | Required transitive dependency of the excepted `bunit` version; the same one-time Wave 3 exception resolves only its prerelease status, and all existing reviews remain required. |
-| `Microsoft.AspNetCore.Mvc.Testing` | 10.0.10 / MIT | Provisional after full review. |
-| `Microsoft.AspNetCore.OpenApi` | 10.0.10 / MIT | Recommended for canonical contract generation; review build companions separately. |
+| .NET SDK | 10.0.302 / MIT source baseline | Selected by `global.json`; current CLI evidence resolves 10.0.302. |
+| Microsoft ASP.NET Core direct packages | 10.0.10 / MIT | Introduced for standalone WebAssembly, runtime OpenAPI, and API integration tests; optional paid support does not disqualify otherwise identical FOSS. |
+| Microsoft EF Core direct packages | 10.0.10 / MIT | Introduced and exactly aligned; complete closure review remains open. |
+| `Microsoft.OpenApi` | 2.11.0 / MIT | Introduced for checked OpenAPI parsing and comparison. |
+| `StyleCop.Analyzers` | 1.2.0-beta.556 / MIT | Introduced under the deliberate prerelease exception; Wave 1 analyzer probes passed. |
+| `Npgsql.EntityFrameworkCore.PostgreSQL` | 10.0.3 / PostgreSQL | Introduced under the narrow standing license exception; real server/image and complete closure evidence remain open. |
+| Resolved `Npgsql` driver | 10.0.3 / PostgreSQL | Transitive under the same narrow exception; no startup database access is performed. |
+| PostgreSQL server image | `docker.io/library/postgres:18` / PostgreSQL and bundled components | Harness default only; reviewed but not pulled or run because the installed Podman 5.8.3 engine is blocked on an administrator WSL 2.7.11 upgrade. Image/runtime evidence is not complete. |
+| `Microsoft.NET.Test.Sdk` | 18.8.1 / MIT | Introduced in all test projects. |
+| `NUnit` / `NUnit3TestAdapter` | 4.6.1 / 4.6.0 / MIT | Introduced for contract, component, integration, and system tests. |
+| `xunit.runner.visualstudio` | 3.1.5 / Apache-2.0 | Introduced in the currently empty Domain and Application unit-test projects. |
+| `bunit` | 2.8.6 / MIT | Introduced under the one-time Wave 3 exception; full closure review remains open. |
+| `AngleSharp.Css` | 1.0.0-beta.224 / MIT | Resolved transitive dependency under the same one-time Wave 3 prerelease exception; full closure review remains open. |
+| `coverlet.collector` | Not introduced | Deferred pending complete review; this feature has no coverage threshold. |
 | `Testcontainers.PostgreSql` | 4.13.0 / MIT | Excluded: official project links to the commercial Testcontainers Cloud service. |
-| `Microsoft.Playwright` | 1.61.0 / MIT package | Blocked pending complete automation/browser artifact and license inventory; afterward only the approved narrow browser-runtime license exception may apply. |
+| Firefox/geckodriver test runtime | Firefox 153.0.1 EME-free / geckodriver 0.37.1 | Narrow test-runtime-only exception; exact user-local artifacts and installed notices verified, with two complete browser runs passing. |
+| `Microsoft.Playwright` | 1.61.0 / MIT package | Blocked; it is outside the approved Firefox/geckodriver chain and has unresolved runtime and commercial-product concerns. |
 
 AutoFixture, AutoMapper, and MediatR are intentionally absent. No candidate with
 `Provisional`, `Blocked`, `Deferred`, or `Excluded` status may be silently
@@ -646,10 +659,12 @@ installed.
 
 - .NET SDK 10.0.302 or a latest-patch SDK in its feature band selected by
   `global.json`.
-- Reviewed Podman provisioning for isolated PostgreSQL integration tests;
-  Docker Desktop and Testcontainers are not used.
+- Podman, whose installation was approved on 2026-08-03, for reviewed isolated
+  PostgreSQL integration tests; Docker Desktop and Testcontainers are not used.
 - PowerShell 7 or a shell capable of running equivalent `dotnet` commands.
-- An approved browser and automation mechanism only for E2E tests.
+- Manually provisioned Firefox 153.0.1 Windows x64 en-US EME-free and
+  geckodriver 0.37.1 Windows x64, verified under the approved test-runtime-only
+  exception, for browser E2E tests.
 - No globally installed `dotnet-ef`; restore it from the local tool manifest.
 
 ### Expected Commands
@@ -658,20 +673,40 @@ Run from `HouseholdLedger/` after implementation:
 
 ```powershell
 dotnet --info
-dotnet tool restore
 dotnet restore --locked-mode
 dotnet build --no-restore
-dotnet test --no-build
 dotnet test tests/HouseholdLedger.Api.Contracts.Tests --no-build
 dotnet test tests/HouseholdLedger.Client.ComponentTests --no-build
 dotnet test tests/HouseholdLedger.Infrastructure.IntegrationTests
 dotnet test tests/HouseholdLedger.Api.IntegrationTests
-dotnet test tests/HouseholdLedger.EndToEndTests
 dotnet run --project src/HouseholdLedger.Api
 dotnet run --project src/HouseholdLedger.Client
 ```
 
-The implementation must commit NuGet lock files for `--locked-mode`.
+The EndToEndTests project uses NUnit and contains one separate-process HTTP
+system smoke plus desktop and mobile browser cases. The complete run requires
+normalized absolute `HOUSEHOLDLEDGER_API_ARTIFACT`,
+`HOUSEHOLDLEDGER_CLIENT_PUBLISH_DIR`, `HOUSEHOLDLEDGER_FIREFOX_BINARY`, and
+`HOUSEHOLDLEDGER_GECKODRIVER` values. It never discovers arbitrary artifacts or
+downloads a runtime. Use the fresh-publish, test, and cleanup workflow in
+[`testing.md`](../development/testing.md). A bare solution-wide test command
+without those explicit artifacts is intentionally incomplete.
+
+There is currently no local .NET tool manifest, and no migration exists. Do not
+run `dotnet tool restore` or install `dotnet-ef` for this scaffold. Committed
+NuGet lock files support `--locked-mode`.
+
+Compare runtime OpenAPI with the checked artifact without mutating it, or update
+the artifact only after reviewing an intentional contract change:
+
+```powershell
+pwsh scripts/openapi/Sync-OpenApi.ps1
+pwsh scripts/openapi/Sync-OpenApi.ps1 -Update
+pwsh scripts/openapi/Sync-OpenApi.ps1
+```
+
+The first and third commands compare only. The `-Update` command atomically
+replaces the artifact. Automated tests never update it.
 
 The API and Client run on distinct documented HTTPS origins in development.
 Client configuration points to the API origin, and API CORS permits only the
@@ -785,8 +820,8 @@ identifies the period without invented entries, totals, savings, or reflections.
 Loading, API-unavailable, not-found, and error states are accessible. Template
 demo content is absent.
 
-Evidence: component tests and, after browser dependencies are approved, desktop
-and mobile browser evidence.
+Evidence: component tests and, after the approved browser artifacts are
+provisioned and verified, successful desktop and mobile browser evidence.
 
 ### AC-07: Universal Razor code-behind
 
@@ -860,15 +895,57 @@ next wave begins.
 
 Evidence: orchestrator wave records and specialist completion reports.
 
+### Current Acceptance Status
+
+The final 2026-08-03 read-only audit is recorded in
+[`docs/audit/2026-08-03-feature-001-definition-of-done.md`](../audit/2026-08-03-feature-001-definition-of-done.md).
+
+- **AC-01 - Met.** SDK 10.0.302, locked restore, a zero-warning build,
+  centralized StyleCop enforcement, C# 14 probes, and package inventory are
+  evidenced. Complete dependency-policy closure is assessed by AC-10.
+- **AC-02 - Met.** Six production and seven test projects match the approved
+  shape.
+- **AC-03 - Met.** Project-reference and package-boundary checks pass.
+- **AC-04 - Met.** OpenAPI.NET parser diagnostics and schema assertions pass;
+  runtime and checked documents agree; the implementation-independent HTTP
+  probe passes.
+- **AC-05 - Met.** Independent publishes, configuration tests, the static host,
+  Resource Timing, and explicit API checks prove replaceability.
+- **AC-06 - Met.** Component and desktop/mobile browser evidence covers the
+  required honest, accessible states.
+- **AC-07 - Met.** Automated checks prove universal code-behind pairing and no
+  inline `@code` blocks.
+- **AC-08 - Met.** Integration evidence covers MVC health, ProblemDetails,
+  CORS, OpenAPI, and conditional Infrastructure composition.
+- **AC-09 - Blocked.** Podman 5.8.3 is installed, but its engine is unavailable
+  until an administrator upgrades WSL to 2.7.11. The PostgreSQL image has been
+  reviewed but not pulled or run, and the real-provider test remains skipped.
+- **AC-10 - Partial.** Direct families, resolved NuGet closure, and the approved
+  browser artifact chain are inventoried. Complete manual review of every
+  transitive and published-runtime artifact is not evidenced, and the
+  PostgreSQL image/runtime closure has no pull or run evidence.
+- **AC-11 - Partial.** Prohibited helpers are absent and implemented tests use
+  explicit setup at appropriate layers. Accepting zero Domain/Application tests
+  for a behavior-light scaffold materially revises the literal balanced-pyramid
+  wording and requires renewed user approval of the exact wording in the audit.
+- **AC-12 - Partial.** Commands are current and automated fresh-publish browser
+  evidence exercises separate hosts, but no clean-environment manual HTTPS
+  startup and URL-verification transcript is recorded.
+- **AC-13 - Not Verifiable.** The feature records intended ownership and wave
+  reports, but the audit found no independently verifiable complete
+  orchestrator history for every file and external resource.
+
 ## Implementation Waves and Approval Record
 
 The user approved this feature document and implementation of all six waves on
-2026-08-02. Wave 1 is completed and validated. Waves 2-6 may proceed without
-another user approval gate, but only in the documented dependency order. Before
-each wave, the orchestrator must still record its outcome, participating
-specialists, exact writable files, isolated resources, dependencies, risks, and
-validation. Approval does not establish implementation completion or satisfy
-any acceptance criterion or Definition of Done item by itself.
+2026-08-02. Waves 1 and 2 are completed and validated. Waves 3-5 are partially
+implemented and Wave 6 is audited but incomplete as recorded below. Work may
+proceed without another user approval gate, but only in the documented
+dependency order. Before each wave, the orchestrator must still record its
+outcome, participating specialists, exact writable files, isolated resources,
+dependencies, risks, and validation. Approval does not establish implementation
+completion or satisfy any acceptance criterion or Definition of Done item by
+itself.
 
 ### Wave 1: Repository, Projects, and Enforced Build Policy
 
@@ -890,8 +967,8 @@ Budget Experiment is unchanged.
 
 ### Wave 2: Contract-First API Skeleton
 
-Approval: explicitly approved by the user on 2026-08-02; not yet marked
-complete.
+Approval: explicitly approved by the user on 2026-08-02; completed and
+validated on 2026-08-02.
 
 Owners: ASP.NET API for API Contracts, controller, CORS, OpenAPI, and API startup;
 Utility Fallback owns shared project files sequentially when assigned.
@@ -903,10 +980,22 @@ Do not invent business DTOs or use cases.
 Gate evidence: API integration and contract checks, OpenAPI validation,
 implementation-independent HTTP probe, and API publish without Client.
 
+Completion evidence: the API integration and API Contracts projects pass. They
+cover `/api/v1/health`, framework ProblemDetails, configured CORS, runtime and
+checked OpenAPI agreement, and dependency boundaries. The default OpenAPI
+script invocation compared runtime output without changing the checked
+artifact. The separate-process HTTP system smoke passed without a product
+project reference, and the API published independently. Infrastructure
+registration is conditional on a nonblank, syntactically usable connection
+string; configured startup registers Npgsql without connecting to a database or
+accessing a schema. OpenAPI.NET parser diagnostics and schema assertions now
+pass, so AC-04 is Met.
+
 ### Wave 3: Independent WebAssembly Client Shell
 
-Approval: explicitly approved by the user on 2026-08-02; not yet marked
-complete.
+Approval: explicitly approved by the user on 2026-08-02; implementation evidence
+is present, but the wave is not complete because its complete dependency-closure
+review remains open.
 
 Owner: Blazor UI, after the API contract is frozen for this wave.
 
@@ -925,15 +1014,28 @@ Gate evidence: complete dependency reviews for `bunit`, `AngleSharp.Css`, and
 their dependency closure; reference checks; component tests; independent Client
 publish; network inspection; code-behind checks; and accessible state review.
 
+Current evidence: the standalone WebAssembly Client reads configurable public
+`Api:BaseUrl`, references only API Contracts, and publishes independently. All
+22 Client tests pass and are classified as 12 unit, 8 bUnit component, and 2
+structural tests. The structural checks enforce project boundaries and universal
+Razor code-behind. The exact bUnit/AngleSharp.Css prerelease exception is
+preserved. The direct-family manual review found no bUnit or AngleSharp paid
+product tier, but complete transitive notices and published-output review remain
+open. Optional vendor-provided paid support does not disqualify otherwise
+identical FOSS under the 2026-08-03 user decision. Therefore the gate is not
+fully met.
+
 ### Wave 4: PostgreSQL Persistence Boundary
 
-Approval: explicitly approved by the user on 2026-08-02; not yet marked
-complete.
+Approval: explicitly approved by the user on 2026-08-02; partially implemented
+and blocked at the real-PostgreSQL gate.
 
 Owner: Persistence and Integrations. The PostgreSQL license decision is
 resolved by the narrow standing exception, and reviewed Podman provisioning is
-the approved test method. This wave starts only after the named PostgreSQL
-dependencies pass the remaining policy reviews.
+the approved test method. Podman 5.8.3 is installed, but its engine is blocked
+until an administrator upgrades WSL to 2.7.11.
+This wave starts only after the named PostgreSQL dependencies pass the remaining
+policy reviews.
 
 Implement the empty EF boundary without fake entities, an initial migration,
 automatic startup migration, Testcontainers, EF InMemory, or SQLite
@@ -945,27 +1047,99 @@ exception, boundary checks, reviewed Podman provisioning, and real-provider
 test results. Without completed reviews and successful provisioning evidence,
 this wave and feature completion remain blocked.
 
+Current evidence: the empty `HouseholdLedgerDbContext`, Npgsql registration, and
+owned Podman harness exist without entities or migrations. One in-process
+registration test passes. The Infrastructure NUnit references were repaired
+with `PrivateAssets="all"`. Podman 5.8.3 is installed, but its engine is
+unavailable because upgrading WSL to required version 2.7.11 needs administrator
+elevation. The real PostgreSQL connectivity test skips, and no isolated
+connection string is supplied. Installation is not execution evidence. The
+reviewed PostgreSQL image has not been pulled or run, and no real-provider
+transcript exists, so this wave is not complete.
+
 ### Wave 5: Remaining Test Pyramid and Developer Documentation
 
-Approval: explicitly approved by the user on 2026-08-02; not yet marked
-complete.
+Approval: explicitly approved by the user on 2026-08-02; browser evidence is
+complete, while the broader clean-workflow and final-review gates remain open.
 
 Owners: Test Architecture for component/integration/E2E tests and harnesses;
 Research and Documentation for assigned development/architecture documentation.
 
 Add only approved component, API, infrastructure, and E2E evidence. Browser E2E
-work waits for the complete artifact/license inventory; only then may the narrow
-browser-runtime license exception be used. Document separate API/Client startup,
-CORS, configuration, independent publishing, and Podman database provisioning.
-Parallel work requires disjoint files and resources.
+uses only the approved manually provisioned Firefox 153.0.1 EME-free and
+geckodriver 0.37.1 test-runtime chain after all post-provision checks pass. It
+uses no Selenium package, Selenium Manager, telemetry, or runtime downloader;
+direct W3C WebDriver calls use built-in .NET HTTP/JSON APIs. Document separate
+API/Client startup, CORS, configuration, independent publishing, and Podman
+database provisioning. Parallel work requires disjoint files and resources.
 
 Gate evidence: each test layer's exact command and result, approved browser viewport
 evidence, Markdown checks, and clean-workflow transcript.
 
+#### Wave 5 Documentation Evidence
+
+The assigned architecture and developer-documentation slice was completed on
+2026-08-02. It records the current layer boundaries, independent API and Client
+startup and publishing, explicit CORS and public Client configuration, test
+commands by layer, the owned Podman PostgreSQL harness, universal Razor
+code-behind conventions, dependency governance, contribution workflow, and
+verified troubleshooting. The repository README now provides a Kakeibo-aware
+onboarding path without implying that ledger behavior exists.
+
+This documentation and test evidence does not complete Wave 5:
+
+- Podman 5.8.3 is installed, but its engine is unavailable because the WSL
+  2.7.11 upgrade requires administrator elevation. The PostgreSQL harness has
+  not executed, the real-provider test reports skipped, and no real-provider
+  transcript exists.
+- `Microsoft.Playwright` 1.61.0 does not qualify under current policy. Its
+  runtime includes an Apache-2.0 JavaScript driver, Node.js 24.16.0 and its
+  third-party inventory, Chromium 149, Firefox 151, WebKit 26.5, FFmpeg, and a
+  Windows dependency helper. Complete binary notices and classifications remain
+  unresolved, browser downloads have no pinned cryptographic hash or signature
+  verification, and Microsoft offers paid Azure Playwright Workspaces. The
+  proposed browser-runtime license exception does not waive the independent
+  no-paid-counterpart rule.
+- The approved test-owned W3C WebDriver client uses only built-in .NET
+  HTTP/JSON APIs. It contains no Selenium or Playwright package, invokes no
+  manager, and downloads no runtime. Exact Firefox 153.0.1 EME-free and
+  geckodriver 0.37.1 artifacts are pinned under the user's local application
+  data and supplied by explicit normalized absolute environment variables.
+- The NUnit EndToEndTests project has one separate-process HTTP system smoke
+  plus desktop and mobile browser cases, with zero product project references.
+  Two consecutive complete 3/3 fresh-publish runs passed in 8.7 seconds and
+  8.1 seconds. The browser cases prove cross-origin Resource Timing and API
+  CORS, exact `1440x900` and `500x844` inner viewports, title, landmarks,
+  calendar period, honest empty state, not-found recovery, skip navigation,
+  geometry, and text containment. Owned processes, ports, profiles, variables,
+  and temporary publish outputs were cleaned.
+- Four screenshots were retained under ignored `TestResults` output. Desktop
+  images are 47,332 bytes with SHA-256
+  `a63a564fff9a9811ea7d58c832ad0e57b3062e1ba2648e56277d46223356f882`;
+  mobile images are 26,266 bytes with SHA-256
+  `5ba6d48e6b703d50dfd512e95f9c2cf58ab8ef4eb2c37791428f6ef0fca28ddf`.
+- Locked restore, a zero-warning solution build, formatting, and the available
+  contract, component, integration, structural, system, and browser tests pass.
+  The 43 cases classify as 12 unit, 8 component, 2 contract, 14 integration
+  including one skipped external PostgreSQL case, 1 system, 2 browser E2E, and
+  4 structural tests. The available result is 42 passed and one skipped. Unit
+  tests are 27.9% of the suite and not yet a majority; empty Domain and
+  Application tests are
+  intentional because those layers contain no behavior.
+- API and Client Release publishes pass independently. The OpenAPI compare
+  script reports that runtime generation matches the checked artifact.
+
+The detailed browser evidence is in
+[`docs/development/browser-e2e-dependency-review.md`](../development/browser-e2e-dependency-review.md).
+Changed Wave 5 Markdown files pass the editor's available Markdown diagnostics.
+Repository Markdown link, command, structure, spelling, grammar, and diff checks
+are recorded in the completion report for this documentation update; unavailable
+checks are not treated as passed.
+
 ### Wave 6: Final Verification and Definition of Done Audit
 
-Approval: explicitly approved by the user on 2026-08-02; not yet marked
-complete.
+Approval: explicitly approved by the user on 2026-08-02; audited on 2026-08-03
+and not complete.
 
 Owners: Utility Fallback for broad executable validation, then Research and
 Documentation for a read-only criterion-to-evidence audit.
@@ -975,7 +1149,8 @@ No implementation changes occur during the audit. Any `Not Met`, `Blocked`, or
 repair wave when scope or resources change.
 
 Gate evidence: complete command transcript and every criterion/Definition of
-Done item marked `Met` with concrete evidence.
+Done item marked `Met` with concrete evidence. The dated audit records Partial,
+Blocked, and Not Verifiable items, so this gate is not met.
 
 ## Risks and Mitigations
 
@@ -1027,6 +1202,18 @@ implementation of all six waves with these decisions:
   and required transitive `AngleSharp.Css` 1.0.0-beta.224 only. The exception
   does not waive any existing dependency check, approve future versions or
   other prereleases, mark Wave 3 complete, or satisfy implementation criteria.
+11. Optional vendor-provided paid support does not disqualify otherwise
+  identical free/open-source software; paid product tiers, features, and
+  editions remain disqualifying.
+12. Firefox 153.0.1 Windows x64 en-US EME-free and geckodriver 0.37.1 Windows
+  x64 have a narrow test-runtime-only non-allowlisted license exception,
+  conditional on post-provision provenance, hash, signature, license, version,
+  and vulnerability verification. No Selenium package, Selenium Manager,
+  telemetry, or runtime downloader is allowed; direct W3C WebDriver uses
+  built-in .NET HTTP/JSON APIs.
+13. Installing Podman for the approved PostgreSQL integration-test harness is
+  approved. Installation and successful PostgreSQL tests remain required
+  evidence.
 
 The existing narrow PostgreSQL/Npgsql license exception remains unchanged. No
 open approval question remains for Feature 001 or Waves 1-6. Approval does not
@@ -1041,32 +1228,34 @@ marks every item `Met`.
   implementation of all six waves on 2026-08-02; decision history records that
   approval.
 - [ ] AC-01 through AC-13 are each `Met` with the stated evidence.
-- [ ] `dotnet --version` resolves the approved stable .NET 10 SDK policy.
-- [ ] `dotnet tool restore` succeeds and restores the approved EF tool version.
-- [ ] Deterministic `dotnet restore` succeeds with no package downgrade,
+- [x] `dotnet --version` resolves the approved stable .NET 10 SDK policy.
+- [x] No .NET tool manifest or migration exists, so no EF tool is required or
+  restored for this scaffold; setup explicitly rejects global `dotnet-ef`.
+- [x] Deterministic `dotnet restore` succeeds with no package downgrade,
   blocking vulnerability, or prerelease dependency except the documented
   StyleCop 1.2.0-beta.556 exception and the one-time Wave 3 exception for
   `bunit` 2.8.6 with required transitive `AngleSharp.Css`
   1.0.0-beta.224.
-- [ ] `dotnet build --no-restore` succeeds with zero warnings and zero errors.
-- [ ] StyleCop is centralized, runs for every C# project, passes the C# 14 probe,
+- [x] `dotnet build --no-restore` succeeds with zero warnings and zero errors.
+- [x] StyleCop is centralized, runs for every C# project, passes the C# 14 probe,
   is absent from runtime output, and is enforced by the build.
-- [ ] API and Client build and publish independently; API has no Client reference
+- [x] API and Client build and publish independently; API has no Client reference
   and Client has no server implementation reference.
-- [ ] Checked OpenAPI, API Contracts, controller behavior, and an
+- [x] Checked OpenAPI, API Contracts, controller behavior, and an
   implementation-independent HTTP probe agree.
-- [ ] Unit, contract, and component tests pass without database or browser
+- [x] Unit, contract, and component tests pass without database or browser
   prerequisites.
 - [ ] Infrastructure and API integration tests pass against isolated real
   PostgreSQL resources using the excepted provider stack and an approved
   provisioning method.
-- [ ] Browser evidence passes only with an approved automation and browser
-  dependency chain; otherwise the feature is not done.
-- [ ] Automated architecture checks prove the approved project-reference and
+- [x] Browser evidence uses the approved package-free direct-W3C automation and
+  exact verified Firefox and geckodriver artifacts; two consecutive complete
+  desktop/mobile runs pass.
+- [x] Automated architecture checks prove the approved project-reference and
   package boundaries.
-- [ ] Automated Razor checks prove one `.razor.cs` partner per `.razor` file and
+- [x] Automated Razor checks prove one `.razor.cs` partner per `.razor` file and
   zero `@code` blocks.
-- [ ] AutoFixture, AutoMapper, and MediatR are absent; explicit alternatives are
+- [x] AutoFixture, AutoMapper, and MediatR are absent; explicit alternatives are
   verified in source and tests.
 - [ ] Every direct, transitive, tool, runtime, database, browser, image, and
   downloaded artifact has dated provenance, license, and commercial-model review.
@@ -1081,23 +1270,24 @@ marks every item `Met`.
   and `Npgsql.EntityFrameworkCore.PostgreSQL`; each has passed complete FOSS and
   no-paid-option review, and no unrelated PostgreSQL-licensed software relies on
   the exception.
-- [ ] A package vulnerability audit reports no finding at or above the approved
+- [x] A package vulnerability audit reports no finding at or above the approved
   failure threshold.
-- [ ] `dotnet format --verify-no-changes` or the repository's approved equivalent
+- [x] `dotnet format --verify-no-changes` or the repository's approved equivalent
   succeeds.
-- [ ] Repository Markdown formatter, linter, link checker, and spelling/grammar
+- [x] Repository Markdown formatter, linter, link checker, and spelling/grammar
   checks pass for all changed documentation, or unavailable checks are recorded
   explicitly rather than treated as passed.
-- [ ] A clean workflow starts separate API and Client processes, loads the shell,
-  receives a valid `GET /api/v1/health` response, and publishes both independently.
-- [ ] Secrets and repository scans find no committed credential, connection
+- [x] A fresh-publish browser workflow starts separate API and Client hosts,
+  loads the shell, observes a valid cross-origin `GET /api/v1/health` response,
+  and uses independently published API and Client artifacts.
+- [x] Secrets and repository scans find no committed credential, connection
   string, realistic household data, or generated local artifact.
 - [ ] All implementation waves have user approval records, exclusive file and
   resource ownership, and exact completion evidence.
 - [ ] `git diff --check` succeeds for HouseholdLedger changes.
 - [ ] The final read-only audit finds no undocumented scope change, product-core
   deviation, accessibility gap, stale command, or unmet item.
-- [ ] Budget Experiment and the parent repository's product implementation remain
+- [x] Budget Experiment and the parent repository's product implementation remain
   unchanged.
 
 ## Decision History
@@ -1123,6 +1313,18 @@ marks every item `Met`.
 | 2026-08-02 | Explicit user decision | Defer the initial migration until a real model exists. |
 | 2026-08-02 | All six waves approved / Wave 1 complete | The user approved implementation of Waves 1-6. Wave 1 is completed and validated; Waves 2-6 require no further user approval gate but remain subject to all documented ordering, ownership, resource isolation, validation, acceptance criteria, and Definition of Done requirements. |
 | 2026-08-02 | Explicit user decision / Wave 3 policy exception | Approve a one-time stable-package-policy exception permitting `bunit` 2.8.6 and its required transitive `AngleSharp.Css` 1.0.0-beta.224 dependency for Wave 3, subject to all existing license, provenance, vulnerability, free/open-source, commercial-model, and no-paid-option checks. The exception does not approve other prereleases or future versions, relax broader package policy, mark Wave 3 complete, or satisfy implementation criteria. |
+| 2026-08-02 | Wave 5 documentation evidence / Blocked | Architecture and developer documentation completed. `Microsoft.Playwright` 1.61.0 does not qualify under current policy because its complete runtime/license chain is unresolved, browser archive installation lacks pinned cryptographic verification, and Microsoft offers paid Azure Playwright Workspaces. Podman and browser execution evidence remain outstanding; Wave 5 is not complete. |
+| 2026-08-02 | Wave 2 complete | Thirteen API Integration project tests and three API Contracts project tests, nonmutating runtime/checked OpenAPI comparison, a separate-process implementation-independent HTTP probe, and independent API publish pass. Infrastructure registration is conditional and performs no startup database/schema access. |
+| 2026-08-02 | Waves 3-5 partial / Blocked | Twenty-two classified Client tests and independent Client publish pass. The empty EF boundary and Podman harness are present, with one in-process pass and one real-PostgreSQL skip. The separate-process HTTP system smoke passes but is not browser evidence. Full dependency closure, PostgreSQL, browser, clean-workflow, and final-audit gates remain open. |
+| 2026-08-02 | Wave 5 system-test repair / Blocked | EndToEndTests uses NUnit and contains one separate-process HTTP system test, not browser E2E. The test requires an explicit normalized absolute `HOUSEHOLDLEDGER_API_ARTIFACT`; two consecutive fresh-publish runs passed and cleaned their variable, process, and output. Infrastructure NUnit references now use `PrivateAssets="all"`. The suite has 41 cases: 40 pass and the real PostgreSQL case skips. AC-04, AC-05, AC-06, AC-10, and AC-11 remain Partial; AC-09 and Wave 5 remain Blocked; AC-07 and AC-08 are Met. |
+| 2026-08-02 | Manual package review / Unresolved | Primary-source review covers all introduced direct package families and the exact AngleSharp.Css prerelease. No project-offered paid product was found outside the already blocked Playwright chain, but Microsoft's optional paid enterprise support requires user interpretation and complete transitive/runtime review remains open. Automation is not treated as business-model proof. |
+| 2026-08-02 | Browser-chain research / Needs user decision | Firefox 153.0.1 EME-free with geckodriver 0.37.1 can provide the required browser evidence with manual pinned provisioning. `Selenium.WebDriver` 4.46.0 remains unapproved because its package embeds an incompletely classified Selenium Manager native/Rust closure; a package-free W3C WebDriver local end is the preferred alternative. Firefox directly offers paid Professional Support, so the user must interpret the no-paid-option rule and approve the exact runtime-only license exception before implementation. Browser DoD remains unmet. |
+| 2026-08-03 | Explicit user decision / Commercial-model interpretation | Optional vendor-provided paid support does not disqualify otherwise identical free/open-source software. Paid product tiers, features, and editions remain disqualifying. |
+| 2026-08-03 | Explicit user decision / Browser test-runtime exception | Approve Firefox 153.0.1 Windows x64 en-US EME-free and geckodriver 0.37.1 Windows x64 as a narrow test-runtime-only exception for their non-allowlisted licenses. Approval is conditional on exact post-provision artifact provenance, hash, signature where available, installed-license, version, and vulnerability verification. Use no Selenium package, Selenium Manager, telemetry, or runtime downloader; call W3C WebDriver directly through built-in .NET HTTP/JSON APIs. Browser acceptance criteria and Definition of Done remain unmet until verification and tests pass. |
+| 2026-08-03 | Explicit user decision / PostgreSQL test runtime | Approve installing Podman to run the reviewed PostgreSQL integration-test harness. AC-09 and the PostgreSQL Definition of Done item remain blocked until installation, provisioning, and real-PostgreSQL tests succeed. |
+| 2026-08-03 | Direct-W3C browser evidence / Met | Exact user-local Firefox 153.0.1 EME-free and geckodriver 0.37.1 artifacts passed post-provision checks. A package-free built-in .NET W3C client completed two consecutive 3/3 runs in 8.7 seconds and 8.1 seconds at exact `1440x900` and `500x844` inner viewports. AC-05, AC-06, and the browser Definition of Done item are met; PostgreSQL remains blocked by unavailable WSL elevation. |
+| 2026-08-03 | Browser E2E hardening / Met | Tests enforce approved Firefox and geckodriver SHA-256 values before launch and check post-navigation page errors, explicit API health status, critical Resource Timing entries, and static-host responses. The direct-W3C residual is no pre-navigation injection or Firefox console-log retrieval. Two fresh hardened runs passed 3/3. |
+| 2026-08-03 | Final audit / Incomplete | AC-01 through AC-08 are Met; AC-09 is Blocked; AC-10, AC-11, and AC-12 are Partial; AC-13 is Not Verifiable. AC-11 requires user approval of revised behavior-light-scaffold wording. Wave 6 and Feature 001 are not complete. |
 
 ## Sources
 
@@ -1180,21 +1382,28 @@ All web sources were accessed 2026-08-02.
 
 ### Official NuGet Package Records
 
+- [`Microsoft.AspNetCore.Components.WebAssembly` 10.0.10](https://www.nuget.org/packages/Microsoft.AspNetCore.Components.WebAssembly/10.0.10)
 - [`Microsoft.EntityFrameworkCore` 10.0.10](https://www.nuget.org/packages/Microsoft.EntityFrameworkCore/10.0.10)
 - [`Microsoft.EntityFrameworkCore.Relational` 10.0.10](https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.Relational/10.0.10)
 - [`Microsoft.EntityFrameworkCore.Design` 10.0.10](https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.Design/10.0.10)
-- [`dotnet-ef` 10.0.10](https://www.nuget.org/packages/dotnet-ef/10.0.10)
 - [`Microsoft.AspNetCore.Mvc.Testing` 10.0.10](https://www.nuget.org/packages/Microsoft.AspNetCore.Mvc.Testing/10.0.10)
 - [`Microsoft.AspNetCore.OpenApi` 10.0.10](https://www.nuget.org/packages/Microsoft.AspNetCore.OpenApi/10.0.10)
+- [`Microsoft.OpenApi` 2.11.0](https://www.nuget.org/packages/Microsoft.OpenApi/2.11.0)
 - [`Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.3](https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL/10.0.3)
   - NuGet declares the `PostgreSQL` license, covered here only by the narrow
     standing exception and still subject to complete dependency review.
-- [`xunit.v3` 3.2.2](https://www.nuget.org/packages/xunit.v3/3.2.2)
 - [`Microsoft.NET.Test.Sdk` 18.8.1](https://www.nuget.org/packages/Microsoft.NET.Test.Sdk/18.8.1)
-- [`coverlet.collector` 10.0.1](https://www.nuget.org/packages/coverlet.collector/10.0.1)
+- [`NUnit` 4.6.1](https://www.nuget.org/packages/NUnit/4.6.1)
+- [`NUnit3TestAdapter` 4.6.0](https://www.nuget.org/packages/NUnit3TestAdapter/4.6.0)
+- [`xunit.runner.visualstudio` 3.1.5](https://www.nuget.org/packages/xunit.runner.visualstudio/3.1.5)
 - [`bunit` 2.8.6](https://www.nuget.org/packages/bunit/2.8.6)
   - NuGet declares MIT; official sources show sponsorship but no project
     commercial tier found in this review.
+- [`AngleSharp.Css` 1.0.0-beta.224](https://www.nuget.org/packages/AngleSharp.Css/1.0.0-beta.224)
+- [`dotnet-ef` 10.0.10](https://www.nuget.org/packages/dotnet-ef/10.0.10)
+  - Candidate record only; no tool manifest or package is introduced.
+- [`coverlet.collector` 10.0.1](https://www.nuget.org/packages/coverlet.collector/10.0.1)
+  - Deferred and not introduced.
 - [`Testcontainers.PostgreSql` 4.13.0](https://www.nuget.org/packages/Testcontainers.PostgreSql/4.13.0)
   - NuGet declares MIT, while the official project links to Testcontainers Cloud.
 - [`Microsoft.Playwright` 1.61.0](https://www.nuget.org/packages/Microsoft.Playwright/1.61.0)

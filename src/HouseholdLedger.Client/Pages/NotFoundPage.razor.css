@@ -1,0 +1,34 @@
+.not-found {
+    max-width: 42rem;
+    padding-block: clamp(4rem, 12vw, 9rem);
+}
+
+.error-code {
+    margin-bottom: 0.5rem;
+    color: #b83b2d;
+    font-size: 0.875rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+
+h1 {
+    margin: 0 0 0.75rem;
+    color: #17352e;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 500;
+}
+
+p {
+    color: #526159;
+}
+
+a {
+    display: inline-block;
+    margin-top: 1rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 0.125rem solid #b83b2d;
+    color: #17352e;
+    font-weight: 800;
+    text-decoration: none;
+}

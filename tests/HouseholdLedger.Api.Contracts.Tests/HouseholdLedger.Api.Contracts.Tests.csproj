@@ -5,6 +5,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.OpenApi" PrivateAssets="all" />
     <PackageReference Include="NUnit" PrivateAssets="all" />
     <PackageReference Include="NUnit3TestAdapter" PrivateAssets="all" />
     <ProjectReference Include="../../src/HouseholdLedger.Api.Contracts/HouseholdLedger.Api.Contracts.csproj" />

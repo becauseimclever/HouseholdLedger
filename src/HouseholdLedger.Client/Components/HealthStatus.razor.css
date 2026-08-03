@@ -1,0 +1,68 @@
+.health-status {
+    flex: 0 0 auto;
+}
+
+.status-line,
+.status-message {
+    color: #3d4b43;
+    font-size: 0.8125rem;
+}
+
+.status-line {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-dot {
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+    background: #718079;
+}
+
+.available .status-dot {
+    background: #16806f;
+    box-shadow: 0 0 0 0.1875rem #d5eee8;
+}
+
+.loading .status-dot {
+    animation: pulse 1.2s ease-in-out infinite;
+}
+
+.status-message {
+    display: grid;
+    max-width: 20rem;
+    padding-left: 0.75rem;
+    border-left: 0.1875rem solid #b83b2d;
+    gap: 0.2rem;
+}
+
+.status-message strong {
+    color: #76251d;
+}
+
+.status-message button {
+    width: fit-content;
+    margin-top: 0.25rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #0b6358;
+    cursor: pointer;
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 0.15rem;
+}
+
+@keyframes pulse {
+    50% {
+        opacity: 0.35;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loading .status-dot {
+        animation: none;
+    }
+}

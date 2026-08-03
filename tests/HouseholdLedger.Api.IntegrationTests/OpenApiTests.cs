@@ -17,6 +17,8 @@ using NUnit.Framework;
 /// </summary>
 public sealed class OpenApiTests
 {
+    private static readonly string[] ExpectedHealthRequiredProperties = ["status"];
+
     private static readonly JsonSerializerOptions ArtifactJsonOptions = new()
     {
         WriteIndented = true,
@@ -40,22 +42,29 @@ public sealed class OpenApiTests
             .GetProperty("/api/v1/health")
             .GetProperty("get");
         var responses = operation.GetProperty("responses");
-        var hasSuccessJson = responses.GetProperty("200").GetProperty("content")
-            .TryGetProperty("application/json", out _);
-        var hasProblemJson = responses.GetProperty("500").GetProperty("content")
-            .TryGetProperty("application/problem+json", out _);
+        var successSchema = responses.GetProperty("200").GetProperty("content")
+            .GetProperty("application/json").GetProperty("schema");
+        var problemSchema = responses.GetProperty("500").GetProperty("content")
+            .GetProperty("application/problem+json").GetProperty("schema");
         var schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
-        var hasHealthSchema = schemas.TryGetProperty("HealthResponse", out _);
-        var hasProblemSchema = schemas.TryGetProperty("ProblemDetails", out _);
+        var healthSchema = schemas.GetProperty("HealthResponse");
+        var healthRequiredProperties = healthSchema.GetProperty("required")
+            .EnumerateArray()
+            .Select(property => property.GetString())
+            .ToArray();
+        var healthStatusSchema = healthSchema.GetProperty("properties").GetProperty("status");
         var hasServers = document.RootElement.TryGetProperty("servers", out var servers);
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         Assert.That(response.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/json"));
+        Assert.That(document.RootElement.GetProperty("openapi").GetString(), Does.StartWith("3.1."));
         Assert.That(hasServers && servers.GetArrayLength() > 0, Is.False);
-        Assert.That(hasSuccessJson, Is.True);
-        Assert.That(hasProblemJson, Is.True);
-        Assert.That(hasHealthSchema, Is.True);
-        Assert.That(hasProblemSchema, Is.True);
+        Assert.That(successSchema.GetProperty("$ref").GetString(), Is.EqualTo("#/components/schemas/HealthResponse"));
+        Assert.That(problemSchema.GetProperty("$ref").GetString(), Is.EqualTo("#/components/schemas/ProblemDetails"));
+        Assert.That(healthRequiredProperties, Is.EqualTo(ExpectedHealthRequiredProperties));
+        Assert.That(healthSchema.GetProperty("type").GetString(), Is.EqualTo("object"));
+        Assert.That(healthStatusSchema.GetProperty("type").GetString(), Is.EqualTo("string"));
+        Assert.That(schemas.TryGetProperty("ProblemDetails", out _), Is.True);
     }
 
     /// <summary>
@@ -72,14 +81,6 @@ public sealed class OpenApiTests
 
         var runtimeJson = await client.GetStringAsync("/openapi/v1.json");
         var formattedRuntimeJson = FormatJson(runtimeJson);
-
-        if (Environment.GetEnvironmentVariable("UPDATE_OPENAPI_ARTIFACT") == "1")
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(artifactPath)!);
-            await File.WriteAllTextAsync(
-                artifactPath,
-                formattedRuntimeJson + Environment.NewLine);
-        }
 
         Assert.That(File.Exists(artifactPath), Is.True, $"Missing OpenAPI artifact: {artifactPath}");
 

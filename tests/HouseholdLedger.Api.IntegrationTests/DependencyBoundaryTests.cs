@@ -4,7 +4,6 @@
 
 namespace HouseholdLedger.Api.IntegrationTests;
 
-using HouseholdLedger.Api.Contracts;
 using NUnit.Framework;
 
 /// <summary>
@@ -22,19 +21,5 @@ public sealed class DependencyBoundaryTests
         var referenceNames = references.Select(reference => reference.Name);
 
         Assert.That(referenceNames, Does.Not.Contain("HouseholdLedger.Client"));
-    }
-
-    /// <summary>
-    /// Verifies that the .NET convenience contract has no implementation assembly dependency.
-    /// </summary>
-    [Test]
-    public void ApiContractsDoesNotReferenceImplementationAssemblies()
-    {
-        var references = typeof(HealthResponse).Assembly.GetReferencedAssemblies();
-        var householdLedgerReferences = references
-            .Select(reference => reference.Name)
-            .Where(name => name?.StartsWith("HouseholdLedger.", StringComparison.Ordinal) == true);
-
-        Assert.That(householdLedgerReferences, Is.Empty);
     }
 }

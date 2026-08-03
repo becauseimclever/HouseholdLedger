@@ -1,0 +1,33 @@
+@using Microsoft.AspNetCore.Components.Web
+
+<div class="health-status">
+    @switch (ViewState)
+    {
+        case HealthViewState.Loading:
+            <div class="status-line loading" role="status" aria-live="polite">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span>Checking API availability...</span>
+            </div>
+            break;
+        case HealthViewState.Available:
+            <div class="status-line available" role="status" aria-live="polite">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span>API available</span>
+            </div>
+            break;
+        case HealthViewState.Unavailable:
+            <div class="status-message" role="alert">
+                <strong>API unavailable</strong>
+                <span>The service did not respond successfully.</span>
+                <button type="button" @onclick="RetryAsync">Try again</button>
+            </div>
+            break;
+        case HealthViewState.Error:
+            <div class="status-message" role="alert">
+                <strong>We couldn't check the API</strong>
+                <span>This may be a temporary connection problem.</span>
+                <button type="button" @onclick="RetryAsync">Try again</button>
+            </div>
+            break;
+    }
+</div>
