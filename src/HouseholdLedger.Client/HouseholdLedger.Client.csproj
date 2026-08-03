@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../HouseholdLedger.Api.Contracts/HouseholdLedger.Api.Contracts.csproj" />
+  </ItemGroup>
+</Project>

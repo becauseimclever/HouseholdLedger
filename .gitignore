@@ -1,0 +1,59 @@
+# Build, package, publish, and generated artifacts
+**/bin/
+**/obj/
+**/publish/
+/artifacts/
+
+# IDE and editor user state
+.vs/
+.idea/
+.vscode/*.user.json
+*.sln.iml
+*.DotSettings.user
+_ReSharper*/
+*.user
+*.suo
+
+# Test, coverage, browser, and E2E output
+**/TestResults/
+**/test-results/
+**/playwright-report/
+**/blob-report/
+tests/**/screenshots/
+*.trx
+*.coverage
+*.coveragexml
+coverage.json
+coverage.info
+coverage.cobertura.xml
+coverage.opencover.xml
+**/coverage/
+
+# Logs and diagnostics
+*.log
+*.dmp
+
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+*.secrets.json
+appsettings.Local.json
+appsettings.*.local.json
+
+# Local database and container state
+*.db-shm
+*.db-wal
+*.sqlite-shm
+*.sqlite-wal
+/.containers/
+/docker-data/
+
+# OS metadata and temporary files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.tmp
+*.temp
+*.bak
+*~

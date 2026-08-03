@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/HouseholdLedger.Api.Contracts/HouseholdLedger.Api.Contracts.csproj" />
+    <Project Path="src/HouseholdLedger.Api/HouseholdLedger.Api.csproj" />
+    <Project Path="src/HouseholdLedger.Application/HouseholdLedger.Application.csproj" />
+    <Project Path="src/HouseholdLedger.Client/HouseholdLedger.Client.csproj" />
+    <Project Path="src/HouseholdLedger.Domain/HouseholdLedger.Domain.csproj" />
+    <Project Path="src/HouseholdLedger.Infrastructure/HouseholdLedger.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/HouseholdLedger.Api.Contracts.Tests/HouseholdLedger.Api.Contracts.Tests.csproj" />
+    <Project Path="tests/HouseholdLedger.Api.IntegrationTests/HouseholdLedger.Api.IntegrationTests.csproj" />
+    <Project Path="tests/HouseholdLedger.Application.UnitTests/HouseholdLedger.Application.UnitTests.csproj" />
+    <Project Path="tests/HouseholdLedger.Client.ComponentTests/HouseholdLedger.Client.ComponentTests.csproj" />
+    <Project Path="tests/HouseholdLedger.Domain.UnitTests/HouseholdLedger.Domain.UnitTests.csproj" />
+    <Project Path="tests/HouseholdLedger.EndToEndTests/HouseholdLedger.EndToEndTests.csproj" />
+    <Project Path="tests/HouseholdLedger.Infrastructure.IntegrationTests/HouseholdLedger.Infrastructure.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

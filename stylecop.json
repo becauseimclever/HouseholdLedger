@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/DotNetAnalyzers/StyleCopAnalyzers/master/StyleCop.Analyzers/Settings/stylecop.schema.json",
+  "settings": {
+    "documentationRules": {
+      "companyName": "HouseholdLedger",
+      "copyrightText": "Copyright (c) HouseholdLedger. All rights reserved.",
+      "documentExposedElements": true,
+      "documentInternalElements": false
+    },
+    "orderingRules": {
+      "systemUsingDirectivesFirst": true
+    }
+  }
+}

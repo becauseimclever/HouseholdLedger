@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../HouseholdLedger.Application/HouseholdLedger.Application.csproj" />
+    <ProjectReference Include="../HouseholdLedger.Domain/HouseholdLedger.Domain.csproj" />
+  </ItemGroup>
+</Project>
