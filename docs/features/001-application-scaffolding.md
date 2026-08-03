@@ -544,7 +544,8 @@ and downloaded artifacts.
 
 1. Use central package management in `Directory.Packages.props`; project files
    name packages without repeating versions.
-2. Use stable packages except the explicit StyleCop exception below.
+2. Use stable packages except the explicit StyleCop and one-time Wave 3 bUnit
+  exceptions below.
 3. Keep Microsoft ASP.NET Core and EF Core packages aligned to the target
    framework servicing patch.
 4. Keep all `Microsoft.EntityFrameworkCore.*` packages on exactly the same
@@ -590,11 +591,28 @@ coverage, Wave 1 must compile representative C# 14 syntax and inspect analyzer
 diagnostics. An analyzer crash or material incompatibility blocks implementation;
 do not silently downgrade StyleCop or C# or add broad suppressions.
 
+### Wave 3 bUnit Prerelease Exception
+
+On 2026-08-02, the user explicitly approved a one-time exception to the
+stable-package rule for Wave 3 to permit `bunit` 2.8.6 and its required
+transitive `AngleSharp.Css` 1.0.0-beta.224 dependency. This approval resolves
+only the prerelease-policy blocker for that exact direct and transitive version
+pair. Adoption remains subject to the existing complete license, provenance,
+vulnerability, free/open-source, commercial-model, and no-paid-option checks.
+
+The exception does not permit any other prerelease dependency, automatically
+approve a future `bunit` or `AngleSharp.Css` version, waive review of any other
+transitive or runtime dependency, or relax the package policy beyond this
+one-time Wave 3 use. A version change or different prerelease dependency
+requires a new explicit user decision.
+
 ### Candidate Baseline as of 2026-08-02
 
-These are candidates, not approved dependencies. Versions, full transitive
-graphs, provenance, licenses, commercial models, and runtime downloads must be
-rechecked immediately before implementation.
+Unless a row records an explicit policy exception, these are candidates rather
+than approved dependencies. An exception approves only the stated policy
+deviation; versions, full transitive graphs, provenance, licenses, commercial
+models, vulnerabilities, and runtime downloads must still be checked
+immediately before implementation.
 
 | Package or tool | Candidate / declared license | Reconciliation |
 | --- | --- | --- |
@@ -611,7 +629,8 @@ rechecked immediately before implementation.
 | `xunit.v3` | 3.2.2 / Apache-2.0 | Provisional; full graph and project model require review. |
 | `Microsoft.NET.Test.Sdk` | 18.8.1 / MIT | Provisional after full graph and project-model review. |
 | `coverlet.collector` | 10.0.1 / MIT | Include only after complete dependency review, including transitive Mono.Cecil licensing; establish no coverage threshold. |
-| `bunit` | 2.8.6 / MIT | Provisional; sponsorship is not a commercial tier, but full review remains required. |
+| `bunit` | 2.8.6 / MIT | One-time Wave 3 stable-policy exception approved; adoption remains gated on all existing reviews and is not approval for future versions. |
+| `AngleSharp.Css` | 1.0.0-beta.224 / license review required | Required transitive dependency of the excepted `bunit` version; the same one-time Wave 3 exception resolves only its prerelease status, and all existing reviews remain required. |
 | `Microsoft.AspNetCore.Mvc.Testing` | 10.0.10 / MIT | Provisional after full review. |
 | `Microsoft.AspNetCore.OpenApi` | 10.0.10 / MIT | Recommended for canonical contract generation; review build companions separately. |
 | `Testcontainers.PostgreSql` | 4.13.0 / MIT | Excluded: official project links to the commercial Testcontainers Cloud service. |
@@ -709,10 +728,11 @@ Server.
 
 Given a clean checkout with the documented prerequisites, the selected SDK is a
 stable .NET 10 SDK, every production and test project targets `net10.0`, restore
-completes with no prerelease dependency except the documented StyleCop exception,
-and the solution builds with no warnings or errors. StyleCop 1.2.0-beta.556 runs
-for every C# project from centralized configuration and fails the build on an
-enabled violation.
+completes with no prerelease dependency except the documented StyleCop exception
+and the exact one-time Wave 3 `bunit`/`AngleSharp.Css` exception, and the solution
+builds with no warnings or errors. StyleCop 1.2.0-beta.556 runs for every C#
+project from centralized configuration and fails the build on an enabled
+violation.
 
 Evidence: `dotnet --version`, `dotnet restore --locked-mode`, and
 `dotnet build --no-restore` output; central package/build files; representative
@@ -890,12 +910,20 @@ complete.
 
 Owner: Blazor UI, after the API contract is frozen for this wave.
 
+The user also explicitly approved on 2026-08-02 a one-time stable-package-policy
+exception for this wave permitting only `bunit` 2.8.6 and its required
+transitive `AngleSharp.Css` 1.0.0-beta.224 dependency. Both remain blocked from
+adoption until all existing license, provenance, vulnerability,
+free/open-source, commercial-model, and no-paid-option checks pass. This
+exception does not mark Wave 3 complete or satisfy any implementation criterion.
+
 Create the standalone Client, explicit HTTP adapter, API base-address
 configuration, code-behind components, and accessible scaffold states. Client
 must reference only API Contracts and run from static assets against the API.
 
-Gate evidence: reference checks, component tests, independent Client publish,
-network inspection, code-behind checks, and accessible state review.
+Gate evidence: complete dependency reviews for `bunit`, `AngleSharp.Css`, and
+their dependency closure; reference checks; component tests; independent Client
+publish; network inspection; code-behind checks; and accessible state review.
 
 ### Wave 4: PostgreSQL Persistence Boundary
 
@@ -964,6 +992,7 @@ Done item marked `Met` with concrete evidence.
 | Commercial offerings change after adoption | Re-review official project and product sources monthly, on update, and before release. |
 | Automated checks overclaim certainty | Treat them as triage; preserve dated manual evidence and unresolved findings. |
 | StyleCop beta predates C# 14 | Run an early syntax/analyzer probe and block rather than silently suppress or downgrade. |
+| The Wave 3 exception is read as broad prerelease approval | Pin it to `bunit` 2.8.6 and required transitive `AngleSharp.Css` 1.0.0-beta.224; require a new user decision for any other prerelease or version and retain every existing dependency check. |
 | Empty EF model encourages fake entities or meaningless migrations | Permit no placeholder tables; defer the initial migration until a real model exists. |
 | Database/browser requirements make the default loop slow | Keep unit/contract/component tests fast and make approved resource-dependent layers explicit. |
 | Health endpoint is mistaken for production readiness | Keep response minimal and document that auth, deployment, observability, and operational health are out of scope. |
@@ -994,6 +1023,10 @@ implementation of all six waves with these decisions:
   user approval gate, while their dependency ordering, exclusive ownership,
   resource isolation, validation, and Definition of Done requirements remain
   binding.
+10. Wave 3 has a one-time stable-package-policy exception for `bunit` 2.8.6
+  and required transitive `AngleSharp.Css` 1.0.0-beta.224 only. The exception
+  does not waive any existing dependency check, approve future versions or
+  other prereleases, mark Wave 3 complete, or satisfy implementation criteria.
 
 The existing narrow PostgreSQL/Npgsql license exception remains unchanged. No
 open approval question remains for Feature 001 or Waves 1-6. Approval does not
@@ -1012,7 +1045,9 @@ marks every item `Met`.
 - [ ] `dotnet tool restore` succeeds and restores the approved EF tool version.
 - [ ] Deterministic `dotnet restore` succeeds with no package downgrade,
   blocking vulnerability, or prerelease dependency except the documented
-  StyleCop 1.2.0-beta.556 exception.
+  StyleCop 1.2.0-beta.556 exception and the one-time Wave 3 exception for
+  `bunit` 2.8.6 with required transitive `AngleSharp.Css`
+  1.0.0-beta.224.
 - [ ] `dotnet build --no-restore` succeeds with zero warnings and zero errors.
 - [ ] StyleCop is centralized, runs for every C# project, passes the C# 14 probe,
   is absent from runtime output, and is enforced by the build.
@@ -1037,6 +1072,11 @@ marks every item `Met`.
   downloaded artifact has dated provenance, license, and commercial-model review.
 - [ ] All licenses are allowlisted or covered by an exact user exception;
   prohibited commercial models and unreviewed dependencies are absent.
+- [ ] The Wave 3 exception is limited to `bunit` 2.8.6 and required transitive
+  `AngleSharp.Css` 1.0.0-beta.224; both and their dependency closure have passed
+  all existing license, provenance, vulnerability, free/open-source,
+  commercial-model, and no-paid-option checks, and no other prerelease or
+  version relies on this exception.
 - [ ] The PostgreSQL standing exception covers only PostgreSQL server, Npgsql,
   and `Npgsql.EntityFrameworkCore.PostgreSQL`; each has passed complete FOSS and
   no-paid-option review, and no unrelated PostgreSQL-licensed software relies on
@@ -1082,6 +1122,7 @@ marks every item `Met`.
 | 2026-08-02 | Explicit user decision | Permit a narrow browser-runtime license exception only after complete E2E artifact and license inventory; include `coverlet.collector` only after complete dependency review and set no coverage threshold. |
 | 2026-08-02 | Explicit user decision | Defer the initial migration until a real model exists. |
 | 2026-08-02 | All six waves approved / Wave 1 complete | The user approved implementation of Waves 1-6. Wave 1 is completed and validated; Waves 2-6 require no further user approval gate but remain subject to all documented ordering, ownership, resource isolation, validation, acceptance criteria, and Definition of Done requirements. |
+| 2026-08-02 | Explicit user decision / Wave 3 policy exception | Approve a one-time stable-package-policy exception permitting `bunit` 2.8.6 and its required transitive `AngleSharp.Css` 1.0.0-beta.224 dependency for Wave 3, subject to all existing license, provenance, vulnerability, free/open-source, commercial-model, and no-paid-option checks. The exception does not approve other prereleases or future versions, relax broader package policy, mark Wave 3 complete, or satisfy implementation criteria. |
 
 ## Sources
 
