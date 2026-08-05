@@ -115,9 +115,10 @@ Playwright, a browser manager, or a runtime downloader.
 
 The approved runtime is pinned below
 `%LOCALAPPDATA%\HouseholdLedger\BrowserTestRuntime`. Before running the tests,
-publish the API and Client to a fresh temporary root and set all four normalized
-absolute paths. The tests enforce the approved Firefox and geckodriver SHA-256
-values before launching a browser process:
+publish the API and Client to a fresh temporary root and set six normalized
+absolute paths plus two distinct available loopback ports. The tests enforce the
+approved Firefox and geckodriver SHA-256 values before launching a browser
+process:
 
 - `HOUSEHOLDLEDGER_API_ARTIFACT` for the fresh
   `HouseholdLedger.Api.dll`.
@@ -126,6 +127,10 @@ values before launching a browser process:
   `firefox.exe`.
 - `HOUSEHOLDLEDGER_GECKODRIVER` for the exact geckodriver 0.37.1
   `geckodriver.exe`.
+- `HOUSEHOLDLEDGER_E2E_PROFILE_ROOT` and `HOUSEHOLDLEDGER_E2E_OUTPUT_DIR` for
+  existing, test-owned directories beneath the run's temporary root.
+- `HOUSEHOLDLEDGER_E2E_API_PORT` and `HOUSEHOLDLEDGER_E2E_CLIENT_PORT` for
+  different available loopback ports reserved for that run.
 
 Use the complete self-cleaning PowerShell workflow in [Testing](testing.md).
 The test owns dynamic loopback ports, processes, Firefox profiles, and

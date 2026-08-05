@@ -1,9 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server"
+                      VersionOverride="10.0.10" />
     <PackageReference Include="Microsoft.OpenApi" />
     <ProjectReference Include="../HouseholdLedger.Api.Contracts/HouseholdLedger.Api.Contracts.csproj" />
     <ProjectReference Include="../HouseholdLedger.Application/HouseholdLedger.Application.csproj" />
+    <ProjectReference Include="../HouseholdLedger.Client/HouseholdLedger.Client.csproj" />
     <ProjectReference Include="../HouseholdLedger.Infrastructure/HouseholdLedger.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

@@ -49,9 +49,14 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors(frontendCorsPolicy);
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
+app.UseRouting();
 
+app.MapStaticAssets();
 app.MapOpenApi();
 app.MapControllers();
+app.MapFallbackToFile("index.html");
 
 app.Run();
 

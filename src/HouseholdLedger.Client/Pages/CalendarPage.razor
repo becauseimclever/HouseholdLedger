@@ -1,67 +1,8 @@
 @page "/"
-@using Microsoft.AspNetCore.Components.Web
 
-<Microsoft.AspNetCore.Components.Web.PageTitle>Calendar | Household Ledger</Microsoft.AspNetCore.Components.Web.PageTitle>
+<Microsoft.AspNetCore.Components.Web.PageTitle>Temporary sample</Microsoft.AspNetCore.Components.Web.PageTitle>
 
-<main class="calendar-page" aria-labelledby="calendar-heading">
-    <header class="page-heading">
-        <div>
-            <p class="eyebrow">Household accounting</p>
-            <h1 id="calendar-heading">Calendar</h1>
-            <p class="introduction">A clear view of the current accounting period.</p>
-        </div>
-        <HouseholdLedger.Client.Components.HealthStatus />
-    </header>
-
-    <section class="calendar-section" aria-labelledby="calendar-period">
-        <div class="period-toolbar">
-            <div>
-                <p class="period-label">Current period</p>
-                <h2 id="calendar-period" data-period-heading>@PeriodLabel</h2>
-            </div>
-            <div class="period-actions" aria-label="Calendar period navigation">
-                <button type="button" @onclick="ShowPreviousMonth" aria-label="Show previous month">&#8592;</button>
-                <button class="today-button" type="button" @onclick="ShowCurrentMonth">Today</button>
-                <button type="button" @onclick="ShowNextMonth" aria-label="Show next month">&#8594;</button>
-            </div>
-        </div>
-
-        <div class="calendar-scroll" tabindex="0" aria-label="Scrollable calendar">
-            <table aria-labelledby="calendar-period">
-                <caption>Calendar for @PeriodLabel</caption>
-                <thead>
-                    <tr>
-                        @foreach (var weekday in Weekdays)
-                        {
-                            <th scope="col"><abbr title="@weekday.FullName">@weekday.ShortName</abbr></th>
-                        }
-                    </tr>
-                </thead>
-                <tbody>
-                    @for (var week = 0; week < 6; week++)
-                    {
-                        <tr>
-                            @for (var dayIndex = 0; dayIndex < 7; dayIndex++)
-                            {
-                                var day = CalendarDays[(week * 7) + dayIndex];
-                                <td class="@(day.IsInPeriod ? null : "outside-period")">
-                                    <time datetime="@day.IsoDate" aria-current="@(day.IsToday ? "date" : null)">
-                                        @day.DayNumber
-                                    </time>
-                                </td>
-                            }
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
-
-        <div class="empty-state" data-empty-state>
-            <span class="empty-rule" aria-hidden="true"></span>
-            <div>
-                <h3>No ledger entries for @PeriodLabel</h3>
-                <p>This calendar is ready when there is something real to record.</p>
-            </div>
-        </div>
-    </section>
+<main class="calendar-page">
+    <h1>Temporary sample content</h1>
+    <p>This is a temporary sample.</p>
 </main>

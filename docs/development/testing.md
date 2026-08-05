@@ -118,7 +118,8 @@ runtime. It does not use Selenium, Selenium Manager, Playwright, a cloud grid,
 or a runtime downloader. Before launching any browser process, the tests enforce
 the approved Firefox and geckodriver SHA-256 values.
 
-The complete E2E run requires four normalized absolute paths:
+The complete E2E run requires six normalized absolute paths and two distinct,
+available loopback ports:
 
 - `HOUSEHOLDLEDGER_API_ARTIFACT`: a freshly published file named exactly
   `HouseholdLedger.Api.dll`.
@@ -127,6 +128,14 @@ The complete E2E run requires four normalized absolute paths:
   `_framework/blazor.webassembly.js`.
 - `HOUSEHOLDLEDGER_FIREFOX_BINARY`: the approved Firefox executable.
 - `HOUSEHOLDLEDGER_GECKODRIVER`: the approved geckodriver executable.
+- `HOUSEHOLDLEDGER_E2E_PROFILE_ROOT`: an existing, test-owned directory where
+  each browser case creates and removes its unique Firefox profile.
+- `HOUSEHOLDLEDGER_E2E_OUTPUT_DIR`: an existing, test-owned directory where the
+  run writes screenshots and diagnostics.
+- `HOUSEHOLDLEDGER_E2E_API_PORT`: an available loopback TCP port reserved for
+  the test-owned API host.
+- `HOUSEHOLDLEDGER_E2E_CLIENT_PORT`: a different available loopback TCP port
+  reserved for the test-owned static Client host.
 
 Use fresh API and Client publishes for every run:
 
@@ -135,6 +144,8 @@ $publishRoot = Join-Path ([System.IO.Path]::GetTempPath()) `
   ("HouseholdLedger-BrowserE2E-" + [guid]::NewGuid().ToString("N"))
 $apiOutput = Join-Path $publishRoot "api"
 $clientOutput = Join-Path $publishRoot "client"
+$profileRoot = Join-Path $publishRoot "profiles"
+$e2eOutput = Join-Path $publishRoot "output"
 
 try {
   dotnet publish src/HouseholdLedger.Api --configuration Release `
@@ -153,6 +164,11 @@ try {
     "HouseholdLedger\BrowserTestRuntime\firefox\153.0.1-eme-free\core\firefox.exe"
   $env:HOUSEHOLDLEDGER_GECKODRIVER = Join-Path $env:LOCALAPPDATA `
     "HouseholdLedger\BrowserTestRuntime\geckodriver\0.37.1\geckodriver.exe"
+  New-Item -ItemType Directory -Path $profileRoot, $e2eOutput | Out-Null
+  $env:HOUSEHOLDLEDGER_E2E_PROFILE_ROOT = $profileRoot
+  $env:HOUSEHOLDLEDGER_E2E_OUTPUT_DIR = $e2eOutput
+  $env:HOUSEHOLDLEDGER_E2E_API_PORT = "51271"
+  $env:HOUSEHOLDLEDGER_E2E_CLIENT_PORT = "51272"
 
   dotnet test tests/HouseholdLedger.EndToEndTests `
     --configuration Release --no-restore
@@ -163,9 +179,19 @@ finally {
   Remove-Item Env:HOUSEHOLDLEDGER_CLIENT_PUBLISH_DIR -ErrorAction SilentlyContinue
   Remove-Item Env:HOUSEHOLDLEDGER_FIREFOX_BINARY -ErrorAction SilentlyContinue
   Remove-Item Env:HOUSEHOLDLEDGER_GECKODRIVER -ErrorAction SilentlyContinue
+  Remove-Item Env:HOUSEHOLDLEDGER_E2E_PROFILE_ROOT -ErrorAction SilentlyContinue
+  Remove-Item Env:HOUSEHOLDLEDGER_E2E_OUTPUT_DIR -ErrorAction SilentlyContinue
+  Remove-Item Env:HOUSEHOLDLEDGER_E2E_API_PORT -ErrorAction SilentlyContinue
+  Remove-Item Env:HOUSEHOLDLEDGER_E2E_CLIENT_PORT -ErrorAction SilentlyContinue
   Remove-Item $publishRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 ```
+
+Before using the fixed example ports, confirm that both are available and
+reserve them for this workflow. The test validates the ports before it starts
+its owned hosts and rejects equal or in-use values. Do not point the profile or
+output variables at a shared directory. The test removes each profile; the
+outer `finally` block removes the allocated output and fresh publishes.
 
 The two browser cases set and verify exact inner viewports of `1440x900` and
 `500x844`. Each case proves that the published standalone WebAssembly Client

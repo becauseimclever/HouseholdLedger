@@ -101,10 +101,14 @@ closure still requires complete notice and published-output review.
 - The manual direct-family review does not prove that every transitive package,
    WebAssembly runtime asset, Npgsql dependency, PostgreSQL image layer, or
    published file has passed the same review.
-- The PostgreSQL 18 image has been reviewed, but it has not been pulled or run.
-   Podman 5.8.3 is installed, but its engine remains unavailable because the
-   required WSL 2.7.11 upgrade needs administrator elevation. Image/runtime and
-   successful real-PostgreSQL evidence remain outstanding.
+- Isolated Docker 29.6.2 validation pulled and ran
+   `docker.io/library/postgres:18` at
+   `postgres@sha256:a9abf4275f9e99bff8e6aed712b3b7dfec9cac1341bba01c1ffdfce9ff9fc34a`.
+   PostgreSQL 18.3 Debian passed the focused real test, full Infrastructure
+   tests, and API composition tests before deterministic cleanup. Complete
+   image-layer, bundled-runtime notice, commercial-model, and vulnerability
+   closure remains unrecorded; do not describe the PostgreSQL closure review as
+   complete.
 - The exact Firefox 153.0.1 EME-free and geckodriver 0.37.1 test-runtime chain
    passed provenance, license, version, vulnerability, and artifact checks.
    Tests enforce both executable SHA-256 values before launch, and two fresh

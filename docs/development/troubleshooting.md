@@ -62,16 +62,17 @@ run is interrupted, use `podman ps --all` to identify a container whose name
 starts with `householdledger-pg-`; verify it belongs to your failed run before
 removing it.
 
-The current WSL release is 2.3.26. Podman's engine requires an upgrade to WSL
-2.7.11, and that upgrade needs administrator elevation unavailable to the
-current validation. Treat the real PostgreSQL test as blocked, not passed,
-until an authorized operator completes the upgrade and the owned harness records
-a successful real-provider run.
+The retained Feature 001 closure validation used an isolated Docker 29.6.2
+container and passed the real PostgreSQL test. The container, database, port,
+and generated credentials were removed after the run. Use the repository
+harness for future runs; it remains responsible for allocating and cleaning
+those resources.
 
 ## Browser E2E Rejects Its Inputs
 
 Use the self-cleaning fresh-publish workflow in [Testing](testing.md). The
-complete run requires these four normalized absolute paths:
+complete run requires six normalized absolute paths and two distinct, available
+loopback ports:
 
 - `HOUSEHOLDLEDGER_API_ARTIFACT` must name an existing file named exactly
    `HouseholdLedger.Api.dll`.
@@ -82,6 +83,11 @@ complete run requires these four normalized absolute paths:
    EME-free `firefox.exe`.
 - `HOUSEHOLDLEDGER_GECKODRIVER` must name the approved geckodriver 0.37.1
    `geckodriver.exe`.
+- `HOUSEHOLDLEDGER_E2E_PROFILE_ROOT` and `HOUSEHOLDLEDGER_E2E_OUTPUT_DIR` must
+   name existing, test-owned directories. They must not be shared with another
+   run.
+- `HOUSEHOLDLEDGER_E2E_API_PORT` and `HOUSEHOLDLEDGER_E2E_CLIENT_PORT` must be
+   different, currently available loopback ports.
 
 Relative paths, unresolved `.` or `..` segments, stale publish directories,
 different executable names, version mismatches, and executable SHA-256
@@ -92,11 +98,11 @@ workaround. See the
 
 ## A Browser E2E Run Leaves Local Output
 
-Screenshots intentionally remain under the ignored EndToEndTests
-`bin/Release/net10.0/TestResults/browser-e2e` directory as run evidence. The
-test must remove its temporary Firefox profile and release its API, Client, and
-geckodriver ports. The outer workflow must remove all four process-scoped
-environment variables and its fresh publish root even after failure.
+Screenshots are written beneath the caller-supplied
+`HOUSEHOLDLEDGER_E2E_OUTPUT_DIR`. The test must remove its temporary Firefox
+profile and release its API, Client, and geckodriver ports. The outer workflow
+must remove all eight process-scoped environment variables and its fresh
+publish/profile/output root even after failure.
 
 If cleanup reports a failure, preserve the test output for diagnosis before
 rerunning. Do not terminate or delete a process, profile, or temporary root

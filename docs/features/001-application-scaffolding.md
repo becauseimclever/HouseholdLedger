@@ -2,26 +2,135 @@
 
 ## Status
 
-Status: Approved / All Six Waves Approved / Waves 1-2 Complete / Waves 3-5
-Partially Implemented / Wave 6 Audited but Incomplete
+Status: Paused for active implementation and acceptance validation; superseded
+for that active work by Feature 002 / not complete / not abandoned
 
 - Approval authority: the user. The orchestrator cannot approve this document
   on the user's behalf.
 - Approval record: the user approved the complete Feature 001 specification and
-  implementation of all six waves on 2026-08-02.
-- Implementation readiness: Waves 1 and 2 are completed and validated. Waves
-  3-5 have implementation evidence but remain incomplete at the package,
-  PostgreSQL, or clean-workflow gates described below. The exact
-  Firefox/geckodriver runtime was provisioned and verified, runtime hashes are
-  enforced before launch, and two consecutive complete direct-W3C browser runs
-  passed 3/3. Podman 5.8.3 is installed, but its engine is unavailable because
-  upgrading WSL to the required 2.7.11 release needs administrator elevation.
-  Wave 6 was audited on 2026-08-03 and is not complete. All six waves remain
-  approved; documented scope, exclusive ownership, resource isolation,
-  validation, and Definition of Done requirements remain binding.
+  implementation of all six waves on 2026-08-02. On 2026-08-04, the user
+  approved a fresh hosting direction: the API directly references and hosts the
+  built-in Blazor WebAssembly Client through standard .NET framework support;
+  MVC/OpenAPI remains available for alternate HTTP/OpenAPI clients; and a
+  visible rendered shell is the required hosted-WASM outcome. This supersedes
+  the immediately prior external-artifact-composition simplification.
+- Implementation readiness: this specification revision is approved, but it
+  does not authorize implementation or establish completion. Historical
+  evidence may be consulted only as context; it does not prove the simplified
+  acceptance criteria below.
+- Pause decision: on 2026-08-04, the user paused Feature 001 so Feature 002
+  can isolate and prove one deliberately minimal hosted Blazor WebAssembly
+  runtime outcome. Feature 001 remains approved but incomplete and may be
+  resumed only through a later user decision. No prior failed, partial, or
+  historical Feature 001 evidence is acceptance evidence for Feature 002.
 - Scope type: foundational application scaffold; no household-ledger feature
   behavior is included.
-- Research date: 2026-08-02; user decisions updated 2026-08-03.
+- Research date: 2026-08-02; user decisions updated 2026-08-04.
+
+## Governing Simplification Revision
+
+This section is the governing Feature 001 hosting and validation contract. It
+records the user's fresh approved direction of 2026-08-04 and supersedes the
+immediately prior external-static-artifact-composition simplification. It also
+supersedes conflicting earlier Feature 001 text requiring custom Client payload
+manifests, per-file hashes, asset inventories, static-file allow-lists,
+composition scripts, package-composition provenance, retry or retention policy,
+or two-host and multi-viewport browser validation. None of those controls is a
+Feature 001 requirement unless a future approved feature establishes it.
+
+### Minimal Deployed Workflow
+
+1. The API directly references `HouseholdLedger.Client` using the standard
+  SDK/framework hosted Blazor WebAssembly support and enables its built-in
+  hosting/static-asset behavior.
+2. Launch one API HTTPS process and open its root URL in a browser.
+3. The browser loads WebAssembly and displays the visible Client shell.
+
+The API remains available to alternate clients: `/api/v1` and OpenAPI are
+non-UI paths on the same host. A separate local Client host is not required for
+Feature 001 acceptance.
+
+### Minimum Implementation Contract
+
+- `HouseholdLedger.Api` directly references `HouseholdLedger.Client`; this
+  intentional reference enables the framework's hosted Blazor WebAssembly
+  behavior and static-asset handling.
+- `HouseholdLedger.Client` may reference `HouseholdLedger.Api.Contracts`, but
+  must not reference API implementation, Application, Infrastructure, or
+  Domain. The API-to-Client reference does not reverse this rule.
+- The API uses built-in, supported hosted Blazor WebAssembly/static-asset
+  behavior. MVC `/api/v1` and OpenAPI remain available for alternate
+  HTTP/OpenAPI clients.
+- No custom composition script, manual static artifact staging, manifest,
+  inventory, hash, custom static-file provider, or pre/post-processing is part
+  of this Feature 001 contract. Existing implementation surfaces for those
+  mechanisms are obsolete and must be removed by their owning specialists.
+- No server-side Blazor, SSR, prerendering, Interactive Server, Interactive
+  Auto, or SignalR UI circuit is introduced.
+
+### Visible Scaffold State
+
+The Client must display a document title and one accessible main heading, such
+as `Household Ledger`. Placeholder content is sufficient. It must not imply
+that ledger entries, financial data, or Kakeibo workflows exist.
+
+### Simplified Acceptance Criteria
+
+| Criterion | Observable outcome | Completion evidence |
+| --- | --- | --- |
+| AC-01: Baseline API build | With the documented SDK and restored checkout, the API project builds without warnings or errors. | `dotnet build` result for the API project. |
+| AC-02: Intentional hosted Client boundary | The API directly references the Client as the standard hosted-WASM relationship; the Client has no reference back to API implementation, Application, Infrastructure, or Domain. | Project-reference inspection and API build result. |
+| AC-03: One-host API workflow | One API process and URL serve the built-in WASM application at the root while MVC `/api/v1/...` and OpenAPI remain direct external HTTP/OpenAPI surfaces. | One browser proof, plus at most a minimal direct health/OpenAPI check. |
+| AC-04: Visible WebAssembly shell | A browser loading the known API HTTPS URL renders the Client title and one main heading. | The one authoritative browser proof below. |
+
+### Simplified Definition of Done
+
+The feature is done only when a read-only audit marks AC-01 through AC-04
+`Met`, confirms the intentional API-to-Client reference and one-way Client
+boundary, confirms the honest visible shell, and finds no undocumented scope
+change or contradicted criterion.
+
+There is exactly one authoritative browser validation: build the API project,
+launch the API on a known HTTPS URL, open that URL in a browser, and assert that
+the visible shell rendered. A minimal direct check of health and OpenAPI may
+support the API boundary, but it does not create an additional Feature 001 gate.
+
+**Failure routing:** A loading failure is fixed by the owner of the controlling
+component (API hosted-WASM startup, Client shell, or browser harness), then the
+one-URL proof is rerun.
+
+### Planned Simplification Work
+
+This documentation phase does not direct file deletion or authorize
+implementation. The following observed responsibilities are planned for
+simplification:
+
+| Surface | Planned owner | Responsibility to remove or reduce |
+| --- | --- | --- |
+| `src/HouseholdLedger.Api/HouseholdLedger.Api.csproj` and `src/HouseholdLedger.Api/Program.cs` | ASP.NET API | Add the intentional Client project reference and configure only built-in hosted-WASM/static-asset behavior. |
+| `src/HouseholdLedger.Client/` | Blazor UI, if needed | Adjust only the basic title/main-heading shell if the hosted output needs it. |
+| `scripts/Compose-HostedClientPackage.ps1` and related custom artifact surfaces | Utility Fallback | Remove obsolete composition, staging, manifest, inventory, hash, provider, and pre/post-processing behavior. |
+| Assigned browser-proof files | Test Architecture | Remove former multi-host, CORS, inventory, and excessive browser assertions; retain one API-URL browser proof. |
+
+Normal path safety when copying files, HTTPS, and the API boundary remain
+appropriate minimal correctness and security concerns.
+
+### Dependency-Ordered Implementation Plan
+
+This plan records approved scope only. The orchestrator must assign exclusive
+writable files and resources before each phase.
+
+1. **ASP.NET API:** add the API-to-Client project reference and configure
+  standard hosted Blazor WebAssembly startup/static-asset behavior; run an API
+  build and the minimal direct API check.
+2. **Blazor UI, if needed:** adjust the component shell only when necessary to
+  render a title and main heading under the API host.
+3. **Utility Fallback:** remove obsolete composition scripts and custom
+  artifacts as shared tooling, after exclusive ownership is assigned.
+4. **Test Architecture:** add and run one browser proof against one API HTTPS
+  URL; do not recreate a multi-host or static-host matrix.
+5. **Research and Documentation:** audit the simplified criteria without
+  modifying implementation.
 
 ## Context and Problem
 
@@ -53,13 +162,15 @@ afresh under stricter dependency rules.
 
 ## Desired Outcome
 
-A new contributor can restore, build, test, and run an intentionally empty
-HouseholdLedger system from documented commands. The system consists of an
-independently compiled Blazor WebAssembly client and an ASP.NET Core MVC API.
-The client reaches all server capabilities through HTTP contracts that any
-frontend can implement. The API exposes a health endpoint and a persistence
-boundary without implementing ledger, budgeting, import, authentication,
-reporting, or reflection behavior.
+A new contributor can restore, build, test, publish, and run an intentionally
+empty HouseholdLedger system from documented commands. The system consists of a
+standard .NET hosted Blazor WebAssembly Client and an ASP.NET Core MVC API. The
+API directly references the Client and is the one local and deployed HTTPS
+process: visiting its root starts the built-in WASM application. The Client
+reaches server capabilities through HTTP contracts that any frontend can
+implement. The API continues to expose its health and OpenAPI endpoints and a
+persistence boundary without implementing ledger,
+budgeting, import, authentication, reporting, or reflection behavior.
 
 The scaffold makes future ownership clear:
 
@@ -75,8 +186,9 @@ The scaffold makes future ownership clear:
 ## Goals
 
 1. Establish a reproducible .NET 10 LTS and C# 14 baseline.
-2. Use a standalone Blazor WebAssembly client with no server-side rendering or
-  interactive server circuit.
+2. Use a standard API-hosted Blazor WebAssembly Client with no server-side
+  rendering or interactive server circuit for the first-class browser
+  experience.
 3. Expose core application capabilities only through an ASP.NET Core MVC API.
 4. Make the built-in client replaceable without references to server
   implementation assemblies or reliance on private server behavior.
@@ -95,6 +207,8 @@ The scaffold makes future ownership clear:
 13. Make local setup and all scaffold verification repeatable from the CLI.
 14. Preserve exclusive specialist ownership, resource isolation, wave ordering,
   approval records, and validation during implementation.
+15. Keep MVC `/api/v1` and checked OpenAPI independently consumable by custom
+  clients while the API host serves the built-in Client at its root.
 
 ## Non-Goals
 
@@ -112,8 +226,11 @@ The scaffold makes future ownership clear:
   .NET client as the only supported integration path.
 - Server-side rendering, Interactive Server, Interactive Auto, SignalR UI
   circuits, or direct UI access to server services.
-- Coupling API deployment to the built-in client. Same-origin static hosting may
-  be added later only if API and frontend remain independently replaceable.
+- Requiring separately deployable API and Client assemblies, custom artifact
+  composition, or extra hosting scripts for the built-in Client.
+- Retaining a two-host browser workflow as the normal local or deployed
+  experience. A narrowly scoped custom-client API compatibility smoke remains
+  permitted.
 - Adding AutoFixture, AutoMapper, MediatR, a generic repository, or a repository
   per entity.
 - Applying migrations automatically during normal application startup.
@@ -140,7 +257,7 @@ The scaffold makes future ownership clear:
 | Reference choice | Successor decision |
 | --- | --- |
 | Broad Domain, Application, Infrastructure, API, Client, Contracts, and Shared layering | Use six focused production projects; omit a general Shared project and enforce the narrow API Contracts boundary. |
-| Server-rendered UI as the default | Use standalone Blazor WebAssembly and keep API deployment independent of the built-in client. |
+| Server-rendered UI as the default | Use Blazor WebAssembly hosted by the API through the standard framework support. The API directly references Client; no server-rendered UI circuit is introduced. |
 | Shared enums and DTOs as broad cross-layer projects | Keep domain language in Domain and transport models beside the owning MVC boundary. |
 | Large initial package set | Install only packages needed to build and verify the scaffold. |
 | EF InMemory for API or persistence confidence | Use PostgreSQL for translated queries, constraints, transactions, and migrations. |
@@ -173,23 +290,18 @@ approved upgrade. Latest preview is not equivalent to latest stable.
 
 ### Blazor Hosting Recommendation
 
-Use the .NET 10 `blazorwasm` template to create an independently compiled
-standalone Blazor WebAssembly client. Run the ASP.NET Core MVC API as a separate
-project and process during development. Configure the client API base address,
-API CORS policy, and local HTTPS origins explicitly.
+Use standard .NET hosted Blazor WebAssembly support: the API directly references
+the Client project and enables the framework's built-in hosting/static-asset
+behavior. The first-class local and deployed browser workflow starts the API
+host and visits its root. The Client uses a same-origin API base address in this
+built-in deployment.
 
-This is preferred over a Blazor Web App hosted arrangement because frontend
-replaceability is a controlling requirement. A Blazor Web App with WebAssembly
-rendering still makes its server project the normal run and deployment entry
-point. A standalone client makes the replaceability test direct: it can build,
-publish, and run without API implementation projects, while the API can build,
-publish, and serve custom clients without the built-in Client assembly.
-
-An optional same-origin deployment may later copy published client static
-assets behind the API host or another static server. That packaging convenience
-must not create a project reference from Client to API implementation, make the
-API depend on Client startup, hide the OpenAPI contract, or prevent a hoster from
-omitting and replacing the built-in UI. It is deferred from this scaffold.
+Frontend replaceability remains an HTTP/OpenAPI concern, not an assembly
+deployment constraint. Custom web, mobile, desktop, and automation clients can
+consume the documented API without an implementation assembly. The hosted
+Client must not reference API implementation, Application, Infrastructure, or
+Domain. Do not add a custom artifact composition step, static-file provider,
+fallback implementation, manifest, inventory, hash, or pre/post-processing.
 
 ## Proposed Repository Structure
 
@@ -308,9 +420,12 @@ controller responses, API Contracts types, and the OpenAPI artifact.
 ### API
 
 `HouseholdLedger.Api` is the server composition root. It references Application,
-Infrastructure, and API Contracts, but not Client. It owns MVC controllers,
-HTTP mapping, middleware, CORS, OpenAPI generation, configuration, and startup.
-It must build, test, publish, and run when Client is absent from the invocation.
+Infrastructure, API Contracts, and Client. Its Client reference is intentional:
+it enables the standard hosted Blazor WebAssembly/static-asset behavior. It owns
+MVC controllers, HTTP mapping, middleware, CORS, OpenAPI generation,
+configuration, and startup. MVC `/api/v1/...` and OpenAPI remain externally
+consumable HTTP/OpenAPI surfaces; this does not require separate API and Client
+deployment units.
 
 Suggested ownership:
 
@@ -327,16 +442,15 @@ is demonstrated and it remains explicit and dependency-free.
 
 ### Client
 
-`HouseholdLedger.Client` is a standalone Blazor WebAssembly project. It
-references API Contracts only. It does not reference Domain, Application,
-Infrastructure, or API. It owns Razor components, presentation state,
-accessibility, API-client adapters, and client startup.
+`HouseholdLedger.Client` is a Blazor WebAssembly project hosted by the API. It
+may reference API Contracts only. It does not reference API implementation,
+Domain, Application, or Infrastructure. It owns Razor components, presentation
+state, accessibility, and API-client adapters.
 
-The client receives its API base URL from environment-specific static
-configuration. It uses `HttpClient` and built-in JSON support unless a proven
-requirement justifies another dependency. It publishes as independently
-hostable static assets. Its first page is a restrained, accessible
-calendar-centered shell that does not simulate nonexistent financial data.
+The client uses a same-origin API base address in the API-hosted deployment. It
+uses `HttpClient` and built-in JSON support unless a proven requirement justifies
+another dependency. Its first page is a restrained, accessible calendar-centered
+shell that does not simulate nonexistent financial data.
 
 ## Dependency Direction and Specialist Ownership
 
@@ -345,15 +459,17 @@ Domain <- Application <- Infrastructure
              ^                ^
              |                |
              +-------------- API -> API Contracts <- Client
-                                ^
-                                |
-                     custom clients via HTTP/OpenAPI
+                             |
+                             +-> Client
+                             ^
+                             |
+                  custom clients via HTTP/OpenAPI
 ```
 
 An arrow points to a referenced project. Domain references nothing. Application
 references Domain. Infrastructure references Application and Domain. API
-references Application, Infrastructure, and API Contracts. Client references
-only API Contracts. Custom clients need no .NET project reference.
+references Application, Infrastructure, API Contracts, and Client. Client may
+reference only API Contracts. Custom clients need no .NET project reference.
 
 | Surface | Owning specialist | Boundary |
 | --- | --- | --- |
@@ -463,7 +579,7 @@ policy.
 | Infrastructure integration | Infrastructure.IntegrationTests | Runs after an approved PostgreSQL provisioning method exists. |
 | API integration | Api.IntegrationTests | `WebApplicationFactory` proves startup, MVC health, OpenAPI, CORS, and replacement configuration. |
 | HTTP system smoke | EndToEndTests | A separate process proves the published API through HTTP without product project references. |
-| Browser end to end, smallest | EndToEndTests | A package-free direct-W3C client proves the published Client and API at desktop and mobile viewports. |
+| Browser end to end, smallest | EndToEndTests | A package-free direct-W3C client proves the API-hosted published Client and MVC/OpenAPI boundary at desktop and mobile viewports. |
 
 Do not use AutoFixture. Tests use readable explicit builders, object mothers
 only where appropriate, or focused factory methods that expose meaningful
@@ -638,7 +754,7 @@ review and its limits are in
 | `StyleCop.Analyzers` | 1.2.0-beta.556 / MIT | Introduced under the deliberate prerelease exception; Wave 1 analyzer probes passed. |
 | `Npgsql.EntityFrameworkCore.PostgreSQL` | 10.0.3 / PostgreSQL | Introduced under the narrow standing license exception; real server/image and complete closure evidence remain open. |
 | Resolved `Npgsql` driver | 10.0.3 / PostgreSQL | Transitive under the same narrow exception; no startup database access is performed. |
-| PostgreSQL server image | `docker.io/library/postgres:18` / PostgreSQL and bundled components | Harness default only; reviewed but not pulled or run because the installed Podman 5.8.3 engine is blocked on an administrator WSL 2.7.11 upgrade. Image/runtime evidence is not complete. |
+| PostgreSQL server image | `docker.io/library/postgres:18` at `postgres@sha256:a9abf4275f9e99bff8e6aed712b3b7dfec9cac1341bba01c1ffdfce9ff9fc34a` / PostgreSQL and bundled components | Isolated Docker 29.6.2 validation ran PostgreSQL 18.3 Debian and cleaned its container, database, port, and credentials. Complete image-layer, bundled-component, notices, and vulnerability closure remains open. |
 | `Microsoft.NET.Test.Sdk` | 18.8.1 / MIT | Introduced in all test projects. |
 | `NUnit` / `NUnit3TestAdapter` | 4.6.1 / 4.6.0 / MIT | Introduced for contract, component, integration, and system tests. |
 | `xunit.runner.visualstudio` | 3.1.5 / Apache-2.0 | Introduced in the currently empty Domain and Application unit-test projects. |
@@ -680,17 +796,12 @@ dotnet test tests/HouseholdLedger.Client.ComponentTests --no-build
 dotnet test tests/HouseholdLedger.Infrastructure.IntegrationTests
 dotnet test tests/HouseholdLedger.Api.IntegrationTests
 dotnet run --project src/HouseholdLedger.Api
-dotnet run --project src/HouseholdLedger.Client
 ```
 
-The EndToEndTests project uses NUnit and contains one separate-process HTTP
-system smoke plus desktop and mobile browser cases. The complete run requires
-normalized absolute `HOUSEHOLDLEDGER_API_ARTIFACT`,
-`HOUSEHOLDLEDGER_CLIENT_PUBLISH_DIR`, `HOUSEHOLDLEDGER_FIREFOX_BINARY`, and
-`HOUSEHOLDLEDGER_GECKODRIVER` values. It never discovers arbitrary artifacts or
-downloads a runtime. Use the fresh-publish, test, and cleanup workflow in
-[`testing.md`](../development/testing.md). A bare solution-wide test command
-without those explicit artifacts is intentionally incomplete.
+The one Feature 001 browser proof starts the API and loads its one HTTPS root
+URL. It does not require a separately published Client, a static host, a second
+port, or a custom artifact environment variable. Use the focused test/browser
+workflow supplied by Test Architecture after it is implemented.
 
 There is currently no local .NET tool manifest, and no migration exists. Do not
 run `dotnet tool restore` or install `dotnet-ef` for this scaffold. Committed
@@ -708,18 +819,33 @@ pwsh scripts/openapi/Sync-OpenApi.ps1
 The first and third commands compare only. The `-Update` command atomically
 replaces the artifact. Automated tests never update it.
 
-The API and Client run on distinct documented HTTPS origins in development.
-Client configuration points to the API origin, and API CORS permits only the
-documented development client origin. Independent publication must also pass:
-
-```powershell
-dotnet publish src/HouseholdLedger.Api --no-restore
-dotnet publish src/HouseholdLedger.Client --no-restore
-```
+The primary local workflow builds and starts one HTTPS API host. Visiting its
+root loads the built-in Client; `/api/v1/health` and `/openapi/v1.json` remain
+direct HTTP endpoints on that same host. Same-origin deployment does not remove
+the API's CORS policy for approved alternate origins, but the built-in Client
+must not need cross-origin CORS to function.
 
 Document database secret commands only after the provisioning and configuration
 method is approved. Document exact local URLs only after launch settings
 allocate and verify them.
+
+### API-Hosted Client Integration Contract
+
+The implementation phase must establish the following deliberately simple
+contract:
+
+1. The API directly references the Client project using standard SDK/framework
+   hosted Blazor WebAssembly support and enables built-in hosting/static-asset
+   behavior.
+2. Starting the API is the first-class workflow. Its root starts WebAssembly
+   and renders the Client title and one main heading.
+3. MVC `/api/v1/...` and OpenAPI remain directly available to external
+   HTTP/OpenAPI clients. This compatibility does not require an API build or
+   deployment without its Client reference.
+4. The Client references neither API implementation nor Application,
+   Infrastructure, or Domain.
+5. No custom composition script, manual staging, manifest, inventory, hash,
+   custom static-file provider, or pre/post-processing is required.
 
 ## UX States in Scaffold Scope
 
@@ -777,9 +903,10 @@ and package inventory.
 ### AC-02: Curated project structure
 
 The repository contains exactly the approved six production projects and seven
-test projects. Client references only API Contracts; API does not reference
-Client; API Contracts references no HouseholdLedger project; no Budget
-Experiment source is copied.
+test projects. The API directly references Client as an intentional hosted-WASM
+relationship. Client references no API implementation, Application,
+Infrastructure, or Domain project; API Contracts references no HouseholdLedger
+project; no Budget Experiment source is copied.
 
 Evidence: solution project listing, directory listing, and source provenance
 review.
@@ -788,8 +915,9 @@ review.
 
 Domain has no references; Application references only Domain; Infrastructure
 references Application and Domain; API references Application, Infrastructure,
-and API Contracts; Client references only API Contracts. No cycle exists, and
-transport, Razor, EF, or provider types do not leak across their boundaries.
+API Contracts, and Client; Client may reference only API Contracts. No cycle
+exists, and transport, Razor, EF, or provider types do not leak across their
+boundaries.
 
 Evidence: project-reference inspection, package-reference inspection, build,
 and architecture-boundary test or equivalent automated check.
@@ -804,14 +932,17 @@ transport concerns, and contract drift checks pass.
 Evidence: generated OpenAPI artifact, schema validation, contract tests, and a
 small implementation-independent HTTP probe.
 
-### AC-05: Independent WebAssembly client
+### AC-05: Standard hosted WebAssembly workflow
 
-The standalone Client builds and publishes without building API implementation
-projects, runs from static assets, reads a configurable API base URL, and calls
-only documented routes. The API builds, publishes, and runs without Client.
+The API directly references Client and uses only built-in hosted Blazor
+WebAssembly/static-asset behavior. Starting one API process and loading its root
+URL starts WASM and renders the basic Client shell. The Client calls only
+documented routes and does not reference API implementation, Application,
+Infrastructure, or Domain. No custom composition script, staging, manifest,
+inventory, hash, static-file provider, or pre/post-processing remains required.
 
-Evidence: independent build/publish commands, project graph, static-host smoke
-check, and network request inspection.
+Evidence: project graph, API build, one-URL browser proof, and source review of
+the removed custom artifact surfaces.
 
 ### AC-06: Honest accessible calendar shell
 
@@ -836,12 +967,11 @@ build.
 
 `GET /api/v1/health` is served by an `[ApiController]` MVC controller derived from
 `ControllerBase`, returns a successful machine-readable response, and discloses
-no sensitive configuration. MVC routing, CORS, problem details, and OpenAPI work
-through the real host.
+no sensitive configuration. MVC routing, problem details, and OpenAPI work
+through the real host alongside the built-in hosted Client.
 
-Evidence: `WebApplicationFactory` integration test asserting route, status,
-content type, and response shape; source review confirms no Minimal API mapping
-for this endpoint.
+Evidence: minimal direct health/OpenAPI check; source review confirms no Minimal
+API mapping for this endpoint.
 
 ### AC-09: Persistence policy and isolation
 
@@ -867,24 +997,31 @@ dependencies are absent; vulnerability automation reports its limits.
 Evidence: inventories, official-source links, review records, NuGet audit,
 restore lock evidence, and published-output inspection.
 
-### AC-11: Explicit implementation patterns and balanced tests
+### AC-11: Explicit implementation patterns and proportionate tests
 
 AutoFixture, AutoMapper, and MediatR are absent. Tests use explicit builders or
 factories where needed; mapping is explicit; use cases use built-in DI and direct
-interfaces. All seven test projects are discoverable. Resource-dependent layers
-run only with approved dependencies and do not use excluded substitutes.
+interfaces. All seven test projects are present and invocable. For this
+behavior-light scaffold, Domain and Application test projects may contain zero
+tests until those layers own behavior; placeholder or vanity assertions must not
+be added to satisfy a numerical pyramid. Implemented behavior is tested at the
+lowest appropriate layer, and browser E2E remains the smallest behavior layer.
+Resource-dependent tests run only with approved dependencies and do not use
+excluded substitutes.
 
-Evidence: dependency/source search, focused source review, Test Architecture
-classification, and exact test results by layer.
+Evidence: dependency and source search, focused source review, test
+classification by behavior and layer, commands invoking all seven projects, and
+exact results for every implemented layer.
 
 ### AC-12: Local workflow is accurate
 
 A contributor following the README/development documentation can restore tools
-and packages, build, run fast tests, start API and Client on documented origins,
-load the shell, call health, and independently publish both projects without
-undocumented setup. Resource-dependent commands do not rely on excluded products.
+and packages, build the API project, start one API HTTPS host, load the shell at
+its root, and make minimal direct health and OpenAPI checks without undocumented
+setup. Resource-dependent commands do not rely on excluded products.
 
-Evidence: clean-environment command transcript and manual URL verification.
+Evidence: API build result, single-host browser evidence, and minimal direct
+HTTP verification of health and OpenAPI.
 
 ### AC-13: Specialist and resource ownership
 
@@ -897,43 +1034,87 @@ Evidence: orchestrator wave records and specialist completion reports.
 
 ### Current Acceptance Status
 
-The final 2026-08-03 read-only audit is recorded in
-[`docs/audit/2026-08-03-feature-001-definition-of-done.md`](../audit/2026-08-03-feature-001-definition-of-done.md).
+The final 2026-08-04 read-only audit is recorded in
+[2026-08-04 Feature 001 Final Definition of Done Audit](../audit/2026-08-04-feature-001-final-definition-of-done-audit.md).
 
-- **AC-01 - Met.** SDK 10.0.302, locked restore, a zero-warning build,
-  centralized StyleCop enforcement, C# 14 probes, and package inventory are
-  evidenced. Complete dependency-policy closure is assessed by AC-10.
-- **AC-02 - Met.** Six production and seven test projects match the approved
-  shape.
-- **AC-03 - Met.** Project-reference and package-boundary checks pass.
-- **AC-04 - Met.** OpenAPI.NET parser diagnostics and schema assertions pass;
-  runtime and checked documents agree; the implementation-independent HTTP
-  probe passes.
-- **AC-05 - Met.** Independent publishes, configuration tests, the static host,
-  Resource Timing, and explicit API checks prove replaceability.
-- **AC-06 - Met.** Component and desktop/mobile browser evidence covers the
-  required honest, accessible states.
-- **AC-07 - Met.** Automated checks prove universal code-behind pairing and no
-  inline `@code` blocks.
-- **AC-08 - Met.** Integration evidence covers MVC health, ProblemDetails,
-  CORS, OpenAPI, and conditional Infrastructure composition.
-- **AC-09 - Blocked.** Podman 5.8.3 is installed, but its engine is unavailable
-  until an administrator upgrades WSL to 2.7.11. The PostgreSQL image has been
-  reviewed but not pulled or run, and the real-provider test remains skipped.
-- **AC-10 - Partial.** Direct families, resolved NuGet closure, and the approved
-  browser artifact chain are inventoried. Complete manual review of every
-  transitive and published-runtime artifact is not evidenced, and the
-  PostgreSQL image/runtime closure has no pull or run evidence.
-- **AC-11 - Partial.** Prohibited helpers are absent and implemented tests use
-  explicit setup at appropriate layers. Accepting zero Domain/Application tests
-  for a behavior-light scaffold materially revises the literal balanced-pyramid
-  wording and requires renewed user approval of the exact wording in the audit.
-- **AC-12 - Partial.** Commands are current and automated fresh-publish browser
-  evidence exercises separate hosts, but no clean-environment manual HTTPS
-  startup and URL-verification transcript is recorded.
-- **AC-13 - Not Verifiable.** The feature records intended ownership and wave
-  reports, but the audit found no independently verifiable complete
-  orchestrator history for every file and external resource.
+- **AC-01 through AC-04 - Requires fresh validation.** The fresh 2026-08-04
+  hosted-Blazor decision changes the first-class project relationship and
+  workflow. Prior external-composition evidence is historical only.
+- **AC-05 through AC-08 - Requires fresh validation where hosting behavior or
+  evidence depended on external composition.** No prior static-host, fallback,
+  multi-host, or independent-publish evidence proves this contract.
+- **AC-09 - Partial.** Isolated real PostgreSQL tests and cleanup passed, but the
+  complete image/runtime component review required by the criterion is not
+  retained.
+- **AC-10 - Partial.** Direct, lock-file, browser, digest/runtime, and publish
+  evidence is recorded; the complete manual transitive, image-layer/runtime, and
+  final published-output closure remains absent.
+- **AC-11 - Met.** The user approved the revised behavior-light wording, and all
+  implemented layers have passing evidence without placeholder tests.
+- **AC-12 - Previously Partial / invalidated for workflow proof.** The former
+  two-host workflow is no longer an accepted primary proof. A clean-environment
+  single-host transcript is required.
+- **AC-13 - Partial.** The orchestrator supplied authoritative exclusive closure
+  allocations and cleanup, while independently retained full resource detail for
+  earlier Waves 1-2 remains incomplete.
+
+## Hosting-Revision Implementation Phases and Approval Record
+
+The following phases are approved for specification planning only. They do not
+authorize implementation, transfer existing file ownership, or establish that
+any acceptance criterion is complete. The orchestrator must assign the exact
+exclusive files and dedicated resources before each phase starts.
+
+| Phase | Dependency and owner | Exclusive implementation surface | Dedicated resources | Required primary validation |
+| --- | --- | --- | --- | --- |
+| H1 | First: API specialist | Assigned API project/startup files | Dedicated terminal only | Build API; run it; make at most minimal direct health/OpenAPI checks. |
+| H2 | After H1: Blazor UI, only if the shell needs adjustment | Assigned Client component-shell files | Dedicated terminal only | Confirm title and main heading render through the API host. |
+| H3 | After H1 and H2: Utility Fallback | Assigned shared scripts and custom artifact surfaces | Dedicated terminal only | Remove obsolete composition/staging scripts and artifacts; no replacement processing. |
+| H4 | After H3: Test Architecture | Assigned browser-proof files | Dedicated terminal, one HTTPS port, and browser profile | One browser proof against the API root URL. |
+| H5 | After H4: Research and Documentation | Assigned documentation only | Dedicated terminal only; no runtime resources | Read-only criterion-to-evidence audit and available documentation checks. |
+
+The expected dependency order is H1, H2 if needed, H3, H4, then H5. No phase
+may use a shared terminal, port, browser profile, database, schema, container,
+test data, process, or output directory without an explicit exclusive allocation
+and cleanup record.
+
+## Authoritative Validation Matrix and Guardrails
+
+This matrix is authoritative for the hosting-revision implementation phase. An
+owner records one primary command or retained artifact for each criterion; a
+passing result is reused unless an explicit invalidator applies. Supplementary
+checks may diagnose a failure but do not replace the designated primary proof.
+
+| Requirement | Primary proof | Owner | Retained location / identifier |
+| --- | --- | --- | --- |
+| AC-01 | `dotnet build` for the API project | API specialist | Command result. |
+| AC-02 | Project-reference inspection plus API build | API specialist | Project graph or review note and command result. |
+| AC-03 | Run one API process and load its root URL | Test Architecture | One browser-proof result. |
+| AC-04 | Browser asserts the visible title and main heading | Test Architecture | One browser-proof result. |
+| DoD: external API compatibility | Minimal direct health and OpenAPI checks | API specialist | Direct-check result. |
+| DoD: obsolete custom processing removed | Source review after H3 | Utility Fallback | Removal report. |
+| DoD: final completion conclusion | Read-only criterion-to-evidence audit | Research and Documentation | Dated final audit in `docs/audit/`. |
+
+Validation stays deliberately small: build the API project; inspect the
+intentional project direction; run the API; load its root URL once in a browser;
+and make at most minimal direct health/OpenAPI checks. The browser workflow is
+the primary UI proof. Do not repeat former two-host, static-host, manifest, or
+multi-viewport matrices.
+
+After a primary proof passes, do not rerun it unless its owner records an
+invalidator: a change to its owned surface or declared dependency, changed
+artifact inputs, changed runtime/tool version, changed resource configuration,
+or a documented nondeterminism investigation. Failures are classified as
+`production`, `test`, `environment`, or `evidence`; only the owning specialist
+may repair the classified surface. One rerun is permitted after a documented
+repair. A second failure of the same primary proof requires escalation to the
+orchestrator with the classification, retained logs, attempted repair, and
+resource-cleanup status before any third attempt.
+
+Owners retain command lines, exit codes, and concise result summaries. Temporary
+servers, HTTPS ports, and browser profiles are removed after evidence capture.
+A future audit marks historical external-composition evidence as `invalidated`;
+it must never silently treat a previous pass as proof for this hosted surface.
 
 ## Implementation Waves and Approval Record
 
@@ -1065,6 +1246,11 @@ complete, while the broader clean-workflow and final-review gates remain open.
 Owners: Test Architecture for component/integration/E2E tests and harnesses;
 Research and Documentation for assigned development/architecture documentation.
 
+The following Wave 5 evidence describes the pre-revision two-host design. It
+remains historical evidence only and cannot satisfy the API-hosted Client
+criteria introduced on 2026-08-04. The hosting-revision phases and validation
+matrix above control replacement evidence.
+
 Add only approved component, API, infrastructure, and E2E evidence. Browser E2E
 uses only the approved manually provisioned Firefox 153.0.1 EME-free and
 geckodriver 0.37.1 test-runtime chain after all post-provision checks pass. It
@@ -1158,7 +1344,9 @@ Blocked, and Not Verifiable items, so this gate is not met.
 | --- | --- |
 | API Contracts becomes a disguised Shared/domain assembly | Restrict it to transport shapes, enforce no project references, and keep OpenAPI canonical. |
 | Built-in client becomes privileged despite API-first intent | Require independent builds, HTTP-only access, CORS, and an implementation-independent contract probe. |
-| Optional same-origin packaging recreates server/client coupling | Defer it; if added later, require replaceable deployment composition with no runtime or project dependency. |
+| API-hosted static assets recreate server/client coupling | Integrate a declared Client publish artifact only; prohibit an API-to-Client CLR reference, Client startup dependency, server rendering, and UI circuit. |
+| SPA fallback hides an API/OpenAPI failure | Route MVC and OpenAPI before fallback; integration tests prove unknown API/OpenAPI paths do not return Client HTML. |
+| Historical two-host proof is treated as current | Mark affected prior evidence invalidated; use the authoritative matrix and retain only single-host browser proof plus one scoped custom-client API smoke. |
 | Contract changes break custom frontends | Use `/api/v1`, checked OpenAPI artifacts, drift tests, and explicit breaking-change approval. |
 | WebAssembly exposes trusted logic or secrets | Keep validation and business rules server-side; treat client code and configuration as public. |
 | Latest package versions drift after this research | Re-check official NuGet pages immediately before implementation and record any approved baseline change. |
@@ -1214,6 +1402,11 @@ implementation of all six waves with these decisions:
 13. Installing Podman for the approved PostgreSQL integration-test harness is
   approved. Installation and successful PostgreSQL tests remain required
   evidence.
+14. The built-in standalone Blazor WebAssembly Client is served from the API
+  host using a published static artifact. The API remains independently
+  consumable through MVC `/api/v1` and OpenAPI for alternate UIs. The API has no
+  Client CLR project reference; no server-side Blazor or SignalR UI circuit is
+  introduced. The user approved this hosting-scope revision on 2026-08-04.
 
 The existing narrow PostgreSQL/Npgsql license exception remains unchanged. No
 open approval question remains for Feature 001 or Waves 1-6. Approval does not
@@ -1239,8 +1432,9 @@ marks every item `Met`.
 - [x] `dotnet build --no-restore` succeeds with zero warnings and zero errors.
 - [x] StyleCop is centralized, runs for every C# project, passes the C# 14 probe,
   is absent from runtime output, and is enforced by the build.
-- [x] API and Client build and publish independently; API has no Client reference
-  and Client has no server implementation reference.
+- [ ] API directly references Client using built-in hosted Blazor WebAssembly
+  support; Client has no API implementation, Application, Infrastructure, or
+  Domain reference; no custom composition or static-artifact processing remains.
 - [x] Checked OpenAPI, API Contracts, controller behavior, and an
   implementation-independent HTTP probe agree.
 - [x] Unit, contract, and component tests pass without database or browser
@@ -1248,9 +1442,10 @@ marks every item `Met`.
 - [ ] Infrastructure and API integration tests pass against isolated real
   PostgreSQL resources using the excepted provider stack and an approved
   provisioning method.
-- [x] Browser evidence uses the approved package-free direct-W3C automation and
-  exact verified Firefox and geckodriver artifacts; two consecutive complete
-  desktop/mobile runs pass.
+- [ ] Browser evidence uses the approved package-free direct-W3C automation and
+  exact verified Firefox and geckodriver artifacts; the API-hosted Client root,
+  API/OpenAPI precedence, and eligible SPA fallback pass at desktop and mobile
+  viewports.
 - [x] Automated architecture checks prove the approved project-reference and
   package boundaries.
 - [x] Automated Razor checks prove one `.razor.cs` partner per `.razor` file and
@@ -1277,9 +1472,10 @@ marks every item `Met`.
 - [x] Repository Markdown formatter, linter, link checker, and spelling/grammar
   checks pass for all changed documentation, or unavailable checks are recorded
   explicitly rather than treated as passed.
-- [x] A fresh-publish browser workflow starts separate API and Client hosts,
-  loads the shell, observes a valid cross-origin `GET /api/v1/health` response,
-  and uses independently published API and Client artifacts.
+- [ ] A fresh-publish browser workflow starts one API HTTPS host, loads the
+  integrated Client at its root, observes same-host `GET /api/v1/health` and
+  OpenAPI behavior, proves fallback exclusions, and retains one scoped
+  custom-client HTTP/OpenAPI compatibility smoke.
 - [x] Secrets and repository scans find no committed credential, connection
   string, realistic household data, or generated local artifact.
 - [ ] All implementation waves have user approval records, exclusive file and
@@ -1315,7 +1511,7 @@ marks every item `Met`.
 | 2026-08-02 | Explicit user decision / Wave 3 policy exception | Approve a one-time stable-package-policy exception permitting `bunit` 2.8.6 and its required transitive `AngleSharp.Css` 1.0.0-beta.224 dependency for Wave 3, subject to all existing license, provenance, vulnerability, free/open-source, commercial-model, and no-paid-option checks. The exception does not approve other prereleases or future versions, relax broader package policy, mark Wave 3 complete, or satisfy implementation criteria. |
 | 2026-08-02 | Wave 5 documentation evidence / Blocked | Architecture and developer documentation completed. `Microsoft.Playwright` 1.61.0 does not qualify under current policy because its complete runtime/license chain is unresolved, browser archive installation lacks pinned cryptographic verification, and Microsoft offers paid Azure Playwright Workspaces. Podman and browser execution evidence remain outstanding; Wave 5 is not complete. |
 | 2026-08-02 | Wave 2 complete | Thirteen API Integration project tests and three API Contracts project tests, nonmutating runtime/checked OpenAPI comparison, a separate-process implementation-independent HTTP probe, and independent API publish pass. Infrastructure registration is conditional and performs no startup database/schema access. |
-| 2026-08-02 | Waves 3-5 partial / Blocked | Twenty-two classified Client tests and independent Client publish pass. The empty EF boundary and Podman harness are present, with one in-process pass and one real-PostgreSQL skip. The separate-process HTTP system smoke passes but is not browser evidence. Full dependency closure, PostgreSQL, browser, clean-workflow, and final-audit gates remain open. |
+| 2026-08-02 | Waves 3-5 partial / Blocked | Twenty-two classified Client tests and the then-required independent Client publish passed. This is historical evidence only after the 2026-08-04 standard-hosted-Blazor decision. The empty EF boundary and Podman harness are present, with one in-process pass and one real-PostgreSQL skip. The separate-process HTTP system smoke passes but is not browser evidence. Full dependency closure, PostgreSQL, browser, clean-workflow, and final-audit gates remain open. |
 | 2026-08-02 | Wave 5 system-test repair / Blocked | EndToEndTests uses NUnit and contains one separate-process HTTP system test, not browser E2E. The test requires an explicit normalized absolute `HOUSEHOLDLEDGER_API_ARTIFACT`; two consecutive fresh-publish runs passed and cleaned their variable, process, and output. Infrastructure NUnit references now use `PrivateAssets="all"`. The suite has 41 cases: 40 pass and the real PostgreSQL case skips. AC-04, AC-05, AC-06, AC-10, and AC-11 remain Partial; AC-09 and Wave 5 remain Blocked; AC-07 and AC-08 are Met. |
 | 2026-08-02 | Manual package review / Unresolved | Primary-source review covers all introduced direct package families and the exact AngleSharp.Css prerelease. No project-offered paid product was found outside the already blocked Playwright chain, but Microsoft's optional paid enterprise support requires user interpretation and complete transitive/runtime review remains open. Automation is not treated as business-model proof. |
 | 2026-08-02 | Browser-chain research / Needs user decision | Firefox 153.0.1 EME-free with geckodriver 0.37.1 can provide the required browser evidence with manual pinned provisioning. `Selenium.WebDriver` 4.46.0 remains unapproved because its package embeds an incompletely classified Selenium Manager native/Rust closure; a package-free W3C WebDriver local end is the preferred alternative. Firefox directly offers paid Professional Support, so the user must interpret the no-paid-option rule and approve the exact runtime-only license exception before implementation. Browser DoD remains unmet. |
@@ -1325,6 +1521,12 @@ marks every item `Met`.
 | 2026-08-03 | Direct-W3C browser evidence / Met | Exact user-local Firefox 153.0.1 EME-free and geckodriver 0.37.1 artifacts passed post-provision checks. A package-free built-in .NET W3C client completed two consecutive 3/3 runs in 8.7 seconds and 8.1 seconds at exact `1440x900` and `500x844` inner viewports. AC-05, AC-06, and the browser Definition of Done item are met; PostgreSQL remains blocked by unavailable WSL elevation. |
 | 2026-08-03 | Browser E2E hardening / Met | Tests enforce approved Firefox and geckodriver SHA-256 values before launch and check post-navigation page errors, explicit API health status, critical Resource Timing entries, and static-host responses. The direct-W3C residual is no pre-navigation injection or Firefox console-log retrieval. Two fresh hardened runs passed 3/3. |
 | 2026-08-03 | Final audit / Incomplete | AC-01 through AC-08 are Met; AC-09 is Blocked; AC-10, AC-11, and AC-12 are Partial; AC-13 is Not Verifiable. AC-11 requires user approval of revised behavior-light-scaffold wording. Wave 6 and Feature 001 are not complete. |
+| 2026-08-04 | Explicit user decision / AC-11 revision | Approve the revised AC-11 wording. Domain and Application test projects may contain zero tests while this scaffold owns no Domain or Application behavior; placeholder or vanity tests must not be added. This decision does not waive testing at the lowest appropriate layer when behavior is introduced. |
+| 2026-08-04 | Provisional closure audit / Superseded | A Client lock-file mismatch and Client source whitespace issue blocked the earlier closure evidence. This finding is superseded by the later retained locked-restore, build, test, and source-hygiene evidence. |
+| 2026-08-04 | Final Definition of Done audit / Incomplete | Locked restore, zero-warning builds, independent HTTPS API/Client publishes, real PostgreSQL tests, and direct-W3C browser validation now pass. AC-01 through AC-08 and AC-11 are Met. AC-09 and AC-10 remain Partial because the complete image/runtime, published-output, and transitive dependency policy closure is not retained. AC-12 is Partial because WasmAppHost ignores fixed URL settings and no clean-environment two-host manual transcript exists. AC-13 is Partial because closure allocations are authoritative but complete earlier-wave resource records are not independently retained. Feature 001 remains incomplete. |
+| 2026-08-04 | Explicit user decision / Hosting scope revision (superseded) | This earlier same-day decision replaced the two-host primary workflow with API-hosted standalone Blazor WebAssembly static assets but retained independent Client publishing and no API-to-Client CLR reference. The later 2026-08-04 standard-hosted-Blazor decision supersedes those retained restrictions. Its two-host, CORS, and static-host evidence remains historical and invalidated for the current criteria. |
+| 2026-08-04 | Explicit user decision / Simplification revision | Reduce Feature 001 to a minimum hosted-WASM scaffold: compose Client static output into the API package, launch one API HTTPS URL, and prove in a browser that WebAssembly renders a visible shell. Supersede Feature 001 requirements for custom payload manifests, hashes, inventories, static allow-lists, provenance, retry/retention policy, and excessive browser validation unless a concrete minimum requirement establishes a need. The governing simplification revision defines the authoritative acceptance criteria and Definition of Done. |
+| 2026-08-04 | Explicit user decision / Standard hosted Blazor WebAssembly | Supersede the immediately prior external-artifact-composition simplification. API directly references Client and enables built-in hosted Blazor WebAssembly/static-asset behavior. No custom composition scripts, manual staging, manifests, inventories, hashes, custom static-file provider, or pre/post-processing is required. The first-class workflow is one API process and root URL; MVC `/api/v1/...` and OpenAPI remain external HTTP/OpenAPI surfaces. Client must not reference API implementation, Application, Infrastructure, or Domain. No SSR, server-side Blazor, prerendering, or SignalR UI circuit is authorized. |
 
 ## Sources
 
