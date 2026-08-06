@@ -9,15 +9,15 @@ using HouseholdLedger.Client.Pages;
 using NUnit.Framework;
 
 /// <summary>
-/// Verifies the temporary sample shell.
+/// Verifies the calendar workspace surface.
 /// </summary>
 public sealed class CalendarPageTests
 {
     /// <summary>
-    /// Verifies that the root content presents one accessible, neutral sample heading.
+    /// Verifies that the root content is the neutral calendar workspace surface.
     /// </summary>
     [Test]
-    public void TemporarySampleShellHasOneMainHeadingAndNeutralContent()
+    public void CalendarWorkspaceHasOneMainHeadingAndNoInteractiveContent()
     {
         using var context = new BunitContext();
 
@@ -25,13 +25,14 @@ public sealed class CalendarPageTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(component.FindAll("main"), Has.Count.EqualTo(1));
-            Assert.That(component.FindAll("main h1"), Has.Count.EqualTo(1));
-            Assert.That(component.Find("main h1").TextContent, Is.EqualTo("Temporary sample content"));
-            Assert.That(component.Find("main p").TextContent, Is.EqualTo("This is a temporary sample."));
-            Assert.That(component.Find("main").TextContent, Does.Not.Contain("calendar").IgnoreCase);
-            Assert.That(component.Find("main").TextContent, Does.Not.Contain("ledger").IgnoreCase);
-            Assert.That(component.Find("main").TextContent, Does.Not.Contain("budget").IgnoreCase);
+            Assert.That(component.FindAll("main.calendar-page"), Has.Count.EqualTo(1));
+            Assert.That(component.FindAll("main.calendar-page h1"), Has.Count.EqualTo(1));
+            Assert.That(component.Find("main.calendar-page h1").TextContent, Is.EqualTo("Calendar"));
+            Assert.That(component.FindAll("main.calendar-page button"), Is.Empty);
+            Assert.That(component.FindAll("main.calendar-page input"), Is.Empty);
+            Assert.That(component.FindAll("main.calendar-page select"), Is.Empty);
+            Assert.That(component.FindAll("main.calendar-page textarea"), Is.Empty);
+            Assert.That(component.FindAll("main.calendar-page a"), Is.Empty);
         });
     }
 }

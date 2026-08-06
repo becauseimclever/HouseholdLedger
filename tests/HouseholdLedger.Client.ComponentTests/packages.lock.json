@@ -75,6 +75,20 @@
           "AngleSharp.Css": "1.0.0-beta.144"
         }
       },
+      "Blazicons": {
+        "type": "Transitive",
+        "resolved": "4.0.21",
+        "contentHash": "KBMo/nlpJBkYI27XM8atlEF+YYFUxm11JuaHOShTThYD/4O1AtNItP9NLqF4VD31PojL4QNL+R9Q1zOcKbDB4w==",
+        "dependencies": {
+          "BlazorComponentUtilities": "1.8.0",
+          "Microsoft.AspNetCore.Components.Web": "10.0.10"
+        }
+      },
+      "BlazorComponentUtilities": {
+        "type": "Transitive",
+        "resolved": "1.8.0",
+        "contentHash": "M0HwFRId0RLNxDlG0UntB92oeduAaHHhgtUrHb9eAw6KzOVMemlxY8sNWhDQWiLfBCXIVnd/wtm6mmQbURfzfA=="
+      },
       "Microsoft.AspNetCore.Authorization": {
         "type": "Transitive",
         "resolved": "10.0.10",
@@ -368,8 +382,18 @@
       "householdledger.client": {
         "type": "Project",
         "dependencies": {
+          "Blazicons.Lucide": "[3.0.8, )",
           "HouseholdLedger.Api.Contracts": "[1.0.0, )",
           "Microsoft.AspNetCore.Components.WebAssembly": "[10.0.10, )"
+        }
+      },
+      "Blazicons.Lucide": {
+        "type": "CentralTransitive",
+        "requested": "[3.0.8, )",
+        "resolved": "3.0.8",
+        "contentHash": "fcoaK2/g1l93rqOFIsYG8nyRLrSIYUmA0zOnqDTjpkjAcathhSqeRqd+0pLjgxKViZ1+I/+HMWvEs5OySYilaQ==",
+        "dependencies": {
+          "Blazicons": "4.0.21"
         }
       },
       "Microsoft.AspNetCore.Components.WebAssembly": {

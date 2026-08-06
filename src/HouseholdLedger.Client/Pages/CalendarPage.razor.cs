@@ -7,7 +7,7 @@ namespace HouseholdLedger.Client.Pages;
 using Microsoft.AspNetCore.Components;
 
 /// <summary>
-/// Presents the temporary sample content.
+/// Presents the calendar workspace surface.
 /// </summary>
 public partial class CalendarPage : ComponentBase
 {

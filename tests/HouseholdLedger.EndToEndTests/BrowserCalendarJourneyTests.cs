@@ -14,7 +14,7 @@ using System.Text.Json;
 using NUnit.Framework;
 
 /// <summary>
-/// Verifies the temporary sample shell through its single hosted API URL.
+/// Verifies the desktop calendar workspace through its single hosted API URL.
 /// </summary>
 [TestFixture]
 [NonParallelizable]
@@ -32,11 +32,11 @@ public sealed class BrowserCalendarJourneyTests
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(10);
 
     /// <summary>
-    /// Verifies that the API root renders the accessible temporary sample shell.
+    /// Verifies that the API root renders the accessible desktop calendar workspace.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
     [Test]
-    public async Task ApiHostRendersAccessibleTemporarySampleShell()
+    public async Task ApiHostRendersAccessibleDesktopCalendarWorkspace()
     {
         var inputs = BrowserInputs.Load();
         var apiOrigin = new Uri($"https://localhost:{inputs.ApiPort}");
@@ -44,7 +44,7 @@ public sealed class BrowserCalendarJourneyTests
         var driverOrigin = new Uri($"http://127.0.0.1:{driverPort}");
         var runId = $"{DateTime.UtcNow:yyyyMMdd-HHmmssfff}-{Environment.ProcessId}";
         var profilePath = Path.Combine(inputs.ProfileRoot, runId, "profile");
-        var screenshotPath = Path.Combine(inputs.OutputDirectory, $"temporary-sample-{runId}.png");
+        var screenshotPath = Path.Combine(inputs.OutputDirectory, $"workspace-shell-{runId}.png");
         Process? apiProcess = null;
         Process? driverProcess = null;
         W3cWebDriver? browser = null;
@@ -74,15 +74,15 @@ public sealed class BrowserCalendarJourneyTests
 
             await SetDesktopViewportAsync(browser, timeout.Token);
             await browser.NavigateAsync(apiOrigin, timeout.Token);
-            await WaitForShellAsync(browser, timeout.Token);
-            await AssertShellAsync(browser, apiOrigin, timeout.Token);
+            await WaitForWorkspaceShellAsync(browser, timeout.Token);
+            await AssertWorkspaceShellAsync(browser, apiOrigin, timeout.Token);
 
             var screenshot = await browser.TakeScreenshotAsync(timeout.Token);
             await File.WriteAllBytesAsync(screenshotPath, screenshot, timeout.Token);
             var screenshotHash = Convert.ToHexString(SHA256.HashData(screenshot)).ToLowerInvariant();
-            TestContext.Progress.WriteLine($"Feature002 browser api={apiOrigin} apiPid={apiProcess.Id} firefoxPid={firefoxProcessId} geckodriverPid={driverProcess.Id}");
-            TestContext.Progress.WriteLine($"Feature002 runtime hashes firefox={inputs.FirefoxHash} geckodriver={inputs.GeckodriverHash}");
-            TestContext.Progress.WriteLine($"Feature002 screenshot bytes={screenshot.Length} sha256={screenshotHash}");
+            TestContext.Progress.WriteLine($"Feature003 browser api={apiOrigin} apiPid={apiProcess.Id} firefoxPid={firefoxProcessId} geckodriverPid={driverProcess.Id}");
+            TestContext.Progress.WriteLine($"Feature003 runtime hashes firefox={inputs.FirefoxHash} geckodriver={inputs.GeckodriverHash}");
+            TestContext.Progress.WriteLine($"Feature003 screenshot bytes={screenshot.Length} sha256={screenshotHash}");
         }
         finally
         {
@@ -153,7 +153,7 @@ public sealed class BrowserCalendarJourneyTests
             cancellationToken);
     }
 
-    private static async Task WaitForShellAsync(W3cWebDriver browser, CancellationToken cancellationToken)
+    private static async Task WaitForWorkspaceShellAsync(W3cWebDriver browser, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -161,7 +161,7 @@ public sealed class BrowserCalendarJourneyTests
                 "return document.querySelector('main h1')?.textContent?.trim() ?? '';",
                 null,
                 cancellationToken);
-            if (heading.GetString() == "Temporary sample content")
+            if (heading.GetString() == "Calendar")
             {
                 return;
             }
@@ -169,28 +169,153 @@ public sealed class BrowserCalendarJourneyTests
             await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
         }
 
-        throw new TimeoutException("Timed out waiting for the temporary sample shell.");
+        throw new TimeoutException("Timed out waiting for the calendar workspace shell.");
     }
 
-    private static async Task AssertShellAsync(W3cWebDriver browser, Uri apiOrigin, CancellationToken cancellationToken)
+    private static async Task AssertWorkspaceShellAsync(W3cWebDriver browser, Uri apiOrigin, CancellationToken cancellationToken)
     {
-        var result = await browser.ExecuteScriptAsync(
-            "const main = document.querySelector('main'); const headings = document.querySelectorAll('main h1');"
-            + " return { title: document.title, mainCount: document.querySelectorAll('main').length, headingCount: headings.length, heading: headings[0]?.textContent?.trim(), text: main?.textContent?.trim(), origin: location.origin, width: window.innerWidth, height: window.innerHeight };",
+        var state = await GetWorkspaceStateAsync(browser, cancellationToken);
+        AssertExpandedWorkspace(state, apiOrigin);
+
+        await ClickAndWaitForToggleStateAsync(browser, "workspace-navigation", false, cancellationToken);
+        state = await GetWorkspaceStateAsync(browser, cancellationToken);
+        AssertNavigationCollapsedWorkspace(state);
+
+        await ClickAndWaitForToggleStateAsync(browser, "workspace-inspector", false, cancellationToken);
+        state = await GetWorkspaceStateAsync(browser, cancellationToken);
+        AssertBothPanesCollapsedWorkspace(state);
+
+        await ClickAndWaitForToggleStateAsync(browser, "workspace-navigation", true, cancellationToken);
+        state = await GetWorkspaceStateAsync(browser, cancellationToken);
+        AssertInspectorCollapsedWorkspace(state);
+
+        await ClickAndWaitForToggleStateAsync(browser, "workspace-inspector", true, cancellationToken);
+        state = await GetWorkspaceStateAsync(browser, cancellationToken);
+        AssertExpandedWorkspace(state, apiOrigin);
+    }
+
+    private static async Task ClickAndWaitForToggleStateAsync(
+        W3cWebDriver browser,
+        string paneId,
+        bool expanded,
+        CancellationToken cancellationToken)
+    {
+        var toggle = await browser.FindElementAsync($"button[aria-controls='{paneId}']", cancellationToken);
+        await browser.ClickAsync(toggle, cancellationToken);
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var state = await GetWorkspaceStateAsync(browser, cancellationToken);
+            var toggleState = state.GetProperty(paneId == "workspace-navigation" ? "navigationToggle" : "inspectorToggle");
+            if (toggleState.GetProperty("expanded").GetBoolean() == expanded)
+            {
+                Assert.That(state.GetProperty("focusedPane").GetString(), Is.EqualTo(paneId));
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+        }
+
+        throw new TimeoutException($"Timed out waiting for '{paneId}' to become expanded={expanded}.");
+    }
+
+    private static async Task<JsonElement> GetWorkspaceStateAsync(W3cWebDriver browser, CancellationToken cancellationToken)
+    {
+        return await browser.ExecuteScriptAsync(
+            "const rectangle = element => { const box = element?.getBoundingClientRect(); return box ? { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height } : null; };"
+            + " const navigation = document.querySelector('#workspace-navigation'); const calendar = document.querySelector('#calendar-workspace'); const main = document.querySelector('main.calendar-page'); const inspector = document.querySelector('#workspace-inspector');"
+            + " const navigationToggle = document.querySelector(\"button[aria-controls='workspace-navigation']\"); const inspectorToggle = document.querySelector(\"button[aria-controls='workspace-inspector']\");"
+            + " return { title: document.title, origin: location.origin, width: window.innerWidth, height: window.innerHeight, scrollWidth: document.documentElement.scrollWidth, mainCount: document.querySelectorAll('#calendar-workspace > main.calendar-page').length, headingCount: document.querySelectorAll('main.calendar-page h1').length, heading: main?.querySelector('h1')?.textContent?.trim(), navigationDestinationCount: navigation?.querySelectorAll('a, button').length, inspectorText: inspector?.textContent?.trim(), navigation: { hidden: navigation?.hidden, rectangle: rectangle(navigation) }, calendar: { rectangle: rectangle(calendar) }, main: { rectangle: rectangle(main) }, inspector: { hidden: inspector?.hidden, rectangle: rectangle(inspector) }, navigationToggle: { expanded: navigationToggle?.getAttribute('aria-expanded') === 'true', label: navigationToggle?.getAttribute('aria-label') }, inspectorToggle: { expanded: inspectorToggle?.getAttribute('aria-expanded') === 'true', label: inspectorToggle?.getAttribute('aria-label') }, focusedPane: document.activeElement?.getAttribute('aria-controls') };",
             null,
             cancellationToken);
+    }
+
+    private static void AssertExpandedWorkspace(JsonElement state, Uri apiOrigin)
+    {
+        AssertWorkspaceSemantics(state, apiOrigin);
+        Assert.Multiple(() =>
+        {
+            Assert.That(state.GetProperty("navigation").GetProperty("hidden").GetBoolean(), Is.False);
+            Assert.That(state.GetProperty("inspector").GetProperty("hidden").GetBoolean(), Is.False);
+            Assert.That(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean(), Is.True);
+            Assert.That(state.GetProperty("navigationToggle").GetProperty("label").GetString(), Is.EqualTo("Collapse navigation"));
+            Assert.That(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean(), Is.True);
+            Assert.That(state.GetProperty("inspectorToggle").GetProperty("label").GetString(), Is.EqualTo("Collapse inspector"));
+        });
+        AssertNormalFlow(state, includeNavigation: true, includeInspector: true);
+    }
+
+    private static void AssertNavigationCollapsedWorkspace(JsonElement state)
+    {
+        Assert.That(state.GetProperty("navigation").GetProperty("hidden").GetBoolean(), Is.True);
+        Assert.That(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean(), Is.False);
+        Assert.That(state.GetProperty("inspector").GetProperty("hidden").GetBoolean(), Is.False);
+        Assert.That(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean(), Is.True);
+        AssertNormalFlow(state, includeNavigation: false, includeInspector: true);
+    }
+
+    private static void AssertBothPanesCollapsedWorkspace(JsonElement state)
+    {
+        Assert.That(state.GetProperty("navigation").GetProperty("hidden").GetBoolean(), Is.True);
+        Assert.That(state.GetProperty("inspector").GetProperty("hidden").GetBoolean(), Is.True);
+        Assert.That(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean(), Is.False);
+        Assert.That(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean(), Is.False);
+        AssertNormalFlow(state, includeNavigation: false, includeInspector: false);
+    }
+
+    private static void AssertInspectorCollapsedWorkspace(JsonElement state)
+    {
+        Assert.That(state.GetProperty("navigation").GetProperty("hidden").GetBoolean(), Is.False);
+        Assert.That(state.GetProperty("inspector").GetProperty("hidden").GetBoolean(), Is.True);
+        Assert.That(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean(), Is.True);
+        Assert.That(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean(), Is.False);
+        AssertNormalFlow(state, includeNavigation: true, includeInspector: false);
+    }
+
+    private static void AssertWorkspaceSemantics(JsonElement state, Uri apiOrigin)
+    {
+        Assert.Multiple(() =>
+        {
+            Assert.That(state.GetProperty("title").GetString(), Is.EqualTo("Calendar"));
+            Assert.That(state.GetProperty("origin").GetString(), Is.EqualTo(apiOrigin.GetLeftPart(UriPartial.Authority)));
+            Assert.That(state.GetProperty("width").GetInt32(), Is.EqualTo(1440));
+            Assert.That(state.GetProperty("height").GetInt32(), Is.EqualTo(900));
+            Assert.That(state.GetProperty("scrollWidth").GetInt32(), Is.LessThanOrEqualTo(1440));
+            Assert.That(state.GetProperty("mainCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(state.GetProperty("headingCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(state.GetProperty("heading").GetString(), Is.EqualTo("Calendar"));
+            Assert.That(state.GetProperty("navigationDestinationCount").GetInt32(), Is.Zero);
+            Assert.That(state.GetProperty("inspectorText").GetString(), Does.Contain("No calendar item selected"));
+        });
+    }
+
+    private static void AssertNormalFlow(JsonElement state, bool includeNavigation, bool includeInspector)
+    {
+        var calendar = state.GetProperty("calendar").GetProperty("rectangle");
+        var main = state.GetProperty("main").GetProperty("rectangle");
 
         Assert.Multiple(() =>
         {
-            Assert.That(result.GetProperty("title").GetString(), Is.EqualTo("Temporary sample"));
-            Assert.That(result.GetProperty("mainCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(result.GetProperty("headingCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(result.GetProperty("heading").GetString(), Is.EqualTo("Temporary sample content"));
-            Assert.That(result.GetProperty("text").GetString(), Does.Contain("This is a temporary sample."));
-            Assert.That(result.GetProperty("origin").GetString(), Is.EqualTo(apiOrigin.GetLeftPart(UriPartial.Authority)));
-            Assert.That(result.GetProperty("width").GetInt32(), Is.EqualTo(1440));
-            Assert.That(result.GetProperty("height").GetInt32(), Is.EqualTo(900));
+            Assert.That(calendar.GetProperty("width").GetDouble(), Is.GreaterThan(0));
+            Assert.That(calendar.GetProperty("height").GetDouble(), Is.GreaterThan(0));
+            Assert.That(main.GetProperty("width").GetDouble(), Is.GreaterThan(0));
+            Assert.That(main.GetProperty("height").GetDouble(), Is.GreaterThan(0));
+            Assert.That(main.GetProperty("top").GetDouble(), Is.LessThan(900));
+            Assert.That(main.GetProperty("bottom").GetDouble(), Is.GreaterThan(0));
+            Assert.That(state.GetProperty("scrollWidth").GetInt32(), Is.LessThanOrEqualTo(1440));
         });
+
+        if (includeNavigation)
+        {
+            var navigation = state.GetProperty("navigation").GetProperty("rectangle");
+            Assert.That(navigation.GetProperty("right").GetDouble(), Is.LessThanOrEqualTo(calendar.GetProperty("left").GetDouble()));
+        }
+
+        if (includeInspector)
+        {
+            var inspector = state.GetProperty("inspector").GetProperty("rectangle");
+            Assert.That(calendar.GetProperty("right").GetDouble(), Is.LessThanOrEqualTo(inspector.GetProperty("left").GetDouble()));
+        }
     }
 
     private static async Task AssertSupportingEndpointsAsync(Uri apiOrigin)

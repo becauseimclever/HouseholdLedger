@@ -1,7 +1,47 @@
 @inherits Microsoft.AspNetCore.Components.LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Web
 
-<div class="shell">
-    <div class="shell-content">
-        @Body
+<div class="workspace-shell">
+    <header class="workspace-toolbar">
+        <p class="workspace-name">HouseholdLedger</p>
+        <div class="workspace-tools" aria-label="Workspace panes">
+            <button class="pane-toggle"
+                    type="button"
+                    aria-controls="workspace-navigation"
+                    aria-describedby="navigation-toggle-tooltip"
+                    aria-expanded="@(navigationExpanded ? "true" : "false")"
+                    aria-label="@NavigationToggleLabel"
+                    @onclick="ToggleNavigation">
+                <span aria-hidden="true">
+                    <Blazicons.Blazicon Svg="Blazicons.Lucide.PanelLeft" />
+                </span>
+                <span id="navigation-toggle-tooltip" class="pane-toggle-tooltip" role="tooltip">@NavigationToggleLabel</span>
+            </button>
+            <button class="pane-toggle"
+                    type="button"
+                    aria-controls="workspace-inspector"
+                    aria-describedby="inspector-toggle-tooltip"
+                    aria-expanded="@(inspectorExpanded ? "true" : "false")"
+                    aria-label="@InspectorToggleLabel"
+                    @onclick="ToggleInspector">
+                <span aria-hidden="true">
+                    <Blazicons.Blazicon Svg="Blazicons.Lucide.PanelRight" />
+                </span>
+                <span id="inspector-toggle-tooltip" class="pane-toggle-tooltip" role="tooltip">@InspectorToggleLabel</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="workspace-grid">
+        <nav id="workspace-navigation" class="workspace-pane navigation-pane" aria-labelledby="navigation-heading" hidden="@(!navigationExpanded)">
+            <h2 id="navigation-heading">Navigation</h2>
+        </nav>
+        <section id="calendar-workspace" class="calendar-workspace" aria-label="Calendar workspace">
+            @Body
+        </section>
+        <aside id="workspace-inspector" class="workspace-pane inspector-pane" aria-labelledby="inspector-heading" hidden="@(!inspectorExpanded)">
+            <h2 id="inspector-heading">Inspector</h2>
+            <p class="inspector-empty-state">No calendar item selected</p>
+        </aside>
     </div>
 </div>

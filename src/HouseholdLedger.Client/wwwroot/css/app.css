@@ -1,9 +1,19 @@
 :root {
     color-scheme: light;
     font-family: Aptos, "Trebuchet MS", sans-serif;
-    color: #242b27;
-    background: #f7f8f5;
+    color: #202623;
+    background: #eef1ed;
     font-synthesis: none;
+    --workspace-canvas: #eef1ed;
+    --workspace-toolbar: #f8faf7;
+    --workspace-main: #ffffff;
+    --workspace-pane: #f5f7f3;
+    --workspace-border: #ccd4cd;
+    --workspace-border-strong: #aebaae;
+    --workspace-strong-text: #17352e;
+    --workspace-muted-text: #526159;
+    --workspace-hover: #e6eee7;
+    --workspace-tooltip: #17352e;
 }
 
 * {
@@ -12,13 +22,41 @@
 
 html {
     min-width: 20rem;
-    background: #f7f8f5;
+    background: #eef1ed;
 }
 
 body {
     min-height: 100vh;
     margin: 0;
-    background: linear-gradient(180deg, #eef4ef 0, #f7f8f5 18rem);
+    background: #eef1ed;
+}
+
+.workspace-grid {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr) minmax(15rem, 20rem);
+    align-items: stretch;
+}
+
+.workspace-grid:has(.navigation-pane[hidden]) {
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem);
+}
+
+.workspace-grid:has(.inspector-pane[hidden]) {
+    grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr);
+}
+
+.workspace-grid:has(.navigation-pane[hidden]):has(.inspector-pane[hidden]) {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 48rem) {
+    .workspace-grid,
+    .workspace-grid:has(.navigation-pane[hidden]),
+    .workspace-grid:has(.inspector-pane[hidden]),
+    .workspace-grid:has(.navigation-pane[hidden]):has(.inspector-pane[hidden]) {
+        grid-template-columns: minmax(0, 1fr);
+    }
 }
 
 button,

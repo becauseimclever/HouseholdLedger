@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Blazicons.Lucide" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <ProjectReference Include="../HouseholdLedger.Api.Contracts/HouseholdLedger.Api.Contracts.csproj" />
   </ItemGroup>
