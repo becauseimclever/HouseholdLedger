@@ -75,6 +75,7 @@ public sealed class BrowserCalendarJourneyTests
             await SetDesktopViewportAsync(browser, timeout.Token);
             await browser.NavigateAsync(apiOrigin, timeout.Token);
             await WaitForWorkspaceShellAsync(browser, timeout.Token);
+            await AssertCalendarFeatureAsync(browser, timeout.Token);
             await AssertWorkspaceShellAsync(browser, apiOrigin, timeout.Token);
 
             var screenshot = await browser.TakeScreenshotAsync(timeout.Token);
@@ -170,6 +171,89 @@ public sealed class BrowserCalendarJourneyTests
         }
 
         throw new TimeoutException("Timed out waiting for the calendar workspace shell.");
+    }
+
+    private static async Task AssertCalendarFeatureAsync(W3cWebDriver browser, CancellationToken cancellationToken)
+    {
+        var today = await GetCalendarStateAsync(browser, cancellationToken);
+        Assert.Multiple(() =>
+        {
+            Assert.That(today.GetProperty("modeCount").GetInt32(), Is.EqualTo(3));
+            Assert.That(today.GetProperty("activeMode").GetString(), Is.EqualTo("Today"));
+            Assert.That(today.GetProperty("gridCount").GetInt32(), Is.Zero);
+            Assert.That(today.GetProperty("selectedCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(today.GetProperty("tabStopCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(today.GetProperty("selectedPressed").GetString(), Is.EqualTo("true"));
+            Assert.That(today.GetProperty("inspectorText").GetString(), Does.Contain("No calendar item selected"));
+        });
+
+        await ClickCalendarControlAsync(browser, "fieldset.calendar-mode-picker label:nth-of-type(2) input", cancellationToken);
+        var week = await GetCalendarStateAsync(browser, cancellationToken);
+        Assert.Multiple(() =>
+        {
+            Assert.That(week.GetProperty("activeMode").GetString(), Is.EqualTo("This Week"));
+            Assert.That(week.GetProperty("gridCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(week.GetProperty("weekdayCount").GetInt32(), Is.EqualTo(7));
+            Assert.That(week.GetProperty("dayCount").GetInt32(), Is.EqualTo(7));
+            Assert.That(week.GetProperty("selectedCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(week.GetProperty("tabStopCount").GetInt32(), Is.EqualTo(1));
+        });
+
+        await ClickCalendarControlAsync(browser, "fieldset.calendar-mode-picker label:nth-of-type(3) input", cancellationToken);
+        var month = await GetCalendarStateAsync(browser, cancellationToken);
+        Assert.Multiple(() =>
+        {
+            Assert.That(month.GetProperty("activeMode").GetString(), Is.EqualTo("This Month"));
+            Assert.That(month.GetProperty("gridCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(month.GetProperty("weekdayCount").GetInt32(), Is.EqualTo(7));
+            Assert.That(month.GetProperty("dayCount").GetInt32(), Is.GreaterThanOrEqualTo(28));
+            Assert.That(month.GetProperty("selectedCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(month.GetProperty("tabStopCount").GetInt32(), Is.EqualTo(1));
+        });
+
+        var directTarget = await browser.FindElementAsync(".calendar-grid .calendar-day[aria-pressed='false']", cancellationToken);
+        await browser.ClickAsync(directTarget, cancellationToken);
+        var activated = await GetCalendarStateAsync(browser, cancellationToken);
+        Assert.That(activated.GetProperty("focusedLabel").GetString(), Is.EqualTo(activated.GetProperty("selectedLabel").GetString()));
+
+        var activeDate = await browser.FindElementAsync(".calendar-grid .calendar-day[aria-pressed='true']", cancellationToken);
+        await browser.SendKeysAsync(activeDate, "\uE014", cancellationToken);
+        var arrowMoved = await GetCalendarStateAsync(browser, cancellationToken);
+        Assert.Multiple(() =>
+        {
+            Assert.That(arrowMoved.GetProperty("selectedLabel").GetString(), Is.Not.EqualTo(activated.GetProperty("selectedLabel").GetString()));
+            Assert.That(arrowMoved.GetProperty("focusedLabel").GetString(), Is.EqualTo(arrowMoved.GetProperty("selectedLabel").GetString()));
+            Assert.That(arrowMoved.GetProperty("selectedCount").GetInt32(), Is.EqualTo(1));
+            Assert.That(arrowMoved.GetProperty("tabStopCount").GetInt32(), Is.EqualTo(1));
+        });
+
+        var headingBeforeNext = arrowMoved.GetProperty("heading").GetString();
+        await ClickCalendarControlAsync(browser, "button[aria-label='Next period']", cancellationToken);
+        var nextPeriod = await GetCalendarStateAsync(browser, cancellationToken);
+        Assert.Multiple(() =>
+        {
+            Assert.That(nextPeriod.GetProperty("heading").GetString(), Is.Not.EqualTo(headingBeforeNext));
+            Assert.That(nextPeriod.GetProperty("periodStatus").GetString(), Does.StartWith("Showing"));
+            Assert.That(nextPeriod.GetProperty("calendarWidth").GetDouble(), Is.GreaterThan(0));
+            Assert.That(nextPeriod.GetProperty("calendarRight").GetDouble(), Is.LessThanOrEqualTo(nextPeriod.GetProperty("inspectorLeft").GetDouble()));
+            Assert.That(nextPeriod.GetProperty("scrollWidth").GetInt32(), Is.LessThanOrEqualTo(1440));
+            Assert.That(nextPeriod.GetProperty("inspectorText").GetString(), Does.Contain("No calendar item selected"));
+        });
+    }
+
+    private static async Task ClickCalendarControlAsync(W3cWebDriver browser, string selector, CancellationToken cancellationToken)
+    {
+        var element = await browser.FindElementAsync(selector, cancellationToken);
+        await browser.ClickAsync(element, cancellationToken);
+    }
+
+    private static async Task<JsonElement> GetCalendarStateAsync(W3cWebDriver browser, CancellationToken cancellationToken)
+    {
+        return await browser.ExecuteScriptAsync(
+            "const calendar = document.querySelector('#calendar-workspace'); const inspector = document.querySelector('#workspace-inspector'); const selected = calendar?.querySelector(\".calendar-day[aria-pressed='true']\"); const box = calendar?.getBoundingClientRect(); const inspectorBox = inspector?.getBoundingClientRect();"
+            + " return { modeCount: calendar?.querySelectorAll(\"input[name='calendar-mode']\").length ?? 0, activeMode: calendar?.querySelector(\"input[name='calendar-mode']:checked\")?.parentElement?.textContent?.trim() ?? '', gridCount: calendar?.querySelectorAll('table.calendar-grid').length ?? 0, weekdayCount: calendar?.querySelectorAll('table.calendar-grid th[scope=col]').length ?? 0, dayCount: calendar?.querySelectorAll('.calendar-grid .calendar-day').length ?? 0, selectedCount: calendar?.querySelectorAll(\".calendar-day[aria-pressed='true']\").length ?? 0, selectedLabel: selected?.getAttribute('aria-label') ?? '', selectedPressed: selected?.getAttribute('aria-pressed') ?? '', tabStopCount: calendar?.querySelectorAll(\".calendar-day[tabindex='0']\").length ?? 0, focusedLabel: document.activeElement?.getAttribute('aria-label') ?? '', heading: calendar?.querySelector('#calendar-period-heading')?.textContent?.trim() ?? '', periodStatus: calendar?.querySelector('.calendar-period-status')?.textContent?.trim() ?? '', inspectorText: inspector?.textContent?.trim() ?? '', calendarWidth: box?.width ?? 0, calendarRight: box?.right ?? 0, inspectorLeft: inspectorBox?.left ?? 0, scrollWidth: document.documentElement.scrollWidth };",
+            null,
+            cancellationToken);
     }
 
     private static async Task AssertWorkspaceShellAsync(W3cWebDriver browser, Uri apiOrigin, CancellationToken cancellationToken)

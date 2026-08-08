@@ -83,6 +83,25 @@ Windows environment, but its engine cannot run until an administrator upgrades
 WSL to required version 2.7.11. After that upgrade, make sure the Podman machine
 is running before invoking the owned harness:
 
+### Local Development/Test Database Setup
+
+For the provided local test database, set this value as an environment variable
+outside source control:
+
+```powershell
+$env:DB_CONNECTION_STRING_2 = 'Host=PiDB;Port=5432;Database=BudgetV2;Username=BudgetApp;Password=BudgetApp;SSL Mode=Disable'
+```
+
+This is a local test-only credential. Do not commit it to `appsettings` files,
+`.env` files, source-controlled files, or browser-delivered configuration. Use
+a non-shared secret in every non-local environment.
+
+`DB_CONNECTION_STRING_2` is not the connection variable consumed by the
+repository's owned PostgreSQL harness. Continue to use the harness below for
+the supported isolated PostgreSQL integration test; it creates and removes its
+own database and supplies `HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING` to
+the test process.
+
 ```powershell
 podman version
 pwsh tests/HouseholdLedger.Infrastructure.IntegrationTests/Run-PostgreSqlTests.ps1

@@ -1,0 +1,77 @@
+@page "/open-source-notices"
+
+<Microsoft.AspNetCore.Components.Web.PageTitle>Open-source notices</Microsoft.AspNetCore.Components.Web.PageTitle>
+
+<main class="open-source-notices-page">
+    <header class="open-source-notices-header">
+        <h1>Open-source notices</h1>
+        <p class="open-source-notices-scope">@ScopeStatement</p>
+    </header>
+
+    <section class="open-source-notices-included" aria-labelledby="included-notices-heading">
+        <h2 id="included-notices-heading">Included third-party notices</h2>
+
+        <ol class="open-source-notices-list">
+            @foreach (var notice in Notices)
+            {
+                var packageHeadingId = $"package-{notice.PackageName.ToLowerInvariant().Replace('.', '-')}-heading";
+
+                <li class="open-source-notice-entry">
+                    <section aria-labelledby="@packageHeadingId">
+                        <header class="open-source-notice-entry-header">
+                            <div>
+                                <h3 id="@packageHeadingId">@notice.PackageName</h3>
+                                <p class="open-source-notice-version">Version @notice.Version</p>
+                            </div>
+                            <a href="@notice.ProjectUrl.AbsoluteUri" target="_blank" rel="noopener noreferrer">Project page</a>
+                        </header>
+
+                        <dl class="open-source-notice-details">
+                            <div>
+                                <dt>Publication form</dt>
+                                <dd>@PublicationFormLabel(notice.PublicationForm)</dd>
+                            </div>
+                            <div>
+                                <dt>Published output evidence</dt>
+                                <dd>@notice.PublishEvidence</dd>
+                            </div>
+                            <div>
+                                <dt>Attribution basis</dt>
+                                <dd>@notice.AttributionBasis</dd>
+                            </div>
+                        </dl>
+
+                        <section class="open-source-notice-licenses" aria-labelledby="@($"{packageHeadingId}-licenses")">
+                            <h4 id="@($"{packageHeadingId}-licenses")">Required license notices</h4>
+                            <ol class="open-source-license-list">
+                                @foreach (var licenseNotice in notice.RequiredNotices)
+                                {
+                                    <li class="open-source-license-notice">
+                                        <h5>@licenseNotice.ComponentName</h5>
+                                        <p><strong>License:</strong> @licenseNotice.LicenseName</p>
+                                        <p>@licenseNotice.CopyrightNotice</p>
+                                        <pre>@licenseNotice.LicenseText</pre>
+                                        <a href="@licenseNotice.SourceUrl.AbsoluteUri" target="_blank" rel="noopener noreferrer">License or source notice</a>
+                                    </li>
+                                }
+                            </ol>
+                        </section>
+                    </section>
+                </li>
+            }
+        </ol>
+    </section>
+
+    <section class="open-source-notices-exclusions" aria-labelledby="excluded-output-heading">
+        <h2 id="excluded-output-heading">Excluded from these third-party notices</h2>
+        <ul class="open-source-notices-exclusion-list">
+            @foreach (var exclusion in Exclusions)
+            {
+                <li>
+                    <h3>@exclusion.Name</h3>
+                    <p><strong>@ExclusionKindLabel(exclusion.Kind):</strong> @exclusion.Reason</p>
+                </li>
+            }
+        </ul>
+    </section>
+</main>

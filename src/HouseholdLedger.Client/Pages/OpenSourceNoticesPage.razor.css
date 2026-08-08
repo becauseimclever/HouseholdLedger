@@ -1,0 +1,148 @@
+.open-source-notices-page {
+    max-width: 70rem;
+    color: var(--workspace-strong-text);
+}
+
+.open-source-notices-page h1,
+.open-source-notices-page h2,
+.open-source-notices-page h3,
+.open-source-notices-page h4,
+.open-source-notices-page h5 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 500;
+}
+
+.open-source-notices-page h1 {
+    margin: 0;
+    font-size: 2rem;
+}
+
+.open-source-notices-page h2 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.open-source-notices-page h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.open-source-notices-page h4 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.open-source-notices-page h5 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.open-source-notices-header {
+    padding-bottom: 1.5rem;
+    border-bottom: 0.0625rem solid var(--workspace-border-strong);
+}
+
+.open-source-notices-scope {
+    max-width: 52rem;
+    margin: 0.75rem 0 0;
+    color: var(--workspace-muted-text);
+    line-height: 1.5;
+}
+
+.open-source-notices-included,
+.open-source-notices-exclusions {
+    margin-top: 2rem;
+}
+
+.open-source-notices-list,
+.open-source-notices-exclusion-list,
+.open-source-license-list {
+    margin: 1rem 0 0;
+    padding-left: 1.5rem;
+}
+
+.open-source-notice-entry,
+.open-source-notices-exclusion-list li {
+    padding-block: 1.5rem;
+    border-top: 0.0625rem solid var(--workspace-border);
+}
+
+.open-source-notice-entry:first-child,
+.open-source-notices-exclusion-list li:first-child {
+    border-top: 0;
+}
+
+.open-source-notice-entry-header {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.open-source-notice-entry-header a,
+.open-source-license-notice a {
+    color: var(--workspace-strong-text);
+    font-weight: 700;
+}
+
+.open-source-notice-entry-header a:focus-visible,
+.open-source-license-notice a:focus-visible {
+    outline: 0.1875rem solid #b83b2d;
+    outline-offset: 0.1875rem;
+}
+
+.open-source-notice-version {
+    margin: 0.25rem 0 0;
+    color: var(--workspace-muted-text);
+    font-size: 0.875rem;
+}
+
+.open-source-notice-details {
+    display: grid;
+    margin: 1rem 0 0;
+    gap: 0.75rem;
+}
+
+.open-source-notice-details div {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.open-source-notice-details dt {
+    font-size: 0.875rem;
+    font-weight: 800;
+}
+
+.open-source-notice-details dd {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.open-source-notice-licenses {
+    margin-top: 1.25rem;
+}
+
+.open-source-license-notice {
+    margin-top: 1rem;
+}
+
+.open-source-license-notice p {
+    margin: 0.5rem 0 0;
+    line-height: 1.5;
+}
+
+.open-source-license-notice pre {
+    margin: 0.75rem 0;
+    padding: 1rem;
+    overflow-wrap: anywhere;
+    border: 0.0625rem solid var(--workspace-border);
+    background: var(--workspace-main);
+    color: inherit;
+    font: 0.875rem/1.5 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    white-space: pre-wrap;
+}
+
+.open-source-notices-exclusion-list li p {
+    margin: 0.5rem 0 0;
+    line-height: 1.5;
+}

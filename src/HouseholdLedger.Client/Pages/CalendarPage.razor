@@ -1,7 +1,137 @@
 @page "/"
+@using Microsoft.AspNetCore.Components.Web
 
 <Microsoft.AspNetCore.Components.Web.PageTitle>Calendar</Microsoft.AspNetCore.Components.Web.PageTitle>
 
 <main class="calendar-page">
     <h1>Calendar</h1>
+    <section class="calendar-surface" aria-labelledby="calendar-period-heading">
+        <header class="calendar-surface-header">
+            <div>
+                <p class="calendar-kicker">Calendar view</p>
+                <h2 id="calendar-period-heading">@PeriodHeading</h2>
+            </div>
+            <fieldset class="calendar-mode-picker" aria-label="Calendar presentation">
+                <legend>Presentation</legend>
+                <label>
+                    <input type="radio"
+                           name="calendar-mode"
+                           checked="@(CurrentMode == CalendarMode.Today)"
+                           @onchange="() => SetMode(CalendarMode.Today)"
+                           @ref="todayModeControl" />
+                    <span>Today</span>
+                </label>
+                <label>
+                    <input type="radio"
+                           name="calendar-mode"
+                           checked="@(CurrentMode == CalendarMode.Week)"
+                           @onchange="() => SetMode(CalendarMode.Week)"
+                           @ref="weekModeControl" />
+                    <span>This Week</span>
+                </label>
+                <label>
+                    <input type="radio"
+                           name="calendar-mode"
+                           checked="@(CurrentMode == CalendarMode.Month)"
+                           @onchange="() => SetMode(CalendarMode.Month)"
+                           @ref="monthModeControl" />
+                    <span>This Month</span>
+                </label>
+            </fieldset>
+        </header>
+
+        <p class="calendar-period-status" aria-live="polite">@PeriodStatus</p>
+
+        @if (CurrentMode == CalendarMode.Today)
+        {
+            <section class="calendar-today" aria-label="Selected date">
+                <button class="calendar-day calendar-day-today"
+                        type="button"
+                        aria-label="@AccessibleDateName(ActiveDate)"
+                        aria-pressed="true"
+                        aria-current="@CurrentDateState(ActiveDate)"
+                        tabindex="0"
+                        @onclick="() => SelectDate(ActiveDate, true)">
+                    <span class="calendar-day-weekday">@ActiveDate.ToString("dddd", CurrentCulture)</span>
+                    <span class="calendar-day-number">@ActiveDate.Day</span>
+                    <span class="calendar-day-month">@ActiveDate.ToString("MMMM yyyy", CurrentCulture)</span>
+                </button>
+            </section>
+        }
+        else if (CurrentMode == CalendarMode.Week)
+        {
+            <table class="calendar-grid" aria-label="Week containing @AccessibleDateName(ActiveDate)">
+                <thead>
+                    <tr>
+                        @foreach (var weekday in WeekdayHeaders)
+                        {
+                            <th scope="col">@weekday</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        @foreach (var date in WeekDates)
+                        {
+                            <td>
+                                @if (date == ActiveDate)
+                                {
+                                    <button @ref="activeDateControl" class="calendar-day" type="button" aria-label="@AccessibleDateName(date)" aria-pressed="true" aria-current="@CurrentDateState(date)" tabindex="0" @onclick="() => SelectDate(date, true)" @onkeydown="args => HandleGridKeyDown(date, args)" @onkeydown:preventDefault="true">@date.Day</button>
+                                }
+                                else
+                                {
+                                    <button class="calendar-day" type="button" aria-label="@AccessibleDateName(date)" aria-pressed="false" aria-current="@CurrentDateState(date)" tabindex="-1" @onclick="() => SelectDate(date, true)" @onkeydown="args => HandleGridKeyDown(date, args)" @onkeydown:preventDefault="true">@date.Day</button>
+                                }
+                            </td>
+                        }
+                    </tr>
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <table class="calendar-grid" aria-label="@MonthTableLabel">
+                <thead>
+                    <tr>
+                        @foreach (var weekday in WeekdayHeaders)
+                        {
+                            <th scope="col">@weekday</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var week in MonthWeeks)
+                    {
+                        <tr>
+                            @foreach (var date in week)
+                            {
+                                @if (date is { } day)
+                                {
+                                    <td>
+                                        @if (day == ActiveDate)
+                                        {
+                                            <button @ref="activeDateControl" class="calendar-day" type="button" aria-label="@AccessibleDateName(day)" aria-pressed="true" aria-current="@CurrentDateState(day)" tabindex="0" @onclick="() => SelectDate(day, true)" @onkeydown="args => HandleGridKeyDown(day, args)" @onkeydown:preventDefault="true">@day.Day</button>
+                                        }
+                                        else
+                                        {
+                                            <button class="calendar-day" type="button" aria-label="@AccessibleDateName(day)" aria-pressed="false" aria-current="@CurrentDateState(day)" tabindex="-1" @onclick="() => SelectDate(day, true)" @onkeydown="args => HandleGridKeyDown(day, args)" @onkeydown:preventDefault="true">@day.Day</button>
+                                        }
+                                    </td>
+                                }
+                                else
+                                {
+                                    <td class="calendar-empty-cell" aria-hidden="true"></td>
+                                }
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <div class="calendar-navigation" aria-label="Calendar period navigation">
+            <button @ref="previousPeriodControl" type="button" aria-label="Previous period" title="Previous period" @onclick="() => MoveActiveDate(-1)">Previous</button>
+            <button type="button" aria-label="Next period" title="Next period" @onclick="() => MoveActiveDate(1)">Next</button>
+        </div>
+    </section>
 </main>

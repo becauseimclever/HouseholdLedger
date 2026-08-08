@@ -1,7 +1,7 @@
 .workspace-shell {
     display: grid;
     min-height: 100vh;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
     background: var(--workspace-canvas);
 }
 
@@ -104,6 +104,35 @@
     min-width: 0;
     padding: 1.5rem;
     background: var(--workspace-main);
+}
+
+.workspace-auxiliary {
+    display: flex;
+    min-height: 3.5rem;
+    align-items: center;
+    padding-inline: 0.75rem;
+    border-top: 0.0625rem solid var(--workspace-border-strong);
+    background: var(--workspace-toolbar);
+}
+
+.workspace-auxiliary-link {
+    color: var(--workspace-strong-text);
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.workspace-auxiliary-link:hover {
+    color: var(--workspace-strong-text);
+}
+
+.workspace-auxiliary-link[aria-current="page"] {
+    text-decoration-thickness: 0.1875rem;
+    text-underline-offset: 0.25rem;
+}
+
+.workspace-auxiliary-link:focus-visible {
+    outline: 0.1875rem solid #b83b2d;
+    outline-offset: 0.1875rem;
 }
 
 .inspector-empty-state {

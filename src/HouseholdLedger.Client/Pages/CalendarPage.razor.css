@@ -1,6 +1,8 @@
 .calendar-page {
     min-width: 0;
     min-height: 100%;
+    --calendar-accent: #0b6358;
+    --calendar-focus: #b83b2d;
 }
 
 .calendar-page h1 {
@@ -9,4 +11,193 @@
     color: var(--workspace-strong-text);
     font-size: 2rem;
     font-weight: 500;
+}
+
+.calendar-surface {
+    display: grid;
+    max-width: 70rem;
+    margin-top: 1.5rem;
+    border: 0.0625rem solid var(--workspace-border-strong);
+    border-radius: 0.5rem;
+    background: var(--workspace-pane);
+}
+
+.calendar-surface-header {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    padding: 1.25rem 1.25rem 1rem;
+    border-bottom: 0.0625rem solid var(--workspace-border);
+    gap: 1.5rem;
+}
+
+.calendar-kicker {
+    margin: 0 0 0.25rem;
+    color: var(--workspace-muted-text);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.calendar-surface h2 {
+    margin: 0;
+    color: var(--workspace-strong-text);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.375rem;
+    font-weight: 500;
+}
+
+.calendar-mode-picker {
+    display: flex;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    gap: 0.75rem;
+}
+
+.calendar-mode-picker legend {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.calendar-mode-picker label {
+    display: inline-flex;
+    align-items: center;
+    color: var(--workspace-strong-text);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 700;
+    gap: 0.35rem;
+}
+
+.calendar-mode-picker input {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    accent-color: var(--calendar-accent);
+}
+
+.calendar-period-status {
+    min-height: 1.5rem;
+    margin: 0;
+    padding: 0.625rem 1.25rem;
+    border-bottom: 0.0625rem solid var(--workspace-border);
+    color: var(--workspace-muted-text);
+    font-size: 0.875rem;
+}
+
+.calendar-grid {
+    width: calc(100% - 2.5rem);
+    margin: 1.25rem;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.calendar-grid th {
+    padding: 0 0.25rem 0.5rem;
+    color: var(--workspace-muted-text);
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-align: center;
+}
+
+.calendar-grid td {
+    height: 4.5rem;
+    padding: 0.1875rem;
+    border: 0.0625rem solid var(--workspace-border);
+    text-align: center;
+}
+
+.calendar-empty-cell {
+    background: var(--workspace-main);
+}
+
+.calendar-day {
+    width: 100%;
+    height: 100%;
+    min-height: 2.75rem;
+    padding: 0.25rem;
+    border: 0.125rem solid transparent;
+    border-radius: 0.25rem;
+    background: transparent;
+    color: var(--workspace-strong-text);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+}
+
+.calendar-day:hover {
+    background: var(--workspace-hover);
+}
+
+.calendar-day[aria-pressed="true"] {
+    border-color: var(--calendar-accent);
+    background: var(--workspace-hover);
+    box-shadow: inset 0 -0.25rem 0 var(--calendar-accent);
+}
+
+.calendar-day:focus-visible,
+.calendar-mode-picker input:focus-visible,
+.calendar-navigation button:focus-visible {
+    outline: 0.1875rem solid var(--calendar-focus);
+    outline-offset: 0.125rem;
+}
+
+.calendar-today {
+    display: grid;
+    min-height: 20rem;
+    padding: 1.25rem;
+    place-items: center;
+}
+
+.calendar-day-today {
+    display: grid;
+    width: min(100%, 20rem);
+    height: auto;
+    min-height: 14rem;
+    place-items: center;
+    align-content: center;
+    gap: 0.5rem;
+}
+
+.calendar-day-weekday,
+.calendar-day-month {
+    color: var(--workspace-muted-text);
+    font-size: 0.875rem;
+}
+
+.calendar-day-number {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 4rem;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.calendar-navigation {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 1.25rem 1.25rem;
+    gap: 0.5rem;
+}
+
+.calendar-navigation button {
+    min-height: 2.75rem;
+    padding: 0.5rem 0.875rem;
+    border: 0.0625rem solid var(--workspace-border-strong);
+    border-radius: 0.25rem;
+    background: var(--workspace-main);
+    color: var(--workspace-strong-text);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+}
+
+.calendar-navigation button:hover {
+    background: var(--workspace-hover);
 }

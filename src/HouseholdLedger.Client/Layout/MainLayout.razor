@@ -1,4 +1,5 @@
 @inherits Microsoft.AspNetCore.Components.LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
 
 <div class="workspace-shell">
@@ -44,4 +45,8 @@
             <p class="inspector-empty-state">No calendar item selected</p>
         </aside>
     </div>
+
+    <footer class="workspace-auxiliary">
+        <NavLink href="/open-source-notices" Match="NavLinkMatch.All" class="workspace-auxiliary-link">Open-source notices</NavLink>
+    </footer>
 </div>

@@ -7,7 +7,10 @@ assuming a user's income, family structure, goals, or financial experience.
 
 ## Before Changing Code
 
-1. Read the approved feature document and its current implementation status.
+1. For a meaningful new product outcome or material product-behavior change,
+   read the approved feature document and its current implementation status.
+   A small, localized UI change, bug fix, maintenance repair, or validation-only
+   task may proceed from clear, observable acceptance criteria in the request.
 2. Confirm the owning layer in the [Architecture Overview](../architecture/overview.md).
 3. Complete dependency review before adding any package, tool, image, runtime,
    or downloaded asset.
@@ -19,6 +22,30 @@ assuming a user's income, family structure, goals, or financial experience.
 Do not introduce ledger behavior that is not in an approved feature. Preserve
 validated product lessons from the reference repository, not its implementation
 or accumulated architecture.
+
+## Approval and Completion
+
+User approval of a feature scope authorizes every documented implementation
+wave through completion. Do not request a separate wave or phase approval
+unless the work materially expands product behavior, scope, dependencies, risk,
+or file ownership.
+
+Proceed autonomously with routine local repairs, test fixes, lock-file
+consistency updates, and validation reruns that do not materially expand product
+behavior, scope, dependencies, risk, or file ownership. Request one concise
+user decision or clarification only when it is needed for a material scope or
+product-behavior change, destructive or risky operation, new dependency, data
+migration, security or privacy decision, external service, or a conflict with
+the Kakeibo and calendar-centered product direction.
+
+Require a final documentation audit for new or updated dependencies,
+persistence or migrations, security, privacy, authentication, external
+integrations, deployment or operations changes, or when the user explicitly
+requests one. For ordinary UI or Client features, focused implementation and
+test evidence plus a concise final summary are sufficient completion evidence.
+The dependency review and approval requirements in
+[Dependency Governance](dependency-governance.md) remain mandatory for every
+dependency change.
 
 ## Code and Boundary Rules
 
