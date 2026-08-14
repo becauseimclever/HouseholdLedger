@@ -5,6 +5,7 @@
 namespace HouseholdLedger.Client;
 
 using HouseholdLedger.Client.Api;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,11 +23,15 @@ public static class Program
     public static async Task Main(string[] args)
     {
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
-        var apiBaseAddress = ApiConfiguration.GetBaseAddress(builder.Configuration);
 
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
-        builder.Services.AddScoped(_ => new HttpClient { BaseAddress = apiBaseAddress });
+        builder.Services.AddScoped(serviceProvider => new HttpClient
+        {
+            BaseAddress = ApiConfiguration.GetBaseAddress(
+                builder.Configuration,
+                new Uri(serviceProvider.GetRequiredService<NavigationManager>().BaseUri, UriKind.Absolute)),
+        });
         builder.Services.AddScoped<IHealthApiClient, HealthApiClient>();
         builder.Services.AddSingleton(TimeProvider.System);
 

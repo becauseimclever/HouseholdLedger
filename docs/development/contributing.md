@@ -38,12 +38,12 @@ product-behavior change, destructive or risky operation, new dependency, data
 migration, security or privacy decision, external service, or a conflict with
 the Kakeibo and calendar-centered product direction.
 
-Require a final documentation audit for new or updated dependencies,
-persistence or migrations, security, privacy, authentication, external
-integrations, deployment or operations changes, or when the user explicitly
-requests one. For ordinary UI or Client features, focused implementation and
-test evidence plus a concise final summary are sufficient completion evidence.
-The dependency review and approval requirements in
+Do not require a final documentation audit by default. A feature is complete
+when its applicable acceptance criteria are implemented and supported by
+proportionate validation evidence. Create a separate audit only when the user
+requests one, a release or compliance gate requires an independently retained
+review, or unresolved evidence needs a formal decision record. The dependency
+review and approval requirements in
 [Dependency Governance](dependency-governance.md) remain mandatory for every
 dependency change.
 
