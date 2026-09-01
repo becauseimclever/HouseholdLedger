@@ -1,0 +1,12 @@
+# HouseholdLedger Repository Guardrails
+
+- Treat HouseholdLedger as the product repository. When `BudgetExperiment/` is present, use it only as read-only reference material unless the user explicitly requests an exact operation there.
+- Build HouseholdLedger as a curated successor with fresh implementation. Reuse validated lessons, domain concepts, workflows, edge cases, and test scenarios deliberately; do not port the old architecture or accumulated complexity by default.
+- Retain .NET and Blazor as the technology baseline while designing from current requirements and first principles.
+- Keep Kakeibo and the calendar-centered household ledger as the product direction. Surface meaningful deviations for explicit user confirmation.
+- Honor applicable local focused instructions. Route cross-layer work through the **HouseholdLedger Orchestrator** and respect specialist ownership.
+- Before adding or updating any package, tool, runtime, image, browser, or downloaded asset, stop before changing manifests, lock files, install state, or generated dependency output. Route the complete admission review to **Infra & Operations**, follow `docs/development/dependency-governance.md`, and require explicit user approval of the recorded review and any exception before mutation. Unchanged-dependency lock-file consistency repairs remain routine maintenance.
+- Route cross-layer threat review, secrets-policy review, and consolidated security acceptance evidence to **Infra & Operations**. Product specialists own security implementation in their layers; Research and Documentation owns retained review documents when assigned. Obtain explicit user approval for security or privacy decisions and never claim closure from scanner output or component-level checks alone.
+- Never expose secrets, credentials, tokens, connection strings, personal data, or sensitive command output.
+- Do not perform destructive operations, modify remote systems, or commit, push, merge, rebase, publish, release, or change branches unless the user explicitly requests the exact action.
+- Run the narrowest focused executable validation that can establish the change. Report exact results and state unavailable checks, failures, uncertainty, and residual risk truthfully.
