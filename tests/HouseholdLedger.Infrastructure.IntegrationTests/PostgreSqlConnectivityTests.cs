@@ -21,7 +21,7 @@ public sealed class PostgreSqlConnectivityTests
         "HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING";
 
     /// <summary>
-    /// Verifies that migrations provision PostgreSQL and a transaction persists and rereads.
+    /// Verifies that migrations provision PostgreSQL and transaction mutations persist.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
     [Fact]
@@ -51,23 +51,32 @@ public sealed class PostgreSqlConnectivityTests
             ExpenseClassification.Culture);
 
         await repository.AddAsync(transaction, cancellationToken);
-        var returned = await repository.ListByDateAsync(ledgerDate, cancellationToken);
 
         try
         {
-            var persisted = Assert.Single(returned, item => item.Id == transaction.Id);
+            var persisted = await repository.FindAsync(ledgerDate, transaction.Id, cancellationToken);
+            Assert.NotNull(persisted);
+            persisted.Revise(45.67m, ExpenseClassification.Unexpected);
+            await repository.UpdateAsync(persisted, cancellationToken);
+            var revised = Assert.Single(
+                await repository.ListByDateAsync(ledgerDate, cancellationToken),
+                item => item.Id == transaction.Id);
+            await repository.RemoveAsync(persisted, cancellationToken);
+            var afterRemoval = await repository.ListByDateAsync(ledgerDate, cancellationToken);
 
             Assert.Multiple(
                 () => Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", context.Database.ProviderName),
-                () => Assert.Equal(12.34m, persisted.Amount),
-                () => Assert.Equal(ExpenseClassification.Culture, persisted.Classification),
-                () => Assert.True(persisted.Sequence > 0),
+                () => Assert.Equal(45.67m, revised.Amount),
+                () => Assert.Equal(ExpenseClassification.Unexpected, revised.Classification),
+                () => Assert.True(revised.Sequence > 0),
+                () => Assert.DoesNotContain(afterRemoval, item => item.Id == transaction.Id),
                 () => Assert.Contains(context.Database.GetAppliedMigrations(), migration => migration.EndsWith("AddExpenseTransactions", StringComparison.Ordinal)));
         }
         finally
         {
-            context.ExpenseTransactions.Remove(transaction);
-            await context.SaveChangesAsync(cancellationToken);
+            await context.ExpenseTransactions
+                .Where(item => item.Id == transaction.Id)
+                .ExecuteDeleteAsync(cancellationToken);
         }
     }
 

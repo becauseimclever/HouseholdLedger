@@ -23,4 +23,26 @@ public interface ITransactionsApiClient
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns><see langword="true"/> when the transaction was accepted; otherwise, <see langword="false"/>.</returns>
     Task<bool> CreateAsync(DateOnly ledgerDate, CreateExpenseTransactionRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Corrects one transaction under its ledger date.</summary>
+    /// <param name="ledgerDate">The selected ledger date.</param>
+    /// <param name="transactionId">The transaction identifier.</param>
+    /// <param name="request">The replacement transaction values.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The mutation outcome.</returns>
+    Task<TransactionMutationResult> ReviseAsync(
+        DateOnly ledgerDate,
+        Guid transactionId,
+        UpdateExpenseTransactionRequest request,
+        CancellationToken cancellationToken);
+
+    /// <summary>Removes one transaction under its ledger date.</summary>
+    /// <param name="ledgerDate">The selected ledger date.</param>
+    /// <param name="transactionId">The transaction identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The mutation outcome.</returns>
+    Task<TransactionMutationResult> RemoveAsync(
+        DateOnly ledgerDate,
+        Guid transactionId,
+        CancellationToken cancellationToken);
 }

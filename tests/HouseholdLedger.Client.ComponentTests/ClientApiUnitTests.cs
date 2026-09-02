@@ -8,6 +8,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 
+using HouseholdLedger.Api.Contracts;
 using HouseholdLedger.Client.Api;
 using Microsoft.Extensions.Configuration;
 using Xunit;
@@ -138,6 +139,68 @@ public sealed class ClientApiUnitTests
         var result = await client.IsAvailableAsync(TestContext.Current.CancellationToken);
 
         Assert.False(result);
+    }
+
+    /// <summary>Verifies transaction correction uses the date-scoped resource and maps expected outcomes.</summary>
+    /// <param name="statusCode">The HTTP response status.</param>
+    /// <param name="expected">The expected mutation result.</param>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Theory]
+    [InlineData(HttpStatusCode.OK, TransactionMutationResult.Success)]
+    [InlineData(HttpStatusCode.BadRequest, TransactionMutationResult.Invalid)]
+    [InlineData(HttpStatusCode.NotFound, TransactionMutationResult.NotFound)]
+    public async Task TransactionsApiClientRevisesDateScopedResource(
+        HttpStatusCode statusCode,
+        TransactionMutationResult expected)
+    {
+        HttpRequestMessage? capturedRequest = null;
+        using var httpClient = CreateHttpClient(new DelegateHandler((request, _) =>
+        {
+            capturedRequest = request;
+            return Task.FromResult(JsonResponse(statusCode, "{}"));
+        }));
+        var client = new TransactionsApiClient(httpClient);
+        var transactionId = Guid.Parse("efc8d3df-a67e-45f3-8b5a-a0303b61f0ed");
+
+        var result = await client.ReviseAsync(
+            new DateOnly(2026, 9, 1),
+            transactionId,
+            new UpdateExpenseTransactionRequest(12.34m, "Culture"),
+            TestContext.Current.CancellationToken);
+
+        Assert.Multiple(
+            () => Assert.Equal(expected, result),
+            () => Assert.Equal(HttpMethod.Put, capturedRequest?.Method),
+            () => Assert.Equal(
+                new Uri($"https://api.example.test/root/api/v1/days/2026-09-01/transactions/{transactionId}"),
+                capturedRequest?.RequestUri));
+    }
+
+    /// <summary>Verifies transaction removal uses the date-scoped resource.</summary>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async Task TransactionsApiClientRemovesDateScopedResource()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        using var httpClient = CreateHttpClient(new DelegateHandler((request, _) =>
+        {
+            capturedRequest = request;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
+        }));
+        var client = new TransactionsApiClient(httpClient);
+        var transactionId = Guid.Parse("efc8d3df-a67e-45f3-8b5a-a0303b61f0ed");
+
+        var result = await client.RemoveAsync(
+            new DateOnly(2026, 9, 1),
+            transactionId,
+            TestContext.Current.CancellationToken);
+
+        Assert.Multiple(
+            () => Assert.Equal(TransactionMutationResult.Success, result),
+            () => Assert.Equal(HttpMethod.Delete, capturedRequest?.Method),
+            () => Assert.Equal(
+                new Uri($"https://api.example.test/root/api/v1/days/2026-09-01/transactions/{transactionId}"),
+                capturedRequest?.RequestUri));
     }
 
     private static HttpClient CreateHttpClient(HttpMessageHandler handler)

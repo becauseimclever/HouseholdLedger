@@ -26,6 +26,9 @@ public sealed class BrowserCalendarJourneyTests
     private const string ProfileRootEnvironmentVariable = "HOUSEHOLDLEDGER_E2E_PROFILE_ROOT";
     private const string OutputDirectoryEnvironmentVariable = "HOUSEHOLDLEDGER_E2E_OUTPUT_DIR";
     private const string ApiPortEnvironmentVariable = "HOUSEHOLDLEDGER_E2E_API_PORT";
+    private const string PostgreSqlConnectionEnvironmentVariable =
+        "HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING";
+
     private const string FirefoxSha256 = "79f01d224fe7f31795f2d4edcb31f497c96e11e9d0770704ed8495861f70d1c1";
     private const string GeckodriverSha256 = "e95b4eac7960ffcd5acbfd92bb7d49d48f99c1d01a20ddd297fef8c80821020d";
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(30);
@@ -55,7 +58,7 @@ public sealed class BrowserCalendarJourneyTests
 
         try
         {
-            apiProcess = StartApi(inputs.ApiAssemblyPath, apiOrigin);
+            apiProcess = StartApi(inputs.ApiAssemblyPath, apiOrigin, inputs.PostgreSqlConnectionString);
             await WaitForOkAsync(apiOrigin, "/api/v1/health", apiProcess);
             await AssertSupportingEndpointsAsync(apiOrigin);
 
@@ -76,6 +79,7 @@ public sealed class BrowserCalendarJourneyTests
             await browser.NavigateAsync(apiOrigin, timeout.Token);
             await WaitForWorkspaceShellAsync(browser, timeout.Token);
             await AssertCalendarFeatureAsync(browser, timeout.Token);
+            await AssertTransactionFeatureAsync(browser, timeout.Token);
             await AssertWorkspaceShellAsync(browser, apiOrigin, timeout.Token);
 
             var screenshot = await browser.TakeScreenshotAsync(timeout.Token);
@@ -226,13 +230,105 @@ public sealed class BrowserCalendarJourneyTests
             () => Assert.True(nextPeriod.GetProperty("calendarWidth").GetDouble() > 0),
             () => Assert.True(nextPeriod.GetProperty("calendarRight").GetDouble() <= nextPeriod.GetProperty("inspectorLeft").GetDouble()),
             () => Assert.True(nextPeriod.GetProperty("scrollWidth").GetInt32() <= 1440),
-            () => Assert.Contains("No calendar item selected", nextPeriod.GetProperty("inspectorText").GetString(), StringComparison.Ordinal));
+            () => Assert.Contains("Expenses in USD", nextPeriod.GetProperty("inspectorText").GetString(), StringComparison.Ordinal));
     }
 
     private static async Task ClickCalendarControlAsync(W3cWebDriver browser, string selector, CancellationToken cancellationToken)
     {
         var element = await browser.FindElementAsync(selector, cancellationToken);
         await browser.ClickAsync(element, cancellationToken);
+    }
+
+    private static async Task AssertTransactionFeatureAsync(
+        W3cWebDriver browser,
+        CancellationToken cancellationToken)
+    {
+        await ClickCalendarControlAsync(
+            browser,
+            ".calendar-grid .calendar-day[aria-pressed='false']",
+            cancellationToken);
+        await WaitForInspectorTextAsync(browser, "No transactions recorded", cancellationToken);
+        await SetFormValueAsync(browser, "#transaction-amount", "12.34", "input", cancellationToken);
+        await SetFormValueAsync(
+            browser,
+            "#transaction-classification",
+            "Necessities",
+            "change",
+            cancellationToken);
+        await ClickButtonByTextAsync(browser, "Save expense", cancellationToken);
+        await WaitForInspectorTextAsync(browser, "Necessities", cancellationToken);
+        await WaitForInspectorTextAsync(browser, "$12.34", cancellationToken);
+
+        await ClickButtonByTextAsync(browser, "Edit", cancellationToken);
+        await SetFormValueAsync(
+            browser,
+            ".transaction-edit-form input",
+            "19.75",
+            "input",
+            cancellationToken);
+        await SetFormValueAsync(
+            browser,
+            ".transaction-edit-form select",
+            "Culture",
+            "change",
+            cancellationToken);
+        await ClickButtonByTextAsync(browser, "Save changes", cancellationToken);
+        await WaitForInspectorTextAsync(browser, "Expense updated", cancellationToken);
+        await WaitForInspectorTextAsync(browser, "$19.75", cancellationToken);
+
+        await ClickButtonByTextAsync(browser, "Remove", cancellationToken);
+        await ClickButtonByTextAsync(browser, "Cancel", cancellationToken);
+        await WaitForInspectorTextAsync(browser, "$19.75", cancellationToken);
+        await ClickButtonByTextAsync(browser, "Remove", cancellationToken);
+        await ClickButtonByTextAsync(browser, "Remove permanently", cancellationToken);
+        await WaitForInspectorTextAsync(browser, "Expense removed", cancellationToken);
+        await WaitForInspectorTextAsync(browser, "No transactions recorded", cancellationToken);
+    }
+
+    private static async Task SetFormValueAsync(
+        W3cWebDriver browser,
+        string selector,
+        string value,
+        string eventName,
+        CancellationToken cancellationToken)
+    {
+        await browser.ExecuteScriptAsync(
+            "const element = document.querySelector(arguments[0]); if (!element) throw new Error(`Missing ${arguments[0]}`); element.value = arguments[1]; element.dispatchEvent(new Event(arguments[2], { bubbles: true }));",
+            [selector, value, eventName],
+            cancellationToken);
+    }
+
+    private static async Task ClickButtonByTextAsync(
+        W3cWebDriver browser,
+        string text,
+        CancellationToken cancellationToken)
+    {
+        await browser.ExecuteScriptAsync(
+            "const button = [...document.querySelectorAll('#workspace-inspector button')].find(item => item.textContent.trim() === arguments[0]); if (!button) throw new Error(`Missing button ${arguments[0]}`); button.click();",
+            [text],
+            cancellationToken);
+    }
+
+    private static async Task WaitForInspectorTextAsync(
+        W3cWebDriver browser,
+        string expectedText,
+        CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var text = await browser.ExecuteScriptAsync(
+                "return document.querySelector('#workspace-inspector')?.textContent ?? '';",
+                null,
+                cancellationToken);
+            if (text.GetString()?.Contains(expectedText, StringComparison.Ordinal) == true)
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+        }
+
+        throw new TimeoutException($"Timed out waiting for inspector text '{expectedText}'.");
     }
 
     private static async Task<JsonElement> GetCalendarStateAsync(W3cWebDriver browser, CancellationToken cancellationToken)
@@ -354,7 +450,7 @@ public sealed class BrowserCalendarJourneyTests
             () => Assert.Equal(1, state.GetProperty("headingCount").GetInt32()),
             () => Assert.Equal("Calendar", state.GetProperty("heading").GetString()),
             () => Assert.Equal(0, state.GetProperty("navigationDestinationCount").GetInt32()),
-            () => Assert.Contains("No calendar item selected", state.GetProperty("inspectorText").GetString(), StringComparison.Ordinal));
+            () => Assert.Contains("Expenses in USD", state.GetProperty("inspectorText").GetString(), StringComparison.Ordinal));
     }
 
     private static void AssertNormalFlow(JsonElement state, bool includeNavigation, bool includeInspector)
@@ -393,14 +489,14 @@ public sealed class BrowserCalendarJourneyTests
         Assert.Equal(HttpStatusCode.OK, openApi.StatusCode);
     }
 
-    private static Process StartApi(string assemblyPath, Uri origin)
+    private static Process StartApi(string assemblyPath, Uri origin, string postgreSqlConnectionString)
     {
         var startInfo = CreateStartInfo(FindDotNetHost(), Path.GetDirectoryName(assemblyPath)!);
         startInfo.ArgumentList.Add(assemblyPath);
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
         startInfo.Environment["DOTNET_ENVIRONMENT"] = "Development";
         startInfo.Environment["ASPNETCORE_URLS"] = origin.AbsoluteUri;
-        startInfo.Environment["ConnectionStrings__HouseholdLedger"] = string.Empty;
+        startInfo.Environment["ConnectionStrings__HouseholdLedger"] = postgreSqlConnectionString;
         return StartProcess(startInfo);
     }
 
@@ -594,6 +690,7 @@ public sealed class BrowserCalendarJourneyTests
         string ApiAssemblyPath,
         string FirefoxBinaryPath,
         string GeckodriverPath,
+        string PostgreSqlConnectionString,
         string ProfileRoot,
         string OutputDirectory,
         int ApiPort,
@@ -609,11 +706,20 @@ public sealed class BrowserCalendarJourneyTests
                 apiPath,
                 firefoxPath,
                 geckodriverPath,
+                GetRequiredValue(PostgreSqlConnectionEnvironmentVariable),
                 GetRequiredDirectory(ProfileRootEnvironmentVariable),
                 GetRequiredDirectory(OutputDirectoryEnvironmentVariable),
                 GetRequiredAvailablePort(ApiPortEnvironmentVariable),
                 RequireApprovedHash(FirefoxEnvironmentVariable, firefoxPath, FirefoxSha256),
                 RequireApprovedHash(GeckodriverEnvironmentVariable, geckodriverPath, GeckodriverSha256));
+        }
+
+        private static string GetRequiredValue(string variableName)
+        {
+            var value = Environment.GetEnvironmentVariable(variableName);
+            return !string.IsNullOrWhiteSpace(value)
+                ? value
+                : throw new XunitException($"{variableName} must be configured.");
         }
 
         private static string GetRequiredFile(string variableName, string exactFileName)

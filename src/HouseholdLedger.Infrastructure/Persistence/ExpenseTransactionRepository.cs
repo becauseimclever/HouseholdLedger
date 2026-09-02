@@ -22,6 +22,17 @@ public sealed class ExpenseTransactionRepository(HouseholdLedgerDbContext dbCont
     }
 
     /// <inheritdoc/>
+    public async Task<ExpenseTransaction?> FindAsync(
+        DateOnly ledgerDate,
+        Guid transactionId,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.ExpenseTransactions.SingleOrDefaultAsync(
+            transaction => transaction.Date == ledgerDate && transaction.Id == transactionId,
+            cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<ExpenseTransaction>> ListByDateAsync(
         DateOnly ledgerDate,
         CancellationToken cancellationToken)
@@ -31,5 +42,18 @@ public sealed class ExpenseTransactionRepository(HouseholdLedgerDbContext dbCont
             .Where(transaction => transaction.Date == ledgerDate)
             .OrderBy(transaction => transaction.Sequence)
             .ToArrayAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task UpdateAsync(ExpenseTransaction transaction, CancellationToken cancellationToken)
+    {
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task RemoveAsync(ExpenseTransaction transaction, CancellationToken cancellationToken)
+    {
+        dbContext.ExpenseTransactions.Remove(transaction);
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 }

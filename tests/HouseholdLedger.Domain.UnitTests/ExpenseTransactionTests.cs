@@ -49,4 +49,45 @@ public sealed class ExpenseTransactionTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new ExpenseTransaction(Guid.NewGuid(), new DateOnly(2026, 9, 1), 1m, (ExpenseClassification)99));
     }
+
+    /// <summary>Verifies correction changes only the allowed details.</summary>
+    [Fact]
+    public void ReviseChangesDetailsAndPreservesRecordIdentity()
+    {
+        var id = Guid.NewGuid();
+        var date = new DateOnly(2026, 9, 1);
+        var transaction = new ExpenseTransaction(id, date, 12.34m, ExpenseClassification.Necessities, 7);
+
+        transaction.Revise(45.67m, ExpenseClassification.Culture);
+
+        Assert.Multiple(
+            () => Assert.Equal(id, transaction.Id),
+            () => Assert.Equal(date, transaction.Date),
+            () => Assert.Equal(7, transaction.Sequence),
+            () => Assert.Equal(45.67m, transaction.Amount),
+            () => Assert.Equal(ExpenseClassification.Culture, transaction.Classification));
+    }
+
+    /// <summary>Verifies invalid correction leaves the transaction unchanged.</summary>
+    /// <param name="value">The invariant-culture amount text.</param>
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("1.001")]
+    public void ReviseRejectsInvalidAmountWithoutMutation(string value)
+    {
+        var transaction = new ExpenseTransaction(
+            Guid.NewGuid(),
+            new DateOnly(2026, 9, 1),
+            12.34m,
+            ExpenseClassification.Necessities);
+        var amount = decimal.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            transaction.Revise(amount, ExpenseClassification.Culture));
+
+        Assert.Multiple(
+            () => Assert.Equal(12.34m, transaction.Amount),
+            () => Assert.Equal(ExpenseClassification.Necessities, transaction.Classification));
+    }
 }

@@ -78,10 +78,8 @@ cleared the environment variable, and removed the temporary output.
 ## PostgreSQL Integration Tests
 
 PostgreSQL behavior must be tested against PostgreSQL, not EF InMemory, SQLite,
-Testcontainers, or Docker Desktop. Podman 5.8.3 is installed in the evidenced
-Windows environment, but its engine cannot run until an administrator upgrades
-WSL to required version 2.7.11. After that upgrade, make sure the Podman machine
-is running before invoking the owned harness:
+Testcontainers, or Docker Desktop. Start the repository's existing Podman
+machine before invoking the owned harness:
 
 ### Local Development/Test Database Setup
 
@@ -113,6 +111,18 @@ password, and exposes the connection only to the test process through
 `HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING`. Its `finally` block removes
 the container and confirms removal.
 
+To run the real-provider tests followed by the hosted transaction browser journey
+against that same isolated database and a fresh Release publish:
+
+```powershell
+pwsh tests/HouseholdLedger.Infrastructure.IntegrationTests/Run-PostgreSqlTests.ps1 `
+  -RunTransactionBrowserJourney
+```
+
+This option uses the pinned user-local Firefox and geckodriver runtime, selects
+an available API port, and removes the temporary publish, profiles, output,
+environment variables, and PostgreSQL container in its `finally` cleanup.
+
 Choose another already reviewed image only through the script parameter:
 
 ```powershell
@@ -120,13 +130,11 @@ pwsh tests/HouseholdLedger.Infrastructure.IntegrationTests/Run-PostgreSqlTests.p
   -PostgresImage "docker.io/library/postgres:18"
 ```
 
-The resource-free infrastructure registration test currently passes. The real
-PostgreSQL connectivity test skips when
+The resource-free infrastructure registration test passes. The real PostgreSQL
+connectivity test skips when
 `HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING` is absent. The required WSL
-2.7.11 upgrade needs unavailable administrator elevation, so Podman provisioning
-could not start in the current validation.
-Until the owned harness produces a successful real-provider transcript,
-PostgreSQL acceptance evidence and Feature 001 completion remain blocked.
+and Podman environment is now available; the owned harness passed both
+real-provider tests and cleaned its PostgreSQL 18 container on 2026-09-01.
 
 ## Browser End-to-End Tests
 
@@ -137,8 +145,9 @@ runtime. It does not use Selenium, Selenium Manager, Playwright, a cloud grid,
 or a runtime downloader. Before launching any browser process, the tests enforce
 the approved Firefox and geckodriver SHA-256 values.
 
-The complete E2E run requires five normalized absolute paths and one available
-loopback port:
+The complete E2E run requires five normalized absolute paths, one available
+loopback port, and the isolated PostgreSQL connection supplied by the combined
+harness:
 
 - `HOUSEHOLDLEDGER_API_ARTIFACT`: a freshly published file named exactly
   `HouseholdLedger.Api.dll`.
@@ -150,6 +159,8 @@ loopback port:
   run writes screenshots and diagnostics.
 - `HOUSEHOLDLEDGER_E2E_API_PORT`: an available loopback TCP port reserved for
   the test-owned API host.
+- `HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING`: a test-only connection to
+  the migrated isolated database used by the transaction journey.
 
 Use a fresh API publish for every run. It includes the referenced Client static
 web assets:
@@ -200,8 +211,11 @@ and fresh publish.
 
 The browser cases use the published API URL to exercise the API-hosted
 WebAssembly Client. Current assertions cover the calendar workspace, calendar
-interaction, open-source notices navigation and return behavior,
-accessibility, normal-flow geometry, and visible text containment.
+interaction, persisted transaction creation/correction/removal with backend
+rereads, open-source notices navigation and return behavior, accessibility,
+normal-flow geometry, and visible text containment. Prefer the combined owned
+harness above for the transaction journey because it configures the database
+and all browser inputs together.
 
 Historical two-host evidence consists of two complete consecutive runs that
 passed all three EndToEndTests cases on 2026-08-03 in 8.7 seconds and 8.1

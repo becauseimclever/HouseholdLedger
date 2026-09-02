@@ -51,11 +51,61 @@ public sealed class ExpenseTransactionServiceTests
             () => Assert.Equal(8m, results[1].Amount));
     }
 
+    /// <summary>Verifies correction persists a date-scoped transaction.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task ReviseUpdatesAnExistingDateScopedTransaction()
+    {
+        var date = new DateOnly(2026, 9, 1);
+        var transaction = new ExpenseTransaction(Guid.NewGuid(), date, 5m, ExpenseClassification.Necessities, 1);
+        var repository = new StubRepository();
+        repository.Items.Add(transaction);
+        var service = new ExpenseTransactionService(repository);
+
+        var result = await service.ReviseAsync(
+            date,
+            transaction.Id,
+            8.75m,
+            ExpenseClassification.Unexpected,
+            TestContext.Current.CancellationToken);
+
+        Assert.Multiple(
+            () => Assert.NotNull(result),
+            () => Assert.Equal(8.75m, result!.Amount),
+            () => Assert.Equal(ExpenseClassification.Unexpected, result!.Classification),
+            () => Assert.Same(transaction, repository.Updated));
+    }
+
+    /// <summary>Verifies removal does not cross the route-selected date.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task RemoveRequiresMatchingDateAndIdentifier()
+    {
+        var date = new DateOnly(2026, 9, 1);
+        var transaction = new ExpenseTransaction(Guid.NewGuid(), date, 5m, ExpenseClassification.Necessities, 1);
+        var repository = new StubRepository();
+        repository.Items.Add(transaction);
+        var service = new ExpenseTransactionService(repository);
+
+        var wrongDateResult = await service.RemoveAsync(
+            date.AddDays(1),
+            transaction.Id,
+            TestContext.Current.CancellationToken);
+        var removed = await service.RemoveAsync(date, transaction.Id, TestContext.Current.CancellationToken);
+
+        Assert.Multiple(
+            () => Assert.False(wrongDateResult),
+            () => Assert.True(removed),
+            () => Assert.Empty(repository.Items));
+    }
+
     private sealed class StubRepository : IExpenseTransactionRepository
     {
         public List<ExpenseTransaction> Items { get; } = [];
 
         public ExpenseTransaction? Added { get; private set; }
+
+        public ExpenseTransaction? Updated { get; private set; }
 
         public Task AddAsync(ExpenseTransaction transaction, CancellationToken cancellationToken)
         {
@@ -65,11 +115,35 @@ public sealed class ExpenseTransactionServiceTests
             return Task.CompletedTask;
         }
 
+        public Task<ExpenseTransaction?> FindAsync(
+            DateOnly ledgerDate,
+            Guid transactionId,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(this.Items.SingleOrDefault(
+                transaction => transaction.Date == ledgerDate && transaction.Id == transactionId));
+        }
+
         public Task<IReadOnlyList<ExpenseTransaction>> ListByDateAsync(DateOnly ledgerDate, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult<IReadOnlyList<ExpenseTransaction>>(
             this.Items.Where(transaction => transaction.Date == ledgerDate).ToArray());
+        }
+
+        public Task UpdateAsync(ExpenseTransaction transaction, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            this.Updated = transaction;
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveAsync(ExpenseTransaction transaction, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            this.Items.Remove(transaction);
+            return Task.CompletedTask;
         }
     }
 }

@@ -25,7 +25,16 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     private string? amountError;
     private string? classificationError;
     private string? saveError;
+    private Guid? editingTransactionId;
+    private Guid? removingTransactionId;
+    private string editAmountText = string.Empty;
+    private string editClassification = string.Empty;
+    private string? editAmountError;
+    private string? editClassificationError;
+    private string? mutationError;
+    private string? mutationStatus;
     private bool isLoading;
+    private bool isMutating;
     private bool isSaving;
     private bool loadError;
     private IReadOnlyList<ExpenseTransactionResponse> transactions = [];
@@ -69,6 +78,8 @@ public partial class TransactionInspector : ComponentBase, IDisposable
         }
     }
 
+    private static string GetElementId(string prefix, Guid transactionId) => $"{prefix}-{transactionId:N}";
+
     private void OnSelectedDateChanged(DateOnly ledgerDate)
     {
         this.requestCancellation?.Cancel();
@@ -77,12 +88,16 @@ public partial class TransactionInspector : ComponentBase, IDisposable
         this.transactions = [];
         this.loadError = false;
         this.saveError = null;
+        this.isSaving = false;
+        this.isMutating = false;
+        this.ResetMutationState();
         _ = this.LoadAsync(ledgerDate, this.requestCancellation.Token);
     }
 
     private async Task LoadAsync(DateOnly ledgerDate, CancellationToken cancellationToken)
     {
         this.isLoading = true;
+        this.loadError = false;
         await this.InvokeAsync(this.StateHasChanged);
 
         try
@@ -137,12 +152,13 @@ public partial class TransactionInspector : ComponentBase, IDisposable
         }
 
         this.isSaving = true;
+        var cancellationToken = this.requestCancellation?.Token ?? this.lifetimeCancellation.Token;
         try
         {
             var saved = await this.TransactionsApi.CreateAsync(
                 ledgerDate,
                 new CreateExpenseTransactionRequest(amount, this.classification),
-                this.lifetimeCancellation.Token);
+                cancellationToken);
             if (!saved)
             {
                 this.saveError = "The expense was not saved. Check the entered values.";
@@ -156,7 +172,10 @@ public partial class TransactionInspector : ComponentBase, IDisposable
 
             this.amountText = string.Empty;
             this.classification = string.Empty;
-            await this.LoadAsync(ledgerDate, this.lifetimeCancellation.Token);
+            await this.LoadAsync(ledgerDate, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
         }
         catch (HttpRequestException)
         {
@@ -164,8 +183,170 @@ public partial class TransactionInspector : ComponentBase, IDisposable
         }
         finally
         {
-            this.isSaving = false;
+            if (this.SelectedDate.Value == ledgerDate)
+            {
+                this.isSaving = false;
+            }
         }
+    }
+
+    private void BeginEdit(ExpenseTransactionResponse transaction)
+    {
+        this.removingTransactionId = null;
+        this.editingTransactionId = transaction.Id;
+        this.editAmountText = transaction.Amount.ToString("0.00", CultureInfo.CurrentCulture);
+        this.editClassification = transaction.Classification;
+        this.ClearMutationMessages();
+    }
+
+    private void CancelEdit()
+    {
+        this.editingTransactionId = null;
+        this.ClearMutationMessages();
+    }
+
+    private async Task ReviseAsync()
+    {
+        this.editAmountError = null;
+        this.editClassificationError = null;
+        this.mutationError = null;
+        this.mutationStatus = null;
+
+        if (!decimal.TryParse(this.editAmountText, NumberStyles.Number, CultureInfo.CurrentCulture, out var amount)
+            || amount <= 0
+            || decimal.Round(amount, 2) != amount)
+        {
+            this.editAmountError = "Enter a positive amount with no more than two decimal places.";
+        }
+
+        if (!Classifications.Contains(this.editClassification, StringComparer.Ordinal))
+        {
+            this.editClassificationError = "Choose a classification.";
+        }
+
+        if (this.editAmountError is not null
+            || this.editClassificationError is not null
+            || this.editingTransactionId is not Guid transactionId
+            || this.SelectedDate.Value is not DateOnly ledgerDate)
+        {
+            return;
+        }
+
+        this.isMutating = true;
+        var cancellationToken = this.requestCancellation?.Token ?? this.lifetimeCancellation.Token;
+        try
+        {
+            var result = await this.TransactionsApi.ReviseAsync(
+                ledgerDate,
+                transactionId,
+                new UpdateExpenseTransactionRequest(amount, this.editClassification),
+                cancellationToken);
+            if (this.SelectedDate.Value != ledgerDate)
+            {
+                return;
+            }
+
+            if (result == TransactionMutationResult.Invalid)
+            {
+                this.mutationError = "The expense was not changed. Check the entered values.";
+                return;
+            }
+
+            this.editingTransactionId = null;
+            this.mutationStatus = result == TransactionMutationResult.NotFound
+                ? "The expense no longer exists."
+                : "Expense updated.";
+            await this.LoadAsync(ledgerDate, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (HttpRequestException)
+        {
+            this.mutationError = "The expense could not be changed. Try again.";
+        }
+        finally
+        {
+            if (this.SelectedDate.Value == ledgerDate)
+            {
+                this.isMutating = false;
+            }
+        }
+    }
+
+    private void BeginRemove(Guid transactionId)
+    {
+        this.editingTransactionId = null;
+        this.removingTransactionId = transactionId;
+        this.ClearMutationMessages();
+    }
+
+    private void CancelRemove()
+    {
+        this.removingTransactionId = null;
+        this.ClearMutationMessages();
+    }
+
+    private async Task ConfirmRemoveAsync()
+    {
+        if (this.removingTransactionId is not Guid transactionId
+            || this.SelectedDate.Value is not DateOnly ledgerDate)
+        {
+            return;
+        }
+
+        this.isMutating = true;
+        this.mutationError = null;
+        this.mutationStatus = null;
+        var cancellationToken = this.requestCancellation?.Token ?? this.lifetimeCancellation.Token;
+        try
+        {
+            var result = await this.TransactionsApi.RemoveAsync(
+                ledgerDate,
+                transactionId,
+                cancellationToken);
+            if (this.SelectedDate.Value != ledgerDate)
+            {
+                return;
+            }
+
+            this.removingTransactionId = null;
+            this.mutationStatus = result == TransactionMutationResult.NotFound
+                ? "The expense no longer exists."
+                : "Expense removed.";
+            await this.LoadAsync(ledgerDate, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (HttpRequestException)
+        {
+            this.mutationError = "The expense could not be removed. Try again.";
+        }
+        finally
+        {
+            if (this.SelectedDate.Value == ledgerDate)
+            {
+                this.isMutating = false;
+            }
+        }
+    }
+
+    private void ResetMutationState()
+    {
+        this.editingTransactionId = null;
+        this.removingTransactionId = null;
+        this.editAmountText = string.Empty;
+        this.editClassification = string.Empty;
+        this.ClearMutationMessages();
+    }
+
+    private void ClearMutationMessages()
+    {
+        this.editAmountError = null;
+        this.editClassificationError = null;
+        this.mutationError = null;
+        this.mutationStatus = null;
     }
 
     private void UpdateAmount(ChangeEventArgs args)
@@ -176,5 +357,15 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     private void UpdateClassification(ChangeEventArgs args)
     {
         this.classification = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void UpdateEditAmount(ChangeEventArgs args)
+    {
+        this.editAmountText = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void UpdateEditClassification(ChangeEventArgs args)
+    {
+        this.editClassification = args.Value?.ToString() ?? string.Empty;
     }
 }

@@ -58,7 +58,59 @@ else
                 <ol class="transaction-list">
                     @foreach (var transaction in transactions)
                     {
-                        <li><span>@transaction.Classification</span><strong>@transaction.Amount.ToString("C", UsdCulture)</strong></li>
+                        <li class="transaction-item">
+                            @if (editingTransactionId == transaction.Id)
+                            {
+                                <form class="transaction-edit-form" @onsubmit="ReviseAsync" @onsubmit:preventDefault="true" aria-label="Edit expense">
+                                    <div class="transaction-field">
+                                        <label for="@GetElementId("edit-amount", transaction.Id)">Amount (USD)</label>
+                                        <input id="@GetElementId("edit-amount", transaction.Id)" type="text" inputmode="decimal" autocomplete="off" value="@editAmountText" @oninput="UpdateEditAmount" aria-invalid="@(editAmountError is null ? "false" : "true")" />
+                                        @if (editAmountError is not null)
+                                        {
+                                            <p class="transaction-error">@editAmountError</p>
+                                        }
+                                    </div>
+                                    <div class="transaction-field">
+                                        <label for="@GetElementId("edit-classification", transaction.Id)">Classification</label>
+                                        <select id="@GetElementId("edit-classification", transaction.Id)" value="@editClassification" @onchange="UpdateEditClassification" aria-invalid="@(editClassificationError is null ? "false" : "true")">
+                                            @foreach (var option in Classifications)
+                                            {
+                                                <option value="@option">@option</option>
+                                            }
+                                        </select>
+                                        @if (editClassificationError is not null)
+                                        {
+                                            <p class="transaction-error">@editClassificationError</p>
+                                        }
+                                    </div>
+                                    <div class="transaction-actions">
+                                        <button type="submit" disabled="@isMutating">@(isMutating ? "Saving changes" : "Save changes")</button>
+                                        <button class="secondary-action" type="button" disabled="@isMutating" @onclick="CancelEdit">Cancel</button>
+                                    </div>
+                                </form>
+                            }
+                            else if (removingTransactionId == transaction.Id)
+                            {
+                                <div class="transaction-confirmation" role="group" aria-labelledby="@GetElementId("remove-heading", transaction.Id)">
+                                    <p id="@GetElementId("remove-heading", transaction.Id)">Permanently remove @transaction.Classification @transaction.Amount.ToString("C", UsdCulture)?</p>
+                                    <div class="transaction-actions">
+                                        <button class="danger-action" type="button" disabled="@isMutating" @onclick="ConfirmRemoveAsync">@(isMutating ? "Removing" : "Remove permanently")</button>
+                                        <button class="secondary-action" type="button" disabled="@isMutating" @onclick="CancelRemove">Cancel</button>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="transaction-summary">
+                                    <span>@transaction.Classification</span>
+                                    <strong>@transaction.Amount.ToString("C", UsdCulture)</strong>
+                                </div>
+                                <div class="transaction-actions">
+                                    <button class="secondary-action" type="button" @onclick="() => BeginEdit(transaction)">Edit</button>
+                                    <button class="secondary-action" type="button" @onclick="() => BeginRemove(transaction.Id)">Remove</button>
+                                </div>
+                            }
+                        </li>
                     }
                 </ol>
             }
@@ -66,6 +118,14 @@ else
             @if (saveError is not null)
             {
                 <p class="transaction-error">@saveError</p>
+            }
+            @if (mutationError is not null)
+            {
+                <p class="transaction-error">@mutationError</p>
+            }
+            @if (mutationStatus is not null)
+            {
+                <p>@mutationStatus</p>
             }
         </div>
     </section>

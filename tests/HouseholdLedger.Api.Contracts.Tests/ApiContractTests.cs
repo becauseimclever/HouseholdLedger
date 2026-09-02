@@ -108,6 +108,44 @@ public sealed class ApiContractTests
             () => Assert.Equal(response, consumedResponse));
     }
 
+    /// <summary>Verifies the checked contract describes date-scoped transaction correction and removal.</summary>
+    [Fact]
+    public void CheckedOpenApiDescribesTransactionMutationContract()
+    {
+        using var document = LoadOpenApiJsonDocument();
+        var root = document.RootElement;
+        var resource = root.GetProperty("paths")
+            .GetProperty("/api/v1/days/{ledgerDate}/transactions/{transactionId}");
+        var revise = resource.GetProperty("put");
+        var remove = resource.GetProperty("delete");
+        var reviseResponses = revise.GetProperty("responses");
+        var removeResponses = remove.GetProperty("responses");
+        var requestSchemaReference = revise.GetProperty("requestBody")
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+        var updateSchema = root.GetProperty("components")
+            .GetProperty("schemas")
+            .GetProperty("UpdateExpenseTransactionRequest");
+        var required = updateSchema.GetProperty("required")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .ToArray();
+
+        Assert.Multiple(
+            () => Assert.Equal(
+                "#/components/schemas/UpdateExpenseTransactionRequest",
+                requestSchemaReference),
+            () => Assert.True(reviseResponses.TryGetProperty("200", out _)),
+            () => Assert.True(reviseResponses.TryGetProperty("400", out _)),
+            () => Assert.True(reviseResponses.TryGetProperty("404", out _)),
+            () => Assert.True(removeResponses.TryGetProperty("204", out _)),
+            () => Assert.True(removeResponses.TryGetProperty("404", out _)),
+            () => Assert.Equal(["amount", "classification"], required));
+    }
+
     /// <summary>
     /// Verifies that the .NET convenience contract has no HouseholdLedger implementation dependency.
     /// </summary>

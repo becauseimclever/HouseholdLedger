@@ -38,6 +38,51 @@ public sealed class TransactionsApiClient(HttpClient httpClient) : ITransactions
         return true;
     }
 
+    /// <inheritdoc/>
+    public async Task<TransactionMutationResult> ReviseAsync(
+        DateOnly ledgerDate,
+        Guid transactionId,
+        UpdateExpenseTransactionRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var response = await httpClient.PutAsJsonAsync(
+            GetTransactionRoute(ledgerDate, transactionId),
+            request,
+            cancellationToken);
+        return GetMutationResult(response);
+    }
+
+    /// <inheritdoc/>
+    public async Task<TransactionMutationResult> RemoveAsync(
+        DateOnly ledgerDate,
+        Guid transactionId,
+        CancellationToken cancellationToken)
+    {
+        using var response = await httpClient.DeleteAsync(
+            GetTransactionRoute(ledgerDate, transactionId),
+            cancellationToken);
+        return GetMutationResult(response);
+    }
+
+    private static TransactionMutationResult GetMutationResult(HttpResponseMessage response)
+    {
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            return TransactionMutationResult.Invalid;
+        }
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return TransactionMutationResult.NotFound;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return TransactionMutationResult.Success;
+    }
+
     private static string GetRoute(DateOnly ledgerDate) =>
         $"api/v1/days/{ledgerDate:yyyy-MM-dd}/transactions";
+
+    private static string GetTransactionRoute(DateOnly ledgerDate, Guid transactionId) =>
+        $"{GetRoute(ledgerDate)}/{transactionId}";
 }

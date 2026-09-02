@@ -2,16 +2,19 @@
 
 ## Status
 
-Status: Implemented - environment-dependent validation remains.
+Status: Complete.
 
 - Domain, Application, PostgreSQL mapping and migration, API contracts and
    endpoints, checked OpenAPI, shared Client date state, inspector form, backend
    reread, and focused xUnit coverage are implemented.
-- Locked restore and the full Release build pass. Resource-free validation
-   passes 64 tests with one PostgreSQL test skipped because no isolated database
-   is configured; the published API smoke passes.
-- Completion still needs the real PostgreSQL migration/persistence test and the
-   hosted browser journey when those external test resources are available.
+- The owned PostgreSQL 18 harness passes migration, create, reread, correction,
+  and removal persistence checks with no skips and cleans its container.
+- The hosted Firefox journey passes against a fresh Release API publish and the
+  isolated PostgreSQL database, proving date selection, creation, backend
+  reread, correction, cancellation, confirmed removal, and the final empty
+  reread.
+- Checked OpenAPI matches runtime generation, and locked Release validation
+  passes across the solution.
 
 - Planned: 2026-08-31.
 - Feature 004 supplies the existing calendar day-selection interaction.

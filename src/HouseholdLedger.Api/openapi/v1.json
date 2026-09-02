@@ -140,6 +140,132 @@
           }
         }
       }
+    },
+    "/api/v1/days/{ledgerDate}/transactions/{transactionId}": {
+      "put": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Corrects one transaction under its route-selected ledger date.",
+        "parameters": [
+          {
+            "name": "ledgerDate",
+            "in": "path",
+            "description": "The route-selected ledger date.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "transactionId",
+            "in": "path",
+            "description": "The transaction identifier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The request cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExpenseTransactionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExpenseTransactionRequest"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateExpenseTransactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseTransactionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Removes one transaction under its route-selected ledger date.",
+        "parameters": [
+          {
+            "name": "ledgerDate",
+            "in": "path",
+            "description": "The route-selected ledger date.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "transactionId",
+            "in": "path",
+            "description": "The transaction identifier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -252,6 +378,29 @@
             ]
           }
         }
+      },
+      "UpdateExpenseTransactionRequest": {
+        "required": [
+          "amount",
+          "classification"
+        ],
+        "type": "object",
+        "properties": {
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The replacement positive USD amount.",
+            "format": "double"
+          },
+          "classification": {
+            "type": "string",
+            "description": "The replacement Kakeibo-inspired classification."
+          }
+        },
+        "description": "Requests correction of one expense without changing its ledger date."
       },
       "ValidationProblemDetails": {
         "type": "object",

@@ -10,7 +10,7 @@ using HouseholdLedger.Domain.Transactions;
 using Microsoft.AspNetCore.Mvc;
 
 /// <summary>
-/// Creates and lists selected-day expense transactions.
+/// Creates, lists, corrects, and removes selected-day expense transactions.
 /// </summary>
 [ApiController]
 [Route("api/v1/days/{ledgerDate}/transactions")]
@@ -69,6 +69,76 @@ public sealed class TransactionsController(ExpenseTransactionService service) : 
                 }));
         }
     }
+
+    /// <summary>Corrects one transaction under its route-selected ledger date.</summary>
+    /// <param name="ledgerDate">The route-selected ledger date.</param>
+    /// <param name="transactionId">The transaction identifier.</param>
+    /// <param name="request">The replacement transaction values.</param>
+    /// <param name="cancellationToken">The request cancellation token.</param>
+    /// <returns>The corrected transaction.</returns>
+    [HttpPut("{transactionId:guid}")]
+    [ProducesResponseType<ExpenseTransactionResponse>(StatusCodes.Status200OK, "application/json")]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
+    public async Task<ActionResult<ExpenseTransactionResponse>> Revise(
+        DateOnly ledgerDate,
+        Guid transactionId,
+        UpdateExpenseTransactionRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!Enum.TryParse<ExpenseClassification>(request.Classification, true, out var classification)
+            || !Enum.IsDefined(classification))
+        {
+            return this.ValidationProblem(new ValidationProblemDetails(
+                new Dictionary<string, string[]>
+                {
+                    [nameof(request.Classification)] = ["Choose a supported classification."],
+                }));
+        }
+
+        try
+        {
+            var revised = await service.ReviseAsync(
+                ledgerDate,
+                transactionId,
+                request.Amount,
+                classification,
+                cancellationToken);
+            return revised is null ? this.NotFound(CreateNotFoundProblem()) : this.Ok(Map(revised));
+        }
+        catch (ArgumentOutOfRangeException exception)
+        {
+            return this.ValidationProblem(new ValidationProblemDetails(
+                new Dictionary<string, string[]>
+                {
+                    [nameof(request.Amount)] = [exception.Message],
+                }));
+        }
+    }
+
+    /// <summary>Removes one transaction under its route-selected ledger date.</summary>
+    /// <param name="ledgerDate">The route-selected ledger date.</param>
+    /// <param name="transactionId">The transaction identifier.</param>
+    /// <param name="cancellationToken">The request cancellation token.</param>
+    /// <returns>No content when removed.</returns>
+    [HttpDelete("{transactionId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")]
+    public async Task<IActionResult> Remove(
+        DateOnly ledgerDate,
+        Guid transactionId,
+        CancellationToken cancellationToken)
+    {
+        var removed = await service.RemoveAsync(ledgerDate, transactionId, cancellationToken);
+        return removed ? this.NoContent() : this.NotFound(CreateNotFoundProblem());
+    }
+
+    private static ProblemDetails CreateNotFoundProblem() => new()
+    {
+        Status = StatusCodes.Status404NotFound,
+        Title = "Transaction not found",
+        Detail = "The transaction does not exist under the selected ledger date.",
+    };
 
     private static ExpenseTransactionResponse Map(ExpenseTransactionDto transaction) => new(
         transaction.Id,

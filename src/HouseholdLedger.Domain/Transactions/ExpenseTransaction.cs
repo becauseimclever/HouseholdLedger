@@ -29,20 +29,7 @@ public sealed class ExpenseTransaction
             throw new ArgumentException("A transaction identifier is required.", nameof(id));
         }
 
-        if (amount <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(amount), "The amount must be greater than zero.");
-        }
-
-        if (decimal.Round(amount, 2) != amount)
-        {
-            throw new ArgumentOutOfRangeException(nameof(amount), "The amount cannot have more than two decimal places.");
-        }
-
-        if (!Enum.IsDefined(classification))
-        {
-            throw new ArgumentOutOfRangeException(nameof(classification), "The classification is not supported.");
-        }
+        ValidateDetails(amount, classification);
 
         if (sequence < 0)
         {
@@ -63,11 +50,39 @@ public sealed class ExpenseTransaction
     public DateOnly Date { get; }
 
     /// <summary>Gets the USD amount.</summary>
-    public decimal Amount { get; }
+    public decimal Amount { get; private set; }
 
     /// <summary>Gets the expense classification.</summary>
-    public ExpenseClassification Classification { get; }
+    public ExpenseClassification Classification { get; private set; }
 
     /// <summary>Gets the backend-assigned creation sequence.</summary>
     public long Sequence { get; private set; }
+
+    /// <summary>Replaces the correctable transaction details.</summary>
+    /// <param name="amount">The positive USD amount.</param>
+    /// <param name="classification">The expense classification.</param>
+    public void Revise(decimal amount, ExpenseClassification classification)
+    {
+        ValidateDetails(amount, classification);
+        this.Amount = amount;
+        this.Classification = classification;
+    }
+
+    private static void ValidateDetails(decimal amount, ExpenseClassification classification)
+    {
+        if (amount <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(amount), "The amount must be greater than zero.");
+        }
+
+        if (decimal.Round(amount, 2) != amount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(amount), "The amount cannot have more than two decimal places.");
+        }
+
+        if (!Enum.IsDefined(classification))
+        {
+            throw new ArgumentOutOfRangeException(nameof(classification), "The classification is not supported.");
+        }
+    }
 }

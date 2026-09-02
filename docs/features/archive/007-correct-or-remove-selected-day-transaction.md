@@ -2,10 +2,16 @@
 
 ## Status
 
-Status: Planned - implementation has not started.
+Status: Complete.
 
 - Planned: 2026-08-06; reconciled: 2026-09-01.
 - Depends on Feature 005's implemented selected-day create and read workflow.
+- Completed: 2026-09-01.
+- Domain, Application, EF/Npgsql, API, OpenAPI, Client, component, and hosted
+  browser behavior are implemented and validated.
+- The hosted journey proves correction from persisted values, authoritative
+  rereads, cancellation without removal, explicit confirmed removal, and the
+  final backend-owned empty state.
 
 ## Outcome
 

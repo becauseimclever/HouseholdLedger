@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
-    [string] $PostgresImage = "docker.io/library/postgres:18"
+    [string] $PostgresImage = "docker.io/library/postgres:18",
+
+    [switch] $RunTransactionBrowserJourney
 )
 
 Set-StrictMode -Version Latest
@@ -12,6 +14,7 @@ $databaseName = "householdledger_$runId"
 $databaseUser = "householdledger_test"
 $databasePassword = [Guid]::NewGuid().ToString("N")
 $connectionVariable = "HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING"
+$publishRoot = $null
 
 if ($null -eq (Get-Command podman -ErrorAction SilentlyContinue)) {
     throw "Podman is required to run the PostgreSQL integration tests."
@@ -61,9 +64,62 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "The PostgreSQL integration tests failed."
     }
+
+    if ($RunTransactionBrowserJourney) {
+        $publishRoot = Join-Path ([System.IO.Path]::GetTempPath()) "HouseholdLedger-BrowserE2E-$runId"
+        $apiOutput = Join-Path $publishRoot "api"
+        $profileRoot = Join-Path $publishRoot "profiles"
+        $outputRoot = Join-Path $publishRoot "output"
+        New-Item -ItemType Directory -Path $profileRoot, $outputRoot -Force | Out-Null
+
+        & dotnet publish (Join-Path $PSScriptRoot "..\..\src\HouseholdLedger.Api") `
+            --configuration Release `
+            --no-restore `
+            --output $apiOutput
+        if ($LASTEXITCODE -ne 0) {
+            throw "The API publish for the browser journey failed."
+        }
+
+        $apiListener = [System.Net.Sockets.TcpListener]::new(
+            [System.Net.IPAddress]::Loopback,
+            0)
+        $apiListener.Start()
+        $apiPort = ([System.Net.IPEndPoint] $apiListener.LocalEndpoint).Port
+        $apiListener.Stop()
+
+        $browserRuntime = Join-Path $env:LOCALAPPDATA "HouseholdLedger\BrowserTestRuntime"
+        $env:HOUSEHOLDLEDGER_API_ARTIFACT = Join-Path $apiOutput "HouseholdLedger.Api.dll"
+        $env:HOUSEHOLDLEDGER_FIREFOX_BINARY = Join-Path $browserRuntime "firefox\153.0.1-eme-free\core\firefox.exe"
+        $env:HOUSEHOLDLEDGER_GECKODRIVER = Join-Path $browserRuntime "geckodriver\0.37.1\geckodriver.exe"
+        $env:HOUSEHOLDLEDGER_E2E_PROFILE_ROOT = $profileRoot
+        $env:HOUSEHOLDLEDGER_E2E_OUTPUT_DIR = $outputRoot
+        $env:HOUSEHOLDLEDGER_E2E_API_PORT = $apiPort.ToString([System.Globalization.CultureInfo]::InvariantCulture)
+
+        & dotnet test (Join-Path $PSScriptRoot "..\HouseholdLedger.EndToEndTests") `
+            --configuration Release `
+            --no-restore `
+            --filter "FullyQualifiedName~BrowserCalendarJourneyTests"
+        if ($LASTEXITCODE -ne 0) {
+            throw "The hosted transaction browser journey failed."
+        }
+    }
 }
 finally {
     [Environment]::SetEnvironmentVariable($connectionVariable, $null, "Process")
+    foreach ($variable in @(
+        "HOUSEHOLDLEDGER_API_ARTIFACT",
+        "HOUSEHOLDLEDGER_FIREFOX_BINARY",
+        "HOUSEHOLDLEDGER_GECKODRIVER",
+        "HOUSEHOLDLEDGER_E2E_PROFILE_ROOT",
+        "HOUSEHOLDLEDGER_E2E_OUTPUT_DIR",
+        "HOUSEHOLDLEDGER_E2E_API_PORT")) {
+        [Environment]::SetEnvironmentVariable($variable, $null, "Process")
+    }
+
+    if ($null -ne $publishRoot) {
+        Remove-Item $publishRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
     & podman container exists $containerName
     if ($LASTEXITCODE -eq 0) {
         & podman rm --force $containerName | Out-Null
