@@ -1,8 +1,8 @@
 # Dependency Governance
 
-Dependencies are admitted deliberately because a direct package declaration
-does not describe every transitive library, runtime, downloaded artifact,
-license obligation, vulnerability, or commercial offering.
+HouseholdLedger is a solo-maintained free and open-source project. Dependency
+decisions should be careful enough to protect users and preserve license
+compliance without turning routine maintenance into an approval process.
 
 ## Default Policy
 
@@ -16,55 +16,52 @@ their lock files, restore only from NuGet.org, and restore in locked mode.
 `Directory.Build.props` enables direct and transitive NuGet auditing; high and
 critical findings are build errors.
 
-Only the SPDX identifiers explicitly listed in the approved
-[Feature 001 specification](../features/001-application-scaffolding.md) are
-allowed without a user decision. Similar names and deprecated aliases are not
-implicit approvals. The narrow PostgreSQL exception and one-time Wave 3
-prerelease exception apply only to the dependencies named in that document.
+Prefer dependencies with clear provenance, active maintenance, and licenses
+compatible with this repository. A project offering sponsorship, support,
+hosting, or paid products does not disqualify its open-source packages. Avoid a
+dependency only when its actual license, terms, cost, security posture, or
+operational impact is unsuitable for HouseholdLedger.
 
-The policy also excludes a dependency when its project offers paid product
-tiers, features, editions, proprietary or commercial counterparts, hosted
-commercial counterparts, or dual commercial licensing. An allowed license does
-not override this commercial-model rule. By explicit user decision on
-2026-08-03, optional vendor-provided paid support does not disqualify otherwise
-identical free/open-source software. Donations, sponsorship, third-party
-hosting, consulting, and optional support are recorded but do not by themselves
-make the software a paid product counterpart.
+## Proportionate Review
 
-## Review Checklist
+For a routine package or tool change, check:
 
-Before adding or updating any package, tool, runtime, image, browser, or
-downloaded asset, record:
+1. The package identity and selected version are intentional and come from the
+   expected source.
+2. The license is compatible and any required notices are retained.
+3. Restore/audit output has no unresolved high-severity findings.
+4. Lock-file changes are plausible and limited to the expected dependency
+   graph.
+5. The package solves a current need and does not add disproportionate runtime
+   or maintenance cost.
 
-1. The exact name, version, source repository, publisher, and download origin.
-2. Every direct, transitive, build, runtime, platform, and downloaded artifact.
-3. Canonical license expressions and required notices for the complete closure.
-4. Whether each component is free and open source.
-5. Paid services, proprietary editions, dual licensing, commercial tiers, and
-   other commercial counterparts offered by the project or publisher.
-6. Known vulnerabilities and the limits of the scanner used.
-7. Archive or package integrity controls, including hashes and signatures.
-8. Why built-in functionality or an already approved dependency is
-   insufficient.
-9. The exact scope of any required exception and the user's recorded decision.
+Record a short decision in the pull request, issue, or relevant documentation
+when the choice is non-obvious. A standalone audit document, complete manual
+transitive inventory, archive hashes, signature verification, commercial-model
+survey, and explicit maintainer preapproval are not required for normal
+NuGet, test, analyzer, SDK, or development-tool maintenance.
 
-Automated license and vulnerability output is triage evidence, not a final
-review. Inspect generated lock files and published output before concluding
-that the closure is complete.
+Use deeper review before proceeding when provenance or licensing is unclear;
+the dependency handles secrets or sensitive data; it introduces executable
+native code, a hosted/paid service, telemetry, or a privileged runtime; it has
+significant unresolved vulnerabilities; or it materially changes deployment
+or operating cost. Ask the maintainer when one of those concerns requires a
+product, privacy, legal, security, or spending decision.
 
 ## Change Procedure
 
-1. Complete and approve the review before editing package manifests.
-2. Add the version centrally and the package reference only to its owning
+1. Add the version centrally and the package reference only to its owning
    project.
-3. Regenerate affected lock files deliberately and inspect the diff.
-4. Restore in locked mode, build with warnings as errors, and run the narrowest
+2. Regenerate affected lock files deliberately and inspect the diff.
+3. Restore in locked mode, build with warnings as errors, and run the narrowest
    relevant tests.
-5. Re-run inventory, vulnerability, license, and published-output checks.
-6. Record validation and any continuing limitation in the owning feature.
+4. Review audit output and notices at a depth proportionate to the package's
+   role. Inspect published output when runtime or shipped assets may change.
+5. Report validation and any meaningful limitation in the change summary.
 
-Do not treat a successful restore, an MIT NuGet declaration, or file presence
-as complete dependency evidence.
+Stop and ask before accepting a material legal, security, privacy, or cost risk.
+Otherwise, use maintainer judgment and continue without a separate approval
+round trip.
 
 ## Current Direct-Package Review
 
