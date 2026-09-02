@@ -5,6 +5,7 @@
 namespace HouseholdLedger.Client;
 
 using HouseholdLedger.Client.Api;
+using HouseholdLedger.Client.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -33,6 +34,8 @@ public static class Program
                 new Uri(serviceProvider.GetRequiredService<NavigationManager>().BaseUri, UriKind.Absolute)),
         });
         builder.Services.AddScoped<IHealthApiClient, HealthApiClient>();
+        builder.Services.AddScoped<ITransactionsApiClient, TransactionsApiClient>();
+        builder.Services.AddScoped<SelectedDateState>();
         builder.Services.AddSingleton(TimeProvider.System);
 
         await builder.Build().RunAsync();

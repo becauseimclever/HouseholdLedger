@@ -10,7 +10,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NUnit.Framework;
+using Xunit;
 
 /// <summary>
 /// Verifies the generated language-neutral API description.
@@ -28,14 +28,16 @@ public sealed class OpenApiTests
     /// Verifies that runtime OpenAPI describes health success and problem responses.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task RuntimeDocumentDescribesHealthContract()
     {
         await using var factory = new WebApplicationFactory<Program>();
         using var client = ApiTestClient.Create(factory);
 
-        using var response = await client.GetAsync("/openapi/v1.json");
-        var body = await response.Content.ReadAsStringAsync();
+        using var response = await client.GetAsync(
+            "/openapi/v1.json",
+            TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         using var document = JsonDocument.Parse(body);
         var operation = document.RootElement
             .GetProperty("paths")
@@ -55,23 +57,23 @@ public sealed class OpenApiTests
         var healthStatusSchema = healthSchema.GetProperty("properties").GetProperty("status");
         var hasServers = document.RootElement.TryGetProperty("servers", out var servers);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        Assert.That(response.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/json"));
-        Assert.That(document.RootElement.GetProperty("openapi").GetString(), Does.StartWith("3.1."));
-        Assert.That(hasServers && servers.GetArrayLength() > 0, Is.False);
-        Assert.That(successSchema.GetProperty("$ref").GetString(), Is.EqualTo("#/components/schemas/HealthResponse"));
-        Assert.That(problemSchema.GetProperty("$ref").GetString(), Is.EqualTo("#/components/schemas/ProblemDetails"));
-        Assert.That(healthRequiredProperties, Is.EqualTo(ExpectedHealthRequiredProperties));
-        Assert.That(healthSchema.GetProperty("type").GetString(), Is.EqualTo("object"));
-        Assert.That(healthStatusSchema.GetProperty("type").GetString(), Is.EqualTo("string"));
-        Assert.That(schemas.TryGetProperty("ProblemDetails", out _), Is.True);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        Assert.StartsWith("3.1.", document.RootElement.GetProperty("openapi").GetString(), StringComparison.Ordinal);
+        Assert.False(hasServers && servers.GetArrayLength() > 0);
+        Assert.Equal("#/components/schemas/HealthResponse", successSchema.GetProperty("$ref").GetString());
+        Assert.Equal("#/components/schemas/ProblemDetails", problemSchema.GetProperty("$ref").GetString());
+        Assert.Equal(ExpectedHealthRequiredProperties, healthRequiredProperties);
+        Assert.Equal("object", healthSchema.GetProperty("type").GetString());
+        Assert.Equal("string", healthStatusSchema.GetProperty("type").GetString());
+        Assert.True(schemas.TryGetProperty("ProblemDetails", out _));
     }
 
     /// <summary>
     /// Verifies that the checked canonical contract matches runtime generation.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task CheckedDocumentMatchesRuntimeDocument()
     {
         await using var factory = new WebApplicationFactory<Program>();
@@ -79,13 +81,17 @@ public sealed class OpenApiTests
         var environment = factory.Services.GetRequiredService<IHostEnvironment>();
         var artifactPath = Path.Combine(environment.ContentRootPath, "openapi", "v1.json");
 
-        var runtimeJson = await client.GetStringAsync("/openapi/v1.json");
+        var runtimeJson = await client.GetStringAsync(
+            "/openapi/v1.json",
+            TestContext.Current.CancellationToken);
         var formattedRuntimeJson = FormatJson(runtimeJson);
 
-        Assert.That(File.Exists(artifactPath), Is.True, $"Missing OpenAPI artifact: {artifactPath}");
+        Assert.True(File.Exists(artifactPath), $"Missing OpenAPI artifact: {artifactPath}");
 
-        var checkedJson = await File.ReadAllTextAsync(artifactPath);
-        Assert.That(FormatJson(checkedJson), Is.EqualTo(formattedRuntimeJson));
+        var checkedJson = await File.ReadAllTextAsync(
+            artifactPath,
+            TestContext.Current.CancellationToken);
+        Assert.Equal(formattedRuntimeJson, FormatJson(checkedJson));
     }
 
     private static string FormatJson(string json)

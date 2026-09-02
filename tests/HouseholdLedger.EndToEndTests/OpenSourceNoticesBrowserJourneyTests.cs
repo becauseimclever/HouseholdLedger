@@ -11,25 +11,21 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 
-using NUnit.Framework;
+using Xunit;
+using Xunit.Sdk;
 
 /// <summary>
-/// Verifies the published desktop notices journey using test-owned API and Client hosts.
+/// Verifies the published desktop notices journey through its single hosted API URL.
 /// </summary>
-[TestFixture]
-[NonParallelizable]
+[Collection("End-to-end process resources")]
 public sealed class OpenSourceNoticesBrowserJourneyTests
 {
     private const string ApiArtifactEnvironmentVariable = "HOUSEHOLDLEDGER_API_ARTIFACT";
-    private const string ClientPublishDirectoryEnvironmentVariable = "HOUSEHOLDLEDGER_CLIENT_PUBLISH_DIR";
     private const string FirefoxEnvironmentVariable = "HOUSEHOLDLEDGER_FIREFOX_BINARY";
     private const string GeckodriverEnvironmentVariable = "HOUSEHOLDLEDGER_GECKODRIVER";
     private const string ProfileRootEnvironmentVariable = "HOUSEHOLDLEDGER_E2E_PROFILE_ROOT";
     private const string OutputDirectoryEnvironmentVariable = "HOUSEHOLDLEDGER_E2E_OUTPUT_DIR";
     private const string ApiPortEnvironmentVariable = "HOUSEHOLDLEDGER_E2E_API_PORT";
-    private const string ClientPortEnvironmentVariable = "HOUSEHOLDLEDGER_E2E_CLIENT_PORT";
-    private const int ApiPort = 51391;
-    private const int ClientPort = 51392;
     private const string FirefoxSha256 = "79f01d224fe7f31795f2d4edcb31f497c96e11e9d0770704ed8495861f70d1c1";
     private const string GeckodriverSha256 = "e95b4eac7960ffcd5acbfd92bb7d49d48f99c1d01a20ddd297fef8c80821020d";
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromSeconds(30);
@@ -47,19 +43,17 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
     /// Verifies keyboard navigation to the published notices page without changing the default calendar workspace.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task PublishedDesktopClientNavigatesToAccessibleOpenSourceNoticesAndReturnsToCalendarRoot()
     {
         var inputs = BrowserInputs.Load();
-        var apiOrigin = new Uri($"http://127.0.0.1:{inputs.ApiPort}");
-        var clientOrigin = new Uri($"http://127.0.0.1:{inputs.ClientPort}");
-        var driverPort = ReserveLoopbackPort(inputs.ApiPort, inputs.ClientPort);
+        var apiOrigin = new Uri($"https://localhost:{inputs.ApiPort}");
+        var driverPort = ReserveLoopbackPort(inputs.ApiPort);
         var driverOrigin = new Uri($"http://127.0.0.1:{driverPort}");
         var runId = $"{DateTime.UtcNow:yyyyMMdd-HHmmssfff}-{Environment.ProcessId}";
         var profilePath = Path.Combine(inputs.ProfileRoot, runId, "profile");
         Process? apiProcess = null;
         Process? driverProcess = null;
-        TestClientHost? clientHost = null;
         W3cWebDriver? browser = null;
         int? firefoxProcessId = null;
 
@@ -70,9 +64,6 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
         {
             apiProcess = StartApi(inputs.ApiAssemblyPath, apiOrigin);
             await WaitForOkAsync(apiOrigin, "/api/v1/health", apiProcess);
-
-            clientHost = await TestClientHost.StartAsync(inputs.ClientPublishDirectory, clientOrigin);
-            await AssertClientHostAsync(clientOrigin);
 
             driverProcess = StartGeckodriver(inputs.GeckodriverPath, driverPort);
             browser = new W3cWebDriver(driverOrigin);
@@ -88,21 +79,21 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
             firefoxProcessId = capabilities.GetProperty("moz:processID").GetInt32();
 
             await SetDesktopViewportAsync(browser, timeout.Token);
-            await browser.NavigateAsync(clientOrigin, timeout.Token);
+            await browser.NavigateAsync(apiOrigin, timeout.Token);
             await WaitForHeadingAsync(browser, "Calendar", timeout.Token);
-            await AssertCalendarWorkspaceAsync(browser, clientOrigin, timeout.Token);
+            await AssertCalendarWorkspaceAsync(browser, apiOrigin, timeout.Token);
 
             await FocusAndActivateNoticesLinkAsync(browser, timeout.Token);
             await WaitForHeadingAsync(browser, "Open-source notices", timeout.Token);
             await AssertNoticesPageAsync(browser, timeout.Token);
 
-            await browser.NavigateAsync(clientOrigin, timeout.Token);
+            await browser.NavigateAsync(apiOrigin, timeout.Token);
             await WaitForHeadingAsync(browser, "Calendar", timeout.Token);
-            await AssertCalendarWorkspaceAsync(browser, clientOrigin, timeout.Token);
+            await AssertCalendarWorkspaceAsync(browser, apiOrigin, timeout.Token);
 
-            TestContext.Progress.WriteLine(
-                $"Feature008 browser api={apiOrigin} client={clientOrigin} apiPid={apiProcess.Id} firefoxPid={firefoxProcessId} geckodriverPid={driverProcess.Id}");
-            TestContext.Progress.WriteLine(
+            TestContext.Current.TestOutputHelper?.WriteLine(
+                $"Feature008 browser api={apiOrigin} apiPid={apiProcess.Id} firefoxPid={firefoxProcessId} geckodriverPid={driverProcess.Id}");
+            TestContext.Current.TestOutputHelper?.WriteLine(
                 $"Feature008 runtime hashes firefox={inputs.FirefoxHash} geckodriver={inputs.GeckodriverHash}");
         }
         finally
@@ -123,11 +114,6 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
                 driverProcess.Dispose();
             }
 
-            if (clientHost is not null)
-            {
-                await clientHost.DisposeAsync();
-            }
-
             if (apiProcess is not null)
             {
                 await StopOwnedProcessAsync(apiProcess);
@@ -136,7 +122,7 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
 
             DeleteDirectory(Path.GetDirectoryName(profilePath)!);
             DeleteDirectory(inputs.OutputDirectory);
-            AssertPortsReleased(inputs.ApiPort, inputs.ClientPort, driverPort);
+            AssertPortsReleased(inputs.ApiPort, driverPort);
         }
     }
 
@@ -156,13 +142,11 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
 
     private static void AssertRuntimeCapabilities(JsonElement capabilities)
     {
-        Assert.Multiple(() =>
-        {
-            Assert.That(capabilities.GetProperty("browserName").GetString(), Is.EqualTo("firefox"));
-            Assert.That(capabilities.GetProperty("browserVersion").GetString(), Is.EqualTo("153.0.1"));
-            Assert.That(capabilities.GetProperty("acceptInsecureCerts").GetBoolean(), Is.False);
-            Assert.That(capabilities.GetProperty("moz:geckodriverVersion").GetString(), Is.EqualTo("0.37.1"));
-        });
+        Assert.Multiple(
+            () => Assert.Equal("firefox", capabilities.GetProperty("browserName").GetString()),
+            () => Assert.Equal("153.0.1", capabilities.GetProperty("browserVersion").GetString()),
+            () => Assert.False(capabilities.GetProperty("acceptInsecureCerts").GetBoolean()),
+            () => Assert.Equal("0.37.1", capabilities.GetProperty("moz:geckodriverVersion").GetString()));
     }
 
     private static async Task SetDesktopViewportAsync(W3cWebDriver browser, CancellationToken cancellationToken)
@@ -200,7 +184,7 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
 
     private static async Task AssertCalendarWorkspaceAsync(
         W3cWebDriver browser,
-        Uri clientOrigin,
+        Uri apiOrigin,
         CancellationToken cancellationToken)
     {
         var state = await browser.ExecuteScriptAsync(
@@ -213,19 +197,17 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
         var navigation = state.GetProperty("navigation");
         var calendar = state.GetProperty("calendar");
         var inspector = state.GetProperty("inspector");
-        Assert.Multiple(() =>
-        {
-            Assert.That(state.GetProperty("origin").GetString(), Is.EqualTo(clientOrigin.GetLeftPart(UriPartial.Authority)));
-            Assert.That(state.GetProperty("width").GetInt32(), Is.EqualTo(1440));
-            Assert.That(state.GetProperty("height").GetInt32(), Is.EqualTo(900));
-            Assert.That(state.GetProperty("scrollWidth").GetInt32(), Is.LessThanOrEqualTo(1440));
-            Assert.That(state.GetProperty("mainCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(state.GetProperty("headingCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(state.GetProperty("heading").GetString(), Is.EqualTo("Calendar"));
-            Assert.That(state.GetProperty("navigationDestinationCount").GetInt32(), Is.Zero);
-            Assert.That(navigation.GetProperty("right").GetDouble(), Is.LessThanOrEqualTo(calendar.GetProperty("left").GetDouble()));
-            Assert.That(calendar.GetProperty("right").GetDouble(), Is.LessThanOrEqualTo(inspector.GetProperty("left").GetDouble()));
-        });
+        Assert.Multiple(
+            () => Assert.Equal(apiOrigin.GetLeftPart(UriPartial.Authority), state.GetProperty("origin").GetString()),
+            () => Assert.Equal(1440, state.GetProperty("width").GetInt32()),
+            () => Assert.Equal(900, state.GetProperty("height").GetInt32()),
+            () => Assert.True(state.GetProperty("scrollWidth").GetInt32() <= 1440),
+            () => Assert.Equal(1, state.GetProperty("mainCount").GetInt32()),
+            () => Assert.Equal(1, state.GetProperty("headingCount").GetInt32()),
+            () => Assert.Equal("Calendar", state.GetProperty("heading").GetString()),
+            () => Assert.Equal(0, state.GetProperty("navigationDestinationCount").GetInt32()),
+            () => Assert.True(navigation.GetProperty("right").GetDouble() <= calendar.GetProperty("left").GetDouble()),
+            () => Assert.True(calendar.GetProperty("right").GetDouble() <= inspector.GetProperty("left").GetDouble()));
     }
 
     private static async Task FocusAndActivateNoticesLinkAsync(W3cWebDriver browser, CancellationToken cancellationToken)
@@ -236,19 +218,17 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
             null,
             cancellationToken);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(beforeActivation.GetProperty("linkCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(beforeActivation.GetProperty("isNativeAnchor").GetBoolean(), Is.True);
-            Assert.That(beforeActivation.GetProperty("href").GetString(), Is.EqualTo("/open-source-notices"));
-            Assert.That(beforeActivation.GetProperty("isFocused").GetBoolean(), Is.True);
-            Assert.That(beforeActivation.GetProperty("outlineStyle").GetString(), Is.EqualTo("solid"));
-            Assert.That(beforeActivation.GetProperty("current").ValueKind, Is.EqualTo(JsonValueKind.Null));
-            Assert.That(beforeActivation.GetProperty("primaryLinkCount").GetInt32(), Is.Zero);
-            Assert.That(beforeActivation.GetProperty("belowGrid").GetBoolean(), Is.True);
-            Assert.That(beforeActivation.GetProperty("position").GetString(), Is.Not.EqualTo("absolute"));
-            Assert.That(beforeActivation.GetProperty("position").GetString(), Is.Not.EqualTo("fixed"));
-        });
+        Assert.Multiple(
+            () => Assert.Equal(1, beforeActivation.GetProperty("linkCount").GetInt32()),
+            () => Assert.True(beforeActivation.GetProperty("isNativeAnchor").GetBoolean()),
+            () => Assert.Equal("/open-source-notices", beforeActivation.GetProperty("href").GetString()),
+            () => Assert.True(beforeActivation.GetProperty("isFocused").GetBoolean()),
+            () => Assert.Equal("solid", beforeActivation.GetProperty("outlineStyle").GetString()),
+            () => Assert.Equal(JsonValueKind.Null, beforeActivation.GetProperty("current").ValueKind),
+            () => Assert.Equal(0, beforeActivation.GetProperty("primaryLinkCount").GetInt32()),
+            () => Assert.True(beforeActivation.GetProperty("belowGrid").GetBoolean()),
+            () => Assert.NotEqual("absolute", beforeActivation.GetProperty("position").GetString()),
+            () => Assert.NotEqual("fixed", beforeActivation.GetProperty("position").GetString()));
 
         await browser.SendKeysAsync(link, "\uE007", cancellationToken);
     }
@@ -262,32 +242,22 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
             null,
             cancellationToken);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(state.GetProperty("mainCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(state.GetProperty("headingCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(state.GetProperty("heading").GetString(), Is.EqualTo("Open-source notices"));
-            Assert.That(state.GetProperty("focusedHeading").GetBoolean(), Is.True);
-            Assert.That(state.GetProperty("current").GetString(), Is.EqualTo("page"));
-            Assert.That(
-                state.GetProperty("entryNames").EnumerateArray().Select(name => name.GetString()),
-                Is.EquivalentTo(ExpectedPackageNames));
-            Assert.That(state.GetProperty("entryVisible").GetBoolean(), Is.True);
-            Assert.That(state.GetProperty("preCount").GetInt32(), Is.EqualTo(7));
-            Assert.That(state.GetProperty("preVisible").GetBoolean(), Is.True);
-            Assert.That(state.GetProperty("preReadable").GetBoolean(), Is.True);
-            Assert.That(state.GetProperty("externalLinkCount").GetInt32(), Is.EqualTo(12));
-            Assert.That(state.GetProperty("externalLinksAccessible").GetBoolean(), Is.True);
-            Assert.That(state.GetProperty("scrollWidth").GetInt32(), Is.LessThanOrEqualTo(1440));
-        });
-    }
-
-    private static async Task AssertClientHostAsync(Uri clientOrigin)
-    {
-        using var client = new HttpClient { BaseAddress = clientOrigin, Timeout = TimeSpan.FromSeconds(5) };
-        using var response = await client.GetAsync("/");
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        Assert.That(response.Content.Headers.ContentType?.MediaType, Is.EqualTo("text/html"));
+        Assert.Multiple(
+            () => Assert.Equal(1, state.GetProperty("mainCount").GetInt32()),
+            () => Assert.Equal(1, state.GetProperty("headingCount").GetInt32()),
+            () => Assert.Equal("Open-source notices", state.GetProperty("heading").GetString()),
+            () => Assert.True(state.GetProperty("focusedHeading").GetBoolean()),
+            () => Assert.Equal("page", state.GetProperty("current").GetString()),
+            () => Assert.Equivalent(
+                ExpectedPackageNames,
+                state.GetProperty("entryNames").EnumerateArray().Select(name => name.GetString())),
+            () => Assert.True(state.GetProperty("entryVisible").GetBoolean()),
+            () => Assert.Equal(7, state.GetProperty("preCount").GetInt32()),
+            () => Assert.True(state.GetProperty("preVisible").GetBoolean()),
+            () => Assert.True(state.GetProperty("preReadable").GetBoolean()),
+            () => Assert.Equal(12, state.GetProperty("externalLinkCount").GetInt32()),
+            () => Assert.True(state.GetProperty("externalLinksAccessible").GetBoolean()),
+            () => Assert.True(state.GetProperty("scrollWidth").GetInt32() <= 1440));
     }
 
     private static Process StartApi(string assemblyPath, Uri origin)
@@ -435,7 +405,7 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
             await Task.Delay(TimeSpan.FromMilliseconds(100), timeout.Token);
         }
 
-        Assert.That(IsProcessRunning(processId), Is.False, $"Owned Firefox process {processId} must exit.");
+        Assert.False(IsProcessRunning(processId), $"Owned Firefox process {processId} must exit.");
     }
 
     private static bool IsProcessRunning(int processId)
@@ -489,47 +459,28 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
 
     private sealed record BrowserInputs(
         string ApiAssemblyPath,
-        string ClientPublishDirectory,
         string FirefoxBinaryPath,
         string GeckodriverPath,
         string ProfileRoot,
         string OutputDirectory,
         int ApiPort,
-        int ClientPort,
         string FirefoxHash,
         string GeckodriverHash)
     {
         public static BrowserInputs Load()
         {
             var apiPath = GetRequiredFile(ApiArtifactEnvironmentVariable, "HouseholdLedger.Api.dll");
-            var clientPublishDirectory = GetRequiredClientPublishDirectory();
             var firefoxPath = GetRequiredFile(FirefoxEnvironmentVariable, "firefox.exe");
             var geckodriverPath = GetRequiredFile(GeckodriverEnvironmentVariable, "geckodriver.exe");
             return new BrowserInputs(
                 apiPath,
-                clientPublishDirectory,
                 firefoxPath,
                 geckodriverPath,
                 GetRequiredDirectory(ProfileRootEnvironmentVariable),
                 GetRequiredDirectory(OutputDirectoryEnvironmentVariable),
-                GetRequiredAvailablePort(ApiPortEnvironmentVariable, OpenSourceNoticesBrowserJourneyTests.ApiPort),
-                GetRequiredAvailablePort(ClientPortEnvironmentVariable, OpenSourceNoticesBrowserJourneyTests.ClientPort),
+                GetRequiredAvailablePort(ApiPortEnvironmentVariable),
                 RequireApprovedHash(FirefoxEnvironmentVariable, firefoxPath, FirefoxSha256),
                 RequireApprovedHash(GeckodriverEnvironmentVariable, geckodriverPath, GeckodriverSha256));
-        }
-
-        private static string GetRequiredClientPublishDirectory()
-        {
-            var path = GetRequiredDirectory(ClientPublishDirectoryEnvironmentVariable);
-            foreach (var requiredFile in new[] { "index.html", "appsettings.json", Path.Combine("_framework", "blazor.webassembly.js") })
-            {
-                if (!File.Exists(Path.Combine(path, requiredFile)))
-                {
-                    throw new AssertionException($"{ClientPublishDirectoryEnvironmentVariable} must contain '{requiredFile}'.");
-                }
-            }
-
-            return path;
         }
 
         private static string GetRequiredFile(string variableName, string exactFileName)
@@ -537,7 +488,7 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
             var path = GetNormalizedAbsolutePath(variableName);
             if (!string.Equals(Path.GetFileName(path), exactFileName, StringComparison.OrdinalIgnoreCase) || !File.Exists(path))
             {
-                throw new AssertionException($"{variableName} must name existing '{exactFileName}'.");
+                throw new XunitException($"{variableName} must name existing '{exactFileName}'.");
             }
 
             return path;
@@ -548,17 +499,17 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
             var path = GetNormalizedAbsolutePath(variableName);
             if (!Directory.Exists(path))
             {
-                throw new AssertionException($"{variableName} must name an existing directory.");
+                throw new XunitException($"{variableName} must name an existing directory.");
             }
 
             return path;
         }
 
-        private static int GetRequiredAvailablePort(string variableName, int expectedPort)
+        private static int GetRequiredAvailablePort(string variableName)
         {
-            if (!int.TryParse(Environment.GetEnvironmentVariable(variableName), out var port) || port != expectedPort)
+            if (!int.TryParse(Environment.GetEnvironmentVariable(variableName), out var port) || port is < 1 or > 65535)
             {
-                throw new AssertionException($"{variableName} must be the assigned port {expectedPort}.");
+                throw new XunitException($"{variableName} must be a valid TCP port.");
             }
 
             AssertPortsReleased(port);
@@ -570,13 +521,13 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
             var configuredPath = Environment.GetEnvironmentVariable(variableName);
             if (string.IsNullOrWhiteSpace(configuredPath) || !Path.IsPathFullyQualified(configuredPath))
             {
-                throw new AssertionException($"{variableName} must be an absolute path.");
+                throw new XunitException($"{variableName} must be an absolute path.");
             }
 
             var fullPath = Path.GetFullPath(configuredPath);
             if (!string.Equals(configuredPath, fullPath, StringComparison.OrdinalIgnoreCase))
             {
-                throw new AssertionException($"{variableName} must be normalized.");
+                throw new XunitException($"{variableName} must be normalized.");
             }
 
             return fullPath;
@@ -588,133 +539,10 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
             var actualHash = Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
             if (!string.Equals(actualHash, approvedHash, StringComparison.Ordinal))
             {
-                throw new AssertionException($"{variableName} SHA-256 mismatch. No browser process was launched.");
+                throw new XunitException($"{variableName} SHA-256 mismatch. No browser process was launched.");
             }
 
             return actualHash;
-        }
-    }
-
-    private sealed class TestClientHost : IAsyncDisposable
-    {
-        private readonly string contentRoot;
-        private readonly HttpListener listener;
-        private readonly CancellationTokenSource cancellation = new();
-        private readonly Task servingTask;
-
-        private TestClientHost(string contentRoot, Uri origin)
-        {
-            this.contentRoot = contentRoot;
-            this.listener = new HttpListener();
-            this.listener.Prefixes.Add(origin.AbsoluteUri.EndsWith('/') ? origin.AbsoluteUri : $"{origin.AbsoluteUri}/");
-            this.listener.Start();
-            this.servingTask = this.ServeAsync();
-        }
-
-        public static Task<TestClientHost> StartAsync(string contentRoot, Uri origin)
-        {
-            return Task.FromResult(new TestClientHost(contentRoot, origin));
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            this.cancellation.Cancel();
-            this.listener.Close();
-
-            try
-            {
-                await this.servingTask;
-            }
-            catch (HttpListenerException)
-            {
-            }
-            catch (ObjectDisposedException)
-            {
-            }
-
-            this.cancellation.Dispose();
-        }
-
-        private async Task ServeAsync()
-        {
-            while (!this.cancellation.IsCancellationRequested)
-            {
-                HttpListenerContext context;
-                try
-                {
-                    context = await this.listener.GetContextAsync().WaitAsync(this.cancellation.Token);
-                }
-                catch (OperationCanceledException) when (this.cancellation.IsCancellationRequested)
-                {
-                    return;
-                }
-                catch (HttpListenerException) when (this.cancellation.IsCancellationRequested)
-                {
-                    return;
-                }
-                catch (ObjectDisposedException) when (this.cancellation.IsCancellationRequested)
-                {
-                    return;
-                }
-
-                await this.ServeRequestAsync(context);
-            }
-        }
-
-        private async Task ServeRequestAsync(HttpListenerContext context)
-        {
-            static string GetContentType(string path) => Path.GetExtension(path) switch
-            {
-                ".css" => "text/css",
-                ".html" => "text/html",
-                ".js" => "text/javascript",
-                ".json" => "application/json",
-                ".wasm" => "application/wasm",
-                _ => "application/octet-stream",
-            };
-
-            try
-            {
-                if (!string.Equals(context.Request.HttpMethod, "GET", StringComparison.Ordinal)
-                    && !string.Equals(context.Request.HttpMethod, "HEAD", StringComparison.Ordinal))
-                {
-                    context.Response.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
-                    return;
-                }
-
-                var path = context.Request.Url?.AbsolutePath ?? "/";
-                var relativePath = Uri.UnescapeDataString(path).TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-                if (string.IsNullOrEmpty(relativePath) || Path.GetExtension(relativePath).Length == 0)
-                {
-                    relativePath = "index.html";
-                }
-
-                if (Path.IsPathRooted(relativePath) || relativePath.Split(Path.DirectorySeparatorChar).Any(segment => segment == ".."))
-                {
-                    context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                    return;
-                }
-
-                var filePath = Path.Combine(this.contentRoot, relativePath);
-                if (!File.Exists(filePath))
-                {
-                    context.Response.StatusCode = (int)HttpStatusCode.NotFound;
-                    return;
-                }
-
-                context.Response.StatusCode = (int)HttpStatusCode.OK;
-                context.Response.ContentType = GetContentType(filePath);
-                context.Response.ContentLength64 = new FileInfo(filePath).Length;
-                if (!string.Equals(context.Request.HttpMethod, "HEAD", StringComparison.Ordinal))
-                {
-                    await using var input = File.OpenRead(filePath);
-                    await input.CopyToAsync(context.Response.OutputStream, this.cancellation.Token);
-                }
-            }
-            finally
-            {
-                context.Response.Close();
-            }
         }
     }
 }

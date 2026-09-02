@@ -4,7 +4,7 @@
 
 namespace HouseholdLedger.Api.IntegrationTests;
 
-using NUnit.Framework;
+using Xunit;
 
 /// <summary>
 /// Verifies API assembly dependency boundaries.
@@ -14,12 +14,12 @@ public sealed class DependencyBoundaryTests
     /// <summary>
     /// Verifies that the API can be built and hosted without the built-in client assembly.
     /// </summary>
-    [Test]
+    [Fact]
     public void ApiDoesNotReferenceClient()
     {
         var references = typeof(Program).Assembly.GetReferencedAssemblies();
         var referenceNames = references.Select(reference => reference.Name);
 
-        Assert.That(referenceNames, Does.Not.Contain("HouseholdLedger.Client"));
+        Assert.DoesNotContain("HouseholdLedger.Client", referenceNames);
     }
 }

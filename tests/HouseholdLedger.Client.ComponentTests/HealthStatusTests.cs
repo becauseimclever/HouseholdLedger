@@ -12,7 +12,7 @@ using HouseholdLedger.Client.Api;
 using HouseholdLedger.Client.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
-using NUnit.Framework;
+using Xunit;
 
 /// <summary>
 /// Verifies API availability presentation through a controlled HTTP boundary.
@@ -22,7 +22,7 @@ public sealed class HealthStatusTests
     /// <summary>
     /// Verifies the loading state while the health response is pending.
     /// </summary>
-    [Test]
+    [Fact]
     public void HealthStatusShowsLoadingWhileRequestIsPending()
     {
         var pendingResponse = new TaskCompletionSource<HttpResponseMessage>();
@@ -30,19 +30,17 @@ public sealed class HealthStatusTests
 
         var component = context.Render<HealthStatus>();
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(component.Find("[role='status']").TextContent, Does.Contain("Checking API availability"));
-            Assert.That(component.Find("[role='status']").GetAttribute("aria-live"), Is.EqualTo("polite"));
-            Assert.That(component.FindAll("button"), Is.Empty);
-        });
+        Assert.Multiple(
+            () => Assert.Contains("Checking API availability", component.Find("[role='status']").TextContent, StringComparison.Ordinal),
+            () => Assert.Equal("polite", component.Find("[role='status']").GetAttribute("aria-live")),
+            () => Assert.Empty(component.FindAll("button")));
     }
 
     /// <summary>
     /// Verifies the available state after a successful documented health response.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task HealthStatusShowsAvailableForSuccessfulResponse()
     {
         using var context = CreateContext(new DelegateHandler((_, _) =>
@@ -50,19 +48,17 @@ public sealed class HealthStatusTests
 
         var component = context.Render<HealthStatus>();
 
-        await component.WaitForAssertionAsync(() => Assert.Multiple(() =>
-        {
-            Assert.That(component.Find("[role='status']").TextContent, Does.Contain("API available"));
-            Assert.That(component.Find("[role='status']").GetAttribute("aria-live"), Is.EqualTo("polite"));
-            Assert.That(component.FindAll("[role='alert']"), Is.Empty);
-        }));
+        await component.WaitForAssertionAsync(() => Assert.Multiple(
+            () => Assert.Contains("API available", component.Find("[role='status']").TextContent, StringComparison.Ordinal),
+            () => Assert.Equal("polite", component.Find("[role='status']").GetAttribute("aria-live")),
+            () => Assert.Empty(component.FindAll("[role='alert']"))));
     }
 
     /// <summary>
     /// Verifies that a non-success response is presented as unavailable.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task HealthStatusShowsUnavailableForNonSuccessResponse()
     {
         using var context = CreateContext(new DelegateHandler((_, _) =>
@@ -72,9 +68,9 @@ public sealed class HealthStatusTests
 
         await component.WaitForAssertionAsync(() =>
         {
-            Assert.That(component.Find("[role='alert']").TextContent, Does.Contain("API unavailable"));
-            Assert.That(component.Find("button").TextContent, Does.Contain("Try again"));
-            Assert.That(component.Find("button").GetAttribute("type"), Is.EqualTo("button"));
+            Assert.Contains("API unavailable", component.Find("[role='alert']").TextContent, StringComparison.Ordinal);
+            Assert.Contains("Try again", component.Find("button").TextContent, StringComparison.Ordinal);
+            Assert.Equal("button", component.Find("button").GetAttribute("type"));
         });
     }
 
@@ -82,7 +78,7 @@ public sealed class HealthStatusTests
     /// Verifies that malformed successful JSON is presented as a recoverable error.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task HealthStatusShowsErrorFallbackForMalformedSuccessfulJson()
     {
         using var context = CreateContext(new DelegateHandler((_, _) =>
@@ -90,20 +86,18 @@ public sealed class HealthStatusTests
 
         var component = context.Render<HealthStatus>();
 
-        await component.WaitForAssertionAsync(() => Assert.Multiple(() =>
-        {
-            Assert.That(component.Find("[role='alert']").TextContent, Does.Contain("We couldn't check the API"));
-            Assert.That(component.Find("button").TextContent, Does.Contain("Try again"));
-            Assert.That(component.Find("button").GetAttribute("type"), Is.EqualTo("button"));
-            Assert.That(component.FindAll("[role='status']"), Is.Empty);
-        }));
+        await component.WaitForAssertionAsync(() => Assert.Multiple(
+            () => Assert.Contains("We couldn't check the API", component.Find("[role='alert']").TextContent, StringComparison.Ordinal),
+            () => Assert.Contains("Try again", component.Find("button").TextContent, StringComparison.Ordinal),
+            () => Assert.Equal("button", component.Find("button").GetAttribute("type")),
+            () => Assert.Empty(component.FindAll("[role='status']"))));
     }
 
     /// <summary>
     /// Verifies that a transport error is recoverable through the retry control.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task HealthStatusCanRetryAfterTransportError()
     {
         var attempt = 0;
@@ -117,13 +111,13 @@ public sealed class HealthStatusTests
         var component = context.Render<HealthStatus>();
 
         await component.WaitForAssertionAsync(() =>
-            Assert.That(component.Find("[role='alert']").TextContent, Does.Contain("couldn't check")));
+            Assert.Contains("couldn't check", component.Find("[role='alert']").TextContent, StringComparison.Ordinal));
 
         await component.Find("button").ClickAsync(new MouseEventArgs());
 
         await component.WaitForAssertionAsync(() =>
-            Assert.That(component.Find("[role='status']").TextContent, Does.Contain("API available")));
-        Assert.That(attempt, Is.EqualTo(2));
+            Assert.Contains("API available", component.Find("[role='status']").TextContent, StringComparison.Ordinal));
+        Assert.Equal(2, attempt);
     }
 
     private static BunitContext CreateContext(HttpMessageHandler handler)

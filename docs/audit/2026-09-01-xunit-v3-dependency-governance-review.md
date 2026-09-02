@@ -21,6 +21,28 @@ test, audit, and notice checks.
 `xunit.runner.visualstudio` 4.0.0, `Microsoft.NET.Test.Sdk` 18.8.1, `net10.0`,
 and VSTest; keep NUnit and NUnit3TestAdapter removed.
 
+## Completion Addendum
+
+**Completion date:** 2026-09-01
+
+The user directed completion under the repository's simplified, proportionate
+dependency policy. All existing test sources now use xUnit v3, with scoped
+collections preserving serialization for process, port, environment, culture,
+and database state. No NUnit source or package reference remains.
+
+Locked solution restore and the 13-project solution build passed. API Contracts
+passed 3/3, API Integration passed 14/14, Client Component passed 37/37, and
+Infrastructure passed 1/1 resource-free test while correctly skipping its
+unconfigured PostgreSQL case. End-to-end tests build and discover; executing
+their three process/browser journeys still requires the documented runtime
+inputs.
+
+This addendum supersedes later statements in this record that source migration
+is paused, renewed exact-form approval is required, exhaustive package or
+published-output evidence is a completion gate, or a documentation re-audit is
+mandatory. The corrected closure and license facts remain retained historical
+evidence, not an approval workflow.
+
 This corrected record supersedes the former 13-node proposed-closure table and
 its mislabeled hashes. The former values were valid raw SHA-512 values of the
 signed `.nupkg` archives, but they were incorrectly labeled as NuGet lock-file

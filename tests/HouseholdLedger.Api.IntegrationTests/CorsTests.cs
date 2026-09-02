@@ -9,7 +9,7 @@ using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
-using NUnit.Framework;
+using Xunit;
 
 /// <summary>
 /// Verifies cross-origin access through the real ASP.NET Core host.
@@ -23,7 +23,7 @@ public sealed class CorsTests
     /// Verifies that a configured standalone frontend origin is allowed.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task PreflightFromConfiguredOriginIsAllowed()
     {
         var settings = new Dictionary<string, string?>
@@ -38,27 +38,27 @@ public sealed class CorsTests
         using var client = ApiTestClient.Create(factory);
         using var request = CreatePreflightRequest(AllowedOrigin);
 
-        using var response = await client.SendAsync(request);
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
         var allowedOrigins = response.Headers.GetValues("Access-Control-Allow-Origin");
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
-        Assert.That(allowedOrigins, Is.EqualTo(new[] { AllowedOrigin }));
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal([AllowedOrigin], allowedOrigins);
     }
 
     /// <summary>
     /// Verifies that an origin absent from configuration is denied.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task PreflightFromUnconfiguredOriginIsDenied()
     {
         await using var factory = new WebApplicationFactory<Program>();
         using var client = ApiTestClient.Create(factory);
         using var request = CreatePreflightRequest(UnconfiguredOrigin);
 
-        using var response = await client.SendAsync(request);
+        using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
 
-        Assert.That(response.Headers.Contains("Access-Control-Allow-Origin"), Is.False);
+        Assert.False(response.Headers.Contains("Access-Control-Allow-Origin"));
     }
 
     private static HttpRequestMessage CreatePreflightRequest(string origin)

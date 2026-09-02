@@ -8,6 +8,7 @@ const string frontendCorsPolicy = "Frontend";
 var connectionString = builder.Configuration.GetConnectionString("HouseholdLedger");
 if (!string.IsNullOrWhiteSpace(connectionString) && HasUsableConnectionStringSyntax(connectionString))
 {
+    builder.Services.AddScoped<HouseholdLedger.Application.Transactions.ExpenseTransactionService>();
     builder.Services.AddHouseholdLedgerInfrastructure(connectionString);
 }
 

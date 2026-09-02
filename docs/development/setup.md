@@ -91,19 +91,18 @@ To use a different API origin, change `Api:BaseUrl` in the Client's public
 static configuration and make the API listen on that origin. Browser-delivered
 configuration is public and must never contain credentials or secrets.
 
-## Publish Independently
+## Publish the Hosted Application
 
-Publish each application without relying on the other project:
+Publish the API project to produce the deployable application:
 
 ```powershell
 dotnet publish src/HouseholdLedger.Api --no-restore --output artifacts/publish/api
-dotnet publish src/HouseholdLedger.Client --no-restore --output artifacts/publish/client
 ```
 
-The API output is an ASP.NET Core application. The Client output under
-`artifacts/publish/client/wwwroot` is static content and may be hosted by a
-static web server that supports fallback routing to `index.html`. Publishing
-does not combine the two applications.
+The API output is an ASP.NET Core application that includes and serves the
+referenced Blazor WebAssembly Client. A replacement frontend may still consume
+the language-neutral HTTP/OpenAPI contract without referencing server
+implementation assemblies.
 
 Generated `artifacts` content is local output and must not be committed.
 
@@ -115,25 +114,24 @@ Playwright, a browser manager, or a runtime downloader.
 
 The approved runtime is pinned below
 `%LOCALAPPDATA%\HouseholdLedger\BrowserTestRuntime`. Before running the tests,
-publish the API and Client to a fresh temporary root and set six normalized
-absolute paths plus two distinct available loopback ports. The tests enforce the
+publish the API to a fresh temporary root and set five normalized absolute
+paths plus one available loopback port. The tests enforce the
 approved Firefox and geckodriver SHA-256 values before launching a browser
 process:
 
 - `HOUSEHOLDLEDGER_API_ARTIFACT` for the fresh
   `HouseholdLedger.Api.dll`.
-- `HOUSEHOLDLEDGER_CLIENT_PUBLISH_DIR` for the fresh Client `wwwroot`.
 - `HOUSEHOLDLEDGER_FIREFOX_BINARY` for the exact Firefox 153.0.1 EME-free
   `firefox.exe`.
 - `HOUSEHOLDLEDGER_GECKODRIVER` for the exact geckodriver 0.37.1
   `geckodriver.exe`.
 - `HOUSEHOLDLEDGER_E2E_PROFILE_ROOT` and `HOUSEHOLDLEDGER_E2E_OUTPUT_DIR` for
   existing, test-owned directories beneath the run's temporary root.
-- `HOUSEHOLDLEDGER_E2E_API_PORT` and `HOUSEHOLDLEDGER_E2E_CLIENT_PORT` for
-  different available loopback ports reserved for that run.
+- `HOUSEHOLDLEDGER_E2E_API_PORT` for an available loopback port reserved for
+  that run.
 
 Use the complete self-cleaning PowerShell workflow in [Testing](testing.md).
-The test owns dynamic loopback ports, processes, Firefox profiles, and
+The test owns its loopback ports, processes, Firefox profiles, and
 screenshots; its cleanup verifies that processes stop, ports are released, and
 temporary profiles are removed. The workflow removes its publish output and
 process-scoped environment variables in `finally`.

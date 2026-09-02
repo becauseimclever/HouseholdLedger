@@ -2,30 +2,19 @@
 
 ## Status
 
-Status: Paused for active implementation and acceptance validation; superseded
-for that active work by Feature 002 / not complete / not abandoned
+Status: Closed - superseded by Features 002 through 005.
 
-- Approval authority: the user. The orchestrator cannot approve this document
-  on the user's behalf.
-- Approval record: the user approved the complete Feature 001 specification and
-  implementation of all six waves on 2026-08-02. On 2026-08-04, the user
-  approved a fresh hosting direction: the API directly references and hosts the
-  built-in Blazor WebAssembly Client through standard .NET framework support;
-  MVC/OpenAPI remains available for alternate HTTP/OpenAPI clients; and a
-  visible rendered shell is the required hosted-WASM outcome. This supersedes
-  the immediately prior external-artifact-composition simplification.
-- Implementation readiness: this specification revision is approved, but it
-  does not authorize implementation or establish completion. Historical
-  evidence may be consulted only as context; it does not prove the simplified
-  acceptance criteria below.
-- Pause decision: on 2026-08-04, the user paused Feature 001 so Feature 002
-  can isolate and prove one deliberately minimal hosted Blazor WebAssembly
-  runtime outcome. Feature 001 remains approved but incomplete and may be
-  resumed only through a later user decision. No prior failed, partial, or
-  historical Feature 001 evidence is acceptance evidence for Feature 002.
+- Feature 001 established the repository and architecture baseline, but its
+  original process-heavy Definition of Done was never completed as written.
+- Feature 002 proved the hosted application path. Features 003 and 004 completed
+  the workspace and calendar foundations. Feature 005 introduced the first
+  ledger behavior.
+- No remaining Feature 001 work is planned. Historical audits remain evidence
+  of the decisions and validation performed at the time; their unmet ceremony
+  does not remain an implementation gate under the current risk-based policy.
+- Research date: 2026-08-02; closed as superseded on 2026-09-01.
 - Scope type: foundational application scaffold; no household-ledger feature
   behavior is included.
-- Research date: 2026-08-02; user decisions updated 2026-08-04.
 
 ## Governing Simplification Revision
 

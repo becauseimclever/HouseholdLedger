@@ -8,7 +8,7 @@ using System.Net;
 using System.Text.Json;
 
 using Microsoft.AspNetCore.Mvc.Testing;
-using NUnit.Framework;
+using Xunit;
 
 /// <summary>
 /// Verifies the health endpoint through the real ASP.NET Core host.
@@ -19,25 +19,27 @@ public sealed class HealthEndpointTests
     /// Verifies that the API host starts and serves the versioned health route.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task GetHealthStartsHostAndReturnsSuccess()
     {
         await using var factory = new WebApplicationFactory<Program>();
         using var client = ApiTestClient.Create(factory);
 
-        using var response = await client.GetAsync("/api/v1/health");
-        var body = await response.Content.ReadAsStringAsync();
+        using var response = await client.GetAsync(
+            "/api/v1/health",
+            TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         using var document = JsonDocument.Parse(body);
         var properties = document.RootElement.EnumerateObject().ToArray();
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        Assert.That(response.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/json"));
-        Assert.That(properties, Has.Length.EqualTo(1));
-        Assert.That(properties[0].Name, Is.EqualTo("status"));
-        Assert.That(properties[0].Value.GetString(), Is.EqualTo("available"));
-        Assert.That(body, Does.Not.Contain("environment").IgnoreCase);
-        Assert.That(body, Does.Not.Contain("version").IgnoreCase);
-        Assert.That(body, Does.Not.Contain("database").IgnoreCase);
-        Assert.That(body, Does.Not.Contain("connection").IgnoreCase);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        Assert.Single(properties);
+        Assert.Equal("status", properties[0].Name);
+        Assert.Equal("available", properties[0].Value.GetString());
+        Assert.DoesNotContain("environment", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("version", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("database", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("connection", body, StringComparison.OrdinalIgnoreCase);
     }
 }

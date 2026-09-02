@@ -9,7 +9,7 @@ using System.Xml.Linq;
 
 using HouseholdLedger.Api.Contracts;
 using Microsoft.OpenApi;
-using NUnit.Framework;
+using Xunit;
 
 /// <summary>
 /// Verifies the checked language-neutral contract and .NET transport types.
@@ -23,7 +23,7 @@ public sealed class ApiContractTests
     /// Verifies that the checked OpenAPI document describes the health transport contract.
     /// </summary>
     /// <returns>A task representing the asynchronous operation.</returns>
-    [Test]
+    [Fact]
     public async Task CheckedOpenApiDescribesHealthTransportContract()
     {
         await using var stream = File.OpenRead(GetOpenApiArtifactPath());
@@ -31,36 +31,36 @@ public sealed class ApiContractTests
             stream,
             "json",
             settings: null,
-            TestContext.CurrentContext.CancellationToken);
+            TestContext.Current.CancellationToken);
         var document = readResult.Document
             ?? throw new InvalidDataException("The checked OpenAPI artifact did not produce a document.");
         var diagnostic = readResult.Diagnostic
             ?? throw new InvalidDataException("The checked OpenAPI artifact did not produce parser diagnostics.");
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(diagnostic.SpecificationVersion, Is.EqualTo(OpenApiSpecVersion.OpenApi3_1));
-            Assert.That(diagnostic.Errors, Is.Empty);
-            Assert.That(diagnostic.Warnings, Is.Empty);
-        });
+        Assert.Multiple(
+            () => Assert.Equal(OpenApiSpecVersion.OpenApi3_1, diagnostic.SpecificationVersion),
+            () => Assert.Empty(diagnostic.Errors),
+            () => Assert.Empty(diagnostic.Warnings));
 
         var paths = document.Paths
             ?? throw new InvalidDataException("The checked OpenAPI artifact does not define paths.");
-        Assert.That(paths, Contains.Key("/api/v1/health"));
+        Assert.Contains("/api/v1/health", paths);
         var pathItem = paths["/api/v1/health"];
         var operations = pathItem.Operations
             ?? throw new InvalidDataException("The health path does not define operations.");
-        Assert.That(operations, Contains.Key(HttpMethod.Get));
+        Assert.Contains(HttpMethod.Get, operations);
         var operation = operations[HttpMethod.Get];
         var responses = operation.Responses
             ?? throw new InvalidDataException("The health GET operation does not define responses.");
-        Assert.That(responses, Does.ContainKey("200").And.ContainKey("500"));
+        Assert.Multiple(
+            () => Assert.Contains("200", responses),
+            () => Assert.Contains("500", responses));
         var successContent = responses["200"].Content
             ?? throw new InvalidDataException("The health success response does not define content.");
-        Assert.That(successContent, Contains.Key("application/json"));
+        Assert.Contains("application/json", successContent);
         var errorContent = responses["500"].Content
             ?? throw new InvalidDataException("The health error response does not define content.");
-        Assert.That(errorContent, Contains.Key("application/problem+json"));
+        Assert.Contains("application/problem+json", errorContent);
         var healthSchema = document.Components?.Schemas?["HealthResponse"]
             ?? throw new InvalidDataException("The checked OpenAPI artifact does not define HealthResponse.");
         var successSchema = successContent["application/json"].Schema;
@@ -68,26 +68,24 @@ public sealed class ApiContractTests
         var successSchemaReference = successSchema as OpenApiSchemaReference;
         var errorSchemaReference = errorSchema as OpenApiSchemaReference;
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(successSchemaReference, Is.Not.Null);
-            Assert.That(
-                successSchemaReference?.Reference.ReferenceV3,
-                Is.EqualTo("#/components/schemas/HealthResponse"));
-            Assert.That(errorSchemaReference, Is.Not.Null);
-            Assert.That(
-                errorSchemaReference?.Reference.ReferenceV3,
-                Is.EqualTo("#/components/schemas/ProblemDetails"));
-            Assert.That(healthSchema.Type, Is.EqualTo(JsonSchemaType.Object));
-            Assert.That(healthSchema.Required, Is.EqualTo(RequiredHealthProperties));
-            Assert.That(healthSchema.Properties?["status"].Type, Is.EqualTo(JsonSchemaType.String));
-        });
+        Assert.Multiple(
+            () => Assert.NotNull(successSchemaReference),
+            () => Assert.Equal(
+                "#/components/schemas/HealthResponse",
+                successSchemaReference?.Reference.ReferenceV3),
+            () => Assert.NotNull(errorSchemaReference),
+            () => Assert.Equal(
+                "#/components/schemas/ProblemDetails",
+                errorSchemaReference?.Reference.ReferenceV3),
+            () => Assert.Equal(JsonSchemaType.Object, healthSchema.Type),
+            () => Assert.Equal(RequiredHealthProperties, healthSchema.Required),
+            () => Assert.Equal(JsonSchemaType.String, healthSchema.Properties?["status"].Type));
     }
 
     /// <summary>
     /// Verifies that a .NET client can consume JSON conforming to the checked OpenAPI schema.
     /// </summary>
-    [Test]
+    [Fact]
     public void HealthResponseConsumesLanguageNeutralJsonContract()
     {
         const string languageNeutralJson = """{"status":"available"}""";
@@ -104,18 +102,16 @@ public sealed class ApiContractTests
         var serializedProperties = serializedDocument.RootElement.EnumerateObject().ToArray();
         var consumedResponse = JsonSerializer.Deserialize<HealthResponse>(languageNeutralJson, WebJsonOptions);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(serializedProperties.Select(property => property.Name), Is.EqualTo(schemaProperties));
-            Assert.That(serializedProperties[0].Value.ValueKind, Is.EqualTo(JsonValueKind.String));
-            Assert.That(consumedResponse, Is.EqualTo(response));
-        });
+        Assert.Multiple(
+            () => Assert.Equal(schemaProperties, serializedProperties.Select(property => property.Name)),
+            () => Assert.Equal(JsonValueKind.String, serializedProperties[0].Value.ValueKind),
+            () => Assert.Equal(response, consumedResponse));
     }
 
     /// <summary>
     /// Verifies that the .NET convenience contract has no HouseholdLedger implementation dependency.
     /// </summary>
-    [Test]
+    [Fact]
     public void ApiContractsHasNoHouseholdLedgerProjectOrAssemblyDependencies()
     {
         var repositoryRoot = FindRepositoryRoot();
@@ -132,12 +128,10 @@ public sealed class ApiContractTests
         var leakedImplementationTypes = typeof(HealthResponse).Assembly.GetExportedTypes()
             .Where(type => type.Namespace != typeof(HealthResponse).Namespace);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(projectReferences, Is.Empty);
-            Assert.That(householdLedgerAssemblyReferences, Is.Empty);
-            Assert.That(leakedImplementationTypes, Is.Empty);
-        });
+        Assert.Multiple(
+            () => Assert.Empty(projectReferences),
+            () => Assert.Empty(householdLedgerAssemblyReferences),
+            () => Assert.Empty(leakedImplementationTypes));
     }
 
     private static JsonDocument LoadOpenApiJsonDocument()
@@ -157,7 +151,7 @@ public sealed class ApiContractTests
 
     private static string FindRepositoryRoot()
     {
-        var directory = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
 
         while (directory is not null)
         {

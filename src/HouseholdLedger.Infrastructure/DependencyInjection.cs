@@ -4,6 +4,7 @@
 
 namespace Microsoft.Extensions.DependencyInjection;
 
+using HouseholdLedger.Application.Transactions;
 using HouseholdLedger.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,6 +27,7 @@ public static class DependencyInjection
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
         services.AddDbContext<HouseholdLedgerDbContext>(options => options.UseNpgsql(connectionString));
+        services.AddScoped<IExpenseTransactionRepository, ExpenseTransactionRepository>();
 
         return services;
     }

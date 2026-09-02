@@ -40,7 +40,7 @@ and test review. This review is dependency research, not legal advice.
 | Driver | geckodriver 0.37.1, Windows x64 ZIP | MPL-2.0 executable; tagged source and Rust lock file; official SHA-256 | No paid geckodriver edition or service found | Exact artifact, executable version, hash, and license verified |
 | Browser | Firefox 153.0.1, Windows x64, en-US, EME-free | Principally MPL-2.0; installed `about:license` records the artifact's additional FOSS notices | Firefox is FOSS; optional Mozilla professional support is non-disqualifying under the 2026-08-03 decision | Exact artifact, version, hash, signatures, installed notices, and inventory verified |
 | Profile | Fresh geckodriver-created profile per test | Runtime test data; no dependency | None | Required isolation control |
-| Application | Separately hosted Client and API | Existing product artifacts | None added | Must prove standalone loading and API integration |
+| Application | API-hosted Blazor WebAssembly Client | Existing product artifact | None added | Must prove hosted loading and same-origin integration |
 
 The Selenium NuGet closure is exactly `Selenium.WebDriver` 4.46.0.
 `Selenium.Support`, Selenium Server/Grid, driver-manager packages, browser
@@ -207,14 +207,14 @@ editions remain disqualifying.
 
 The runtime is pinned below the user's local application-data directory. The
 tests require exact normalized absolute paths through
-`HOUSEHOLDLEDGER_API_ARTIFACT`, `HOUSEHOLDLEDGER_CLIENT_PUBLISH_DIR`,
-`HOUSEHOLDLEDGER_FIREFOX_BINARY`, and `HOUSEHOLDLEDGER_GECKODRIVER`. No fallback
-discovery or download occurs.
+`HOUSEHOLDLEDGER_API_ARTIFACT`, `HOUSEHOLDLEDGER_FIREFOX_BINARY`, and
+`HOUSEHOLDLEDGER_GECKODRIVER`. No fallback discovery or download occurs.
 
-Two consecutive fresh-publish runs passed all three E2E cases on 2026-08-03 in
+Historical two-host evidence consists of two consecutive fresh-publish runs
+that passed all three E2E cases on 2026-08-03 in
 8.7 seconds and 8.1 seconds. One case is an API process smoke; browser cases use
 exact `1440x900` desktop and `500x844` mobile inner viewports. They prove the
-standalone WebAssembly Client, the separately hosted API, cross-origin Resource
+then-standalone WebAssembly Client, the separately hosted API, cross-origin Resource
 Timing and API CORS, title and landmarks, calendar period semantics, an honest
 empty state, not-found recovery, skip navigation, key-region geometry, and
 visible text containment.

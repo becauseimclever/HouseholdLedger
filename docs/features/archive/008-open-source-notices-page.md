@@ -2,13 +2,12 @@
 
 ## Status
 
-Status: Approved - pending implementation.
+Status: Complete.
 
 - Proposal date: 2026-08-06.
 - User approval and implementation request: 2026-08-07.
-- Implementation is authorized after specialist assignment under the
-  dependency-ordered waves in this document. This approval does not claim that
-  implementation, testing, publish inventory, or audit work is complete.
+- The final re-audit dated 2026-08-07 marks AC-01 through AC-06 and every
+  Definition of Done item `Met`.
 - This feature is independently observable legal and attribution information;
   it does not add ledger, Kakeibo, settings, or general navigation behavior.
 - It contributes only the shipped-notice and final-output inventory evidence

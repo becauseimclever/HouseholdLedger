@@ -11,13 +11,13 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 
-using NUnit.Framework;
+using Xunit;
+using Xunit.Sdk;
 
 /// <summary>
 /// Verifies the desktop calendar workspace through its single hosted API URL.
 /// </summary>
-[TestFixture]
-[NonParallelizable]
+[Collection("End-to-end process resources")]
 public sealed class BrowserCalendarJourneyTests
 {
     private const string ApiArtifactEnvironmentVariable = "HOUSEHOLDLEDGER_API_ARTIFACT";
@@ -35,7 +35,7 @@ public sealed class BrowserCalendarJourneyTests
     /// Verifies that the API root renders the accessible desktop calendar workspace.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task ApiHostRendersAccessibleDesktopCalendarWorkspace()
     {
         var inputs = BrowserInputs.Load();
@@ -81,9 +81,9 @@ public sealed class BrowserCalendarJourneyTests
             var screenshot = await browser.TakeScreenshotAsync(timeout.Token);
             await File.WriteAllBytesAsync(screenshotPath, screenshot, timeout.Token);
             var screenshotHash = Convert.ToHexString(SHA256.HashData(screenshot)).ToLowerInvariant();
-            TestContext.Progress.WriteLine($"Feature003 browser api={apiOrigin} apiPid={apiProcess.Id} firefoxPid={firefoxProcessId} geckodriverPid={driverProcess.Id}");
-            TestContext.Progress.WriteLine($"Feature003 runtime hashes firefox={inputs.FirefoxHash} geckodriver={inputs.GeckodriverHash}");
-            TestContext.Progress.WriteLine($"Feature003 screenshot bytes={screenshot.Length} sha256={screenshotHash}");
+            TestContext.Current.TestOutputHelper?.WriteLine($"Feature003 browser api={apiOrigin} apiPid={apiProcess.Id} firefoxPid={firefoxProcessId} geckodriverPid={driverProcess.Id}");
+            TestContext.Current.TestOutputHelper?.WriteLine($"Feature003 runtime hashes firefox={inputs.FirefoxHash} geckodriver={inputs.GeckodriverHash}");
+            TestContext.Current.TestOutputHelper?.WriteLine($"Feature003 screenshot bytes={screenshot.Length} sha256={screenshotHash}");
         }
         finally
         {
@@ -131,13 +131,11 @@ public sealed class BrowserCalendarJourneyTests
 
     private static void AssertRuntimeCapabilities(JsonElement capabilities)
     {
-        Assert.Multiple(() =>
-        {
-            Assert.That(capabilities.GetProperty("browserName").GetString(), Is.EqualTo("firefox"));
-            Assert.That(capabilities.GetProperty("browserVersion").GetString(), Is.EqualTo("153.0.1"));
-            Assert.That(capabilities.GetProperty("acceptInsecureCerts").GetBoolean(), Is.False);
-            Assert.That(capabilities.GetProperty("moz:geckodriverVersion").GetString(), Is.EqualTo("0.37.1"));
-        });
+        Assert.Multiple(
+            () => Assert.Equal("firefox", capabilities.GetProperty("browserName").GetString()),
+            () => Assert.Equal("153.0.1", capabilities.GetProperty("browserVersion").GetString()),
+            () => Assert.False(capabilities.GetProperty("acceptInsecureCerts").GetBoolean()),
+            () => Assert.Equal("0.37.1", capabilities.GetProperty("moz:geckodriverVersion").GetString()));
     }
 
     private static async Task SetDesktopViewportAsync(W3cWebDriver browser, CancellationToken cancellationToken)
@@ -176,69 +174,59 @@ public sealed class BrowserCalendarJourneyTests
     private static async Task AssertCalendarFeatureAsync(W3cWebDriver browser, CancellationToken cancellationToken)
     {
         var today = await GetCalendarStateAsync(browser, cancellationToken);
-        Assert.Multiple(() =>
-        {
-            Assert.That(today.GetProperty("modeCount").GetInt32(), Is.EqualTo(3));
-            Assert.That(today.GetProperty("activeMode").GetString(), Is.EqualTo("Today"));
-            Assert.That(today.GetProperty("gridCount").GetInt32(), Is.Zero);
-            Assert.That(today.GetProperty("selectedCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(today.GetProperty("tabStopCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(today.GetProperty("selectedPressed").GetString(), Is.EqualTo("true"));
-            Assert.That(today.GetProperty("inspectorText").GetString(), Does.Contain("No calendar item selected"));
-        });
+        Assert.Multiple(
+            () => Assert.Equal(3, today.GetProperty("modeCount").GetInt32()),
+            () => Assert.Equal("Today", today.GetProperty("activeMode").GetString()),
+            () => Assert.Equal(0, today.GetProperty("gridCount").GetInt32()),
+            () => Assert.Equal(1, today.GetProperty("selectedCount").GetInt32()),
+            () => Assert.Equal(1, today.GetProperty("tabStopCount").GetInt32()),
+            () => Assert.Equal("true", today.GetProperty("selectedPressed").GetString()),
+            () => Assert.Contains("No calendar item selected", today.GetProperty("inspectorText").GetString(), StringComparison.Ordinal));
 
         await ClickCalendarControlAsync(browser, "fieldset.calendar-mode-picker label:nth-of-type(2) input", cancellationToken);
         var week = await GetCalendarStateAsync(browser, cancellationToken);
-        Assert.Multiple(() =>
-        {
-            Assert.That(week.GetProperty("activeMode").GetString(), Is.EqualTo("This Week"));
-            Assert.That(week.GetProperty("gridCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(week.GetProperty("weekdayCount").GetInt32(), Is.EqualTo(7));
-            Assert.That(week.GetProperty("dayCount").GetInt32(), Is.EqualTo(7));
-            Assert.That(week.GetProperty("selectedCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(week.GetProperty("tabStopCount").GetInt32(), Is.EqualTo(1));
-        });
+        Assert.Multiple(
+            () => Assert.Equal("This Week", week.GetProperty("activeMode").GetString()),
+            () => Assert.Equal(1, week.GetProperty("gridCount").GetInt32()),
+            () => Assert.Equal(7, week.GetProperty("weekdayCount").GetInt32()),
+            () => Assert.Equal(7, week.GetProperty("dayCount").GetInt32()),
+            () => Assert.Equal(1, week.GetProperty("selectedCount").GetInt32()),
+            () => Assert.Equal(1, week.GetProperty("tabStopCount").GetInt32()));
 
         await ClickCalendarControlAsync(browser, "fieldset.calendar-mode-picker label:nth-of-type(3) input", cancellationToken);
         var month = await GetCalendarStateAsync(browser, cancellationToken);
-        Assert.Multiple(() =>
-        {
-            Assert.That(month.GetProperty("activeMode").GetString(), Is.EqualTo("This Month"));
-            Assert.That(month.GetProperty("gridCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(month.GetProperty("weekdayCount").GetInt32(), Is.EqualTo(7));
-            Assert.That(month.GetProperty("dayCount").GetInt32(), Is.GreaterThanOrEqualTo(28));
-            Assert.That(month.GetProperty("selectedCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(month.GetProperty("tabStopCount").GetInt32(), Is.EqualTo(1));
-        });
+        Assert.Multiple(
+            () => Assert.Equal("This Month", month.GetProperty("activeMode").GetString()),
+            () => Assert.Equal(1, month.GetProperty("gridCount").GetInt32()),
+            () => Assert.Equal(7, month.GetProperty("weekdayCount").GetInt32()),
+            () => Assert.True(month.GetProperty("dayCount").GetInt32() >= 28),
+            () => Assert.Equal(1, month.GetProperty("selectedCount").GetInt32()),
+            () => Assert.Equal(1, month.GetProperty("tabStopCount").GetInt32()));
 
         var directTarget = await browser.FindElementAsync(".calendar-grid .calendar-day[aria-pressed='false']", cancellationToken);
         await browser.ClickAsync(directTarget, cancellationToken);
         var activated = await GetCalendarStateAsync(browser, cancellationToken);
-        Assert.That(activated.GetProperty("focusedLabel").GetString(), Is.EqualTo(activated.GetProperty("selectedLabel").GetString()));
+        Assert.Equal(activated.GetProperty("selectedLabel").GetString(), activated.GetProperty("focusedLabel").GetString());
 
         var activeDate = await browser.FindElementAsync(".calendar-grid .calendar-day[aria-pressed='true']", cancellationToken);
         await browser.SendKeysAsync(activeDate, "\uE014", cancellationToken);
         var arrowMoved = await GetCalendarStateAsync(browser, cancellationToken);
-        Assert.Multiple(() =>
-        {
-            Assert.That(arrowMoved.GetProperty("selectedLabel").GetString(), Is.Not.EqualTo(activated.GetProperty("selectedLabel").GetString()));
-            Assert.That(arrowMoved.GetProperty("focusedLabel").GetString(), Is.EqualTo(arrowMoved.GetProperty("selectedLabel").GetString()));
-            Assert.That(arrowMoved.GetProperty("selectedCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(arrowMoved.GetProperty("tabStopCount").GetInt32(), Is.EqualTo(1));
-        });
+        Assert.Multiple(
+            () => Assert.NotEqual(activated.GetProperty("selectedLabel").GetString(), arrowMoved.GetProperty("selectedLabel").GetString()),
+            () => Assert.Equal(arrowMoved.GetProperty("selectedLabel").GetString(), arrowMoved.GetProperty("focusedLabel").GetString()),
+            () => Assert.Equal(1, arrowMoved.GetProperty("selectedCount").GetInt32()),
+            () => Assert.Equal(1, arrowMoved.GetProperty("tabStopCount").GetInt32()));
 
         var headingBeforeNext = arrowMoved.GetProperty("heading").GetString();
         await ClickCalendarControlAsync(browser, "button[aria-label='Next period']", cancellationToken);
         var nextPeriod = await GetCalendarStateAsync(browser, cancellationToken);
-        Assert.Multiple(() =>
-        {
-            Assert.That(nextPeriod.GetProperty("heading").GetString(), Is.Not.EqualTo(headingBeforeNext));
-            Assert.That(nextPeriod.GetProperty("periodStatus").GetString(), Does.StartWith("Showing"));
-            Assert.That(nextPeriod.GetProperty("calendarWidth").GetDouble(), Is.GreaterThan(0));
-            Assert.That(nextPeriod.GetProperty("calendarRight").GetDouble(), Is.LessThanOrEqualTo(nextPeriod.GetProperty("inspectorLeft").GetDouble()));
-            Assert.That(nextPeriod.GetProperty("scrollWidth").GetInt32(), Is.LessThanOrEqualTo(1440));
-            Assert.That(nextPeriod.GetProperty("inspectorText").GetString(), Does.Contain("No calendar item selected"));
-        });
+        Assert.Multiple(
+            () => Assert.NotEqual(headingBeforeNext, nextPeriod.GetProperty("heading").GetString()),
+            () => Assert.StartsWith("Showing", nextPeriod.GetProperty("periodStatus").GetString(), StringComparison.Ordinal),
+            () => Assert.True(nextPeriod.GetProperty("calendarWidth").GetDouble() > 0),
+            () => Assert.True(nextPeriod.GetProperty("calendarRight").GetDouble() <= nextPeriod.GetProperty("inspectorLeft").GetDouble()),
+            () => Assert.True(nextPeriod.GetProperty("scrollWidth").GetInt32() <= 1440),
+            () => Assert.Contains("No calendar item selected", nextPeriod.GetProperty("inspectorText").GetString(), StringComparison.Ordinal));
     }
 
     private static async Task ClickCalendarControlAsync(W3cWebDriver browser, string selector, CancellationToken cancellationToken)
@@ -293,7 +281,7 @@ public sealed class BrowserCalendarJourneyTests
             var toggleState = state.GetProperty(paneId == "workspace-navigation" ? "navigationToggle" : "inspectorToggle");
             if (toggleState.GetProperty("expanded").GetBoolean() == expanded)
             {
-                Assert.That(state.GetProperty("focusedPane").GetString(), Is.EqualTo(paneId));
+                Assert.Equal(paneId, state.GetProperty("focusedPane").GetString());
                 return;
             }
 
@@ -317,60 +305,56 @@ public sealed class BrowserCalendarJourneyTests
     private static void AssertExpandedWorkspace(JsonElement state, Uri apiOrigin)
     {
         AssertWorkspaceSemantics(state, apiOrigin);
-        Assert.Multiple(() =>
-        {
-            Assert.That(state.GetProperty("navigation").GetProperty("hidden").GetBoolean(), Is.False);
-            Assert.That(state.GetProperty("inspector").GetProperty("hidden").GetBoolean(), Is.False);
-            Assert.That(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean(), Is.True);
-            Assert.That(state.GetProperty("navigationToggle").GetProperty("label").GetString(), Is.EqualTo("Collapse navigation"));
-            Assert.That(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean(), Is.True);
-            Assert.That(state.GetProperty("inspectorToggle").GetProperty("label").GetString(), Is.EqualTo("Collapse inspector"));
-        });
+        Assert.Multiple(
+            () => Assert.False(state.GetProperty("navigation").GetProperty("hidden").GetBoolean()),
+            () => Assert.False(state.GetProperty("inspector").GetProperty("hidden").GetBoolean()),
+            () => Assert.True(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean()),
+            () => Assert.Equal("Collapse navigation", state.GetProperty("navigationToggle").GetProperty("label").GetString()),
+            () => Assert.True(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean()),
+            () => Assert.Equal("Collapse inspector", state.GetProperty("inspectorToggle").GetProperty("label").GetString()));
         AssertNormalFlow(state, includeNavigation: true, includeInspector: true);
     }
 
     private static void AssertNavigationCollapsedWorkspace(JsonElement state)
     {
-        Assert.That(state.GetProperty("navigation").GetProperty("hidden").GetBoolean(), Is.True);
-        Assert.That(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean(), Is.False);
-        Assert.That(state.GetProperty("inspector").GetProperty("hidden").GetBoolean(), Is.False);
-        Assert.That(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean(), Is.True);
+        Assert.True(state.GetProperty("navigation").GetProperty("hidden").GetBoolean());
+        Assert.False(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean());
+        Assert.False(state.GetProperty("inspector").GetProperty("hidden").GetBoolean());
+        Assert.True(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean());
         AssertNormalFlow(state, includeNavigation: false, includeInspector: true);
     }
 
     private static void AssertBothPanesCollapsedWorkspace(JsonElement state)
     {
-        Assert.That(state.GetProperty("navigation").GetProperty("hidden").GetBoolean(), Is.True);
-        Assert.That(state.GetProperty("inspector").GetProperty("hidden").GetBoolean(), Is.True);
-        Assert.That(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean(), Is.False);
-        Assert.That(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean(), Is.False);
+        Assert.True(state.GetProperty("navigation").GetProperty("hidden").GetBoolean());
+        Assert.True(state.GetProperty("inspector").GetProperty("hidden").GetBoolean());
+        Assert.False(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean());
+        Assert.False(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean());
         AssertNormalFlow(state, includeNavigation: false, includeInspector: false);
     }
 
     private static void AssertInspectorCollapsedWorkspace(JsonElement state)
     {
-        Assert.That(state.GetProperty("navigation").GetProperty("hidden").GetBoolean(), Is.False);
-        Assert.That(state.GetProperty("inspector").GetProperty("hidden").GetBoolean(), Is.True);
-        Assert.That(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean(), Is.True);
-        Assert.That(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean(), Is.False);
+        Assert.False(state.GetProperty("navigation").GetProperty("hidden").GetBoolean());
+        Assert.True(state.GetProperty("inspector").GetProperty("hidden").GetBoolean());
+        Assert.True(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean());
+        Assert.False(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean());
         AssertNormalFlow(state, includeNavigation: true, includeInspector: false);
     }
 
     private static void AssertWorkspaceSemantics(JsonElement state, Uri apiOrigin)
     {
-        Assert.Multiple(() =>
-        {
-            Assert.That(state.GetProperty("title").GetString(), Is.EqualTo("Calendar"));
-            Assert.That(state.GetProperty("origin").GetString(), Is.EqualTo(apiOrigin.GetLeftPart(UriPartial.Authority)));
-            Assert.That(state.GetProperty("width").GetInt32(), Is.EqualTo(1440));
-            Assert.That(state.GetProperty("height").GetInt32(), Is.EqualTo(900));
-            Assert.That(state.GetProperty("scrollWidth").GetInt32(), Is.LessThanOrEqualTo(1440));
-            Assert.That(state.GetProperty("mainCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(state.GetProperty("headingCount").GetInt32(), Is.EqualTo(1));
-            Assert.That(state.GetProperty("heading").GetString(), Is.EqualTo("Calendar"));
-            Assert.That(state.GetProperty("navigationDestinationCount").GetInt32(), Is.Zero);
-            Assert.That(state.GetProperty("inspectorText").GetString(), Does.Contain("No calendar item selected"));
-        });
+        Assert.Multiple(
+            () => Assert.Equal("Calendar", state.GetProperty("title").GetString()),
+            () => Assert.Equal(apiOrigin.GetLeftPart(UriPartial.Authority), state.GetProperty("origin").GetString()),
+            () => Assert.Equal(1440, state.GetProperty("width").GetInt32()),
+            () => Assert.Equal(900, state.GetProperty("height").GetInt32()),
+            () => Assert.True(state.GetProperty("scrollWidth").GetInt32() <= 1440),
+            () => Assert.Equal(1, state.GetProperty("mainCount").GetInt32()),
+            () => Assert.Equal(1, state.GetProperty("headingCount").GetInt32()),
+            () => Assert.Equal("Calendar", state.GetProperty("heading").GetString()),
+            () => Assert.Equal(0, state.GetProperty("navigationDestinationCount").GetInt32()),
+            () => Assert.Contains("No calendar item selected", state.GetProperty("inspectorText").GetString(), StringComparison.Ordinal));
     }
 
     private static void AssertNormalFlow(JsonElement state, bool includeNavigation, bool includeInspector)
@@ -378,27 +362,25 @@ public sealed class BrowserCalendarJourneyTests
         var calendar = state.GetProperty("calendar").GetProperty("rectangle");
         var main = state.GetProperty("main").GetProperty("rectangle");
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(calendar.GetProperty("width").GetDouble(), Is.GreaterThan(0));
-            Assert.That(calendar.GetProperty("height").GetDouble(), Is.GreaterThan(0));
-            Assert.That(main.GetProperty("width").GetDouble(), Is.GreaterThan(0));
-            Assert.That(main.GetProperty("height").GetDouble(), Is.GreaterThan(0));
-            Assert.That(main.GetProperty("top").GetDouble(), Is.LessThan(900));
-            Assert.That(main.GetProperty("bottom").GetDouble(), Is.GreaterThan(0));
-            Assert.That(state.GetProperty("scrollWidth").GetInt32(), Is.LessThanOrEqualTo(1440));
-        });
+        Assert.Multiple(
+            () => Assert.True(calendar.GetProperty("width").GetDouble() > 0),
+            () => Assert.True(calendar.GetProperty("height").GetDouble() > 0),
+            () => Assert.True(main.GetProperty("width").GetDouble() > 0),
+            () => Assert.True(main.GetProperty("height").GetDouble() > 0),
+            () => Assert.True(main.GetProperty("top").GetDouble() < 900),
+            () => Assert.True(main.GetProperty("bottom").GetDouble() > 0),
+            () => Assert.True(state.GetProperty("scrollWidth").GetInt32() <= 1440));
 
         if (includeNavigation)
         {
             var navigation = state.GetProperty("navigation").GetProperty("rectangle");
-            Assert.That(navigation.GetProperty("right").GetDouble(), Is.LessThanOrEqualTo(calendar.GetProperty("left").GetDouble()));
+            Assert.True(navigation.GetProperty("right").GetDouble() <= calendar.GetProperty("left").GetDouble());
         }
 
         if (includeInspector)
         {
             var inspector = state.GetProperty("inspector").GetProperty("rectangle");
-            Assert.That(calendar.GetProperty("right").GetDouble(), Is.LessThanOrEqualTo(inspector.GetProperty("left").GetDouble()));
+            Assert.True(calendar.GetProperty("right").GetDouble() <= inspector.GetProperty("left").GetDouble());
         }
     }
 
@@ -407,8 +389,8 @@ public sealed class BrowserCalendarJourneyTests
         using var client = new HttpClient { BaseAddress = apiOrigin, Timeout = TimeSpan.FromSeconds(5) };
         using var health = await client.GetAsync("/api/v1/health");
         using var openApi = await client.GetAsync("/openapi/v1.json");
-        Assert.That(health.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        Assert.That(openApi.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.Equal(HttpStatusCode.OK, health.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, openApi.StatusCode);
     }
 
     private static Process StartApi(string assemblyPath, Uri origin)
@@ -556,7 +538,7 @@ public sealed class BrowserCalendarJourneyTests
             await Task.Delay(TimeSpan.FromMilliseconds(100), timeout.Token);
         }
 
-        Assert.That(IsProcessRunning(processId), Is.False, $"Owned Firefox process {processId} must exit.");
+        Assert.False(IsProcessRunning(processId), $"Owned Firefox process {processId} must exit.");
     }
 
     private static bool IsProcessRunning(int processId)
@@ -639,7 +621,7 @@ public sealed class BrowserCalendarJourneyTests
             var path = GetNormalizedAbsolutePath(variableName);
             if (!string.Equals(Path.GetFileName(path), exactFileName, StringComparison.OrdinalIgnoreCase) || !File.Exists(path))
             {
-                throw new AssertionException($"{variableName} must name existing '{exactFileName}'.");
+                throw new XunitException($"{variableName} must name existing '{exactFileName}'.");
             }
 
             return path;
@@ -650,7 +632,7 @@ public sealed class BrowserCalendarJourneyTests
             var path = GetNormalizedAbsolutePath(variableName);
             if (!Directory.Exists(path))
             {
-                throw new AssertionException($"{variableName} must name an existing directory.");
+                throw new XunitException($"{variableName} must name an existing directory.");
             }
 
             return path;
@@ -660,7 +642,7 @@ public sealed class BrowserCalendarJourneyTests
         {
             if (!int.TryParse(Environment.GetEnvironmentVariable(variableName), out var port) || port is < 1 or > 65535)
             {
-                throw new AssertionException($"{variableName} must be a valid TCP port.");
+                throw new XunitException($"{variableName} must be a valid TCP port.");
             }
 
             AssertPortsReleased(port);
@@ -672,13 +654,13 @@ public sealed class BrowserCalendarJourneyTests
             var configuredPath = Environment.GetEnvironmentVariable(variableName);
             if (string.IsNullOrWhiteSpace(configuredPath) || !Path.IsPathFullyQualified(configuredPath))
             {
-                throw new AssertionException($"{variableName} must be an absolute path.");
+                throw new XunitException($"{variableName} must be an absolute path.");
             }
 
             var fullPath = Path.GetFullPath(configuredPath);
             if (!string.Equals(configuredPath, fullPath, StringComparison.OrdinalIgnoreCase))
             {
-                throw new AssertionException($"{variableName} must be normalized.");
+                throw new XunitException($"{variableName} must be normalized.");
             }
 
             return fullPath;
@@ -690,7 +672,7 @@ public sealed class BrowserCalendarJourneyTests
             var actualHash = Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
             if (!string.Equals(actualHash, approvedHash, StringComparison.Ordinal))
             {
-                throw new AssertionException($"{variableName} SHA-256 mismatch. No browser process was launched.");
+                throw new XunitException($"{variableName} SHA-256 mismatch. No browser process was launched.");
             }
 
             return actualHash;

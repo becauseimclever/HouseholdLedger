@@ -34,10 +34,174 @@
           }
         }
       }
+    },
+    "/api/v1/days/{ledgerDate}/transactions": {
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Lists transactions for one ledger date.",
+        "parameters": [
+          {
+            "name": "ledgerDate",
+            "in": "path",
+            "description": "The route-selected ledger date.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExpenseTransactionResponse"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Creates one transaction for the route-selected ledger date.",
+        "parameters": [
+          {
+            "name": "ledgerDate",
+            "in": "path",
+            "description": "The route-selected ledger date.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The request cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExpenseTransactionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExpenseTransactionRequest"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExpenseTransactionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseTransactionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "CreateExpenseTransactionRequest": {
+        "required": [
+          "amount",
+          "classification"
+        ],
+        "type": "object",
+        "properties": {
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The positive USD amount.",
+            "format": "double"
+          },
+          "classification": {
+            "type": "string",
+            "description": "The Kakeibo-inspired classification."
+          }
+        },
+        "description": "Requests creation of one expense for a route-selected date."
+      },
+      "ExpenseTransactionResponse": {
+        "required": [
+          "id",
+          "date",
+          "amount",
+          "classification"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The opaque transaction identifier.",
+            "format": "uuid"
+          },
+          "date": {
+            "type": "string",
+            "description": "The ledger date.",
+            "format": "date"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The positive USD amount.",
+            "format": "double"
+          },
+          "classification": {
+            "type": "string",
+            "description": "The Kakeibo-inspired classification."
+          }
+        },
+        "description": "Describes one persisted USD expense."
+      },
       "HealthResponse": {
         "required": [
           "status"
@@ -88,12 +252,62 @@
             ]
           }
         }
+      },
+      "ValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
       }
     }
   },
   "tags": [
     {
       "name": "Health"
+    },
+    {
+      "name": "Transactions"
     }
   ]
 }

@@ -8,13 +8,16 @@ using System.Globalization;
 
 using Bunit;
 using HouseholdLedger.Client.Pages;
+using HouseholdLedger.Client.State;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
-using NUnit.Framework;
+using Xunit;
 
 /// <summary>
 /// Verifies the calendar workspace surface.
 /// </summary>
+[CollectionDefinition("Static culture", DisableParallelization = true)]
+[Collection("Static culture")]
 public sealed class CalendarPageTests
 {
     private static readonly string[] MondayFirstGermanHeaders = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -22,37 +25,36 @@ public sealed class CalendarPageTests
     /// <summary>
     /// Verifies that the injected client-local date initializes the selected Today presentation.
     /// </summary>
-    [Test]
+    [Fact]
     public void InitialRenderUsesInjectedLocalDateAndExposesOneActivePresentationMode()
     {
         using var context = new BunitContext();
         var expectedDate = new DateOnly(2024, 2, 29);
         context.Services.AddSingleton<TimeProvider>(new FixedTimeProvider(expectedDate));
+        context.Services.AddScoped<SelectedDateState>();
 
         var component = context.Render<CalendarPage>();
         var modes = component.FindAll("input[name='calendar-mode']");
         var selectedDate = component.Find(".calendar-today .calendar-day");
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(component.FindAll("main.calendar-page"), Has.Count.EqualTo(1));
-            Assert.That(component.FindAll("main.calendar-page h1"), Has.Count.EqualTo(1));
-            Assert.That(component.Find("main.calendar-page h1").TextContent, Is.EqualTo("Calendar"));
-            Assert.That(modes, Has.Count.EqualTo(3));
-            Assert.That(modes.Count(mode => mode.HasAttribute("checked")), Is.EqualTo(1));
-            Assert.That(component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim(), Is.EqualTo("Today"));
-            Assert.That(component.FindAll("table.calendar-grid"), Is.Empty);
-            Assert.That(selectedDate.GetAttribute("aria-label"), Is.EqualTo(expectedDate.ToString("D", CultureInfo.CurrentCulture)));
-            Assert.That(selectedDate.GetAttribute("aria-pressed"), Is.EqualTo("true"));
-            Assert.That(selectedDate.GetAttribute("aria-current"), Is.EqualTo("date"));
-            Assert.That(selectedDate.GetAttribute("tabindex"), Is.EqualTo("0"));
-        });
+        Assert.Multiple(
+            () => Assert.Single(component.FindAll("main.calendar-page")),
+            () => Assert.Single(component.FindAll("main.calendar-page h1")),
+            () => Assert.Equal("Calendar", component.Find("main.calendar-page h1").TextContent),
+            () => Assert.Equal(3, modes.Count),
+            () => Assert.Equal(1, modes.Count(mode => mode.HasAttribute("checked"))),
+            () => Assert.Equal("Today", component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim()),
+            () => Assert.Empty(component.FindAll("table.calendar-grid")),
+            () => Assert.Equal(expectedDate.ToString("D", CultureInfo.CurrentCulture), selectedDate.GetAttribute("aria-label")),
+            () => Assert.Equal("true", selectedDate.GetAttribute("aria-pressed")),
+            () => Assert.Equal("date", selectedDate.GetAttribute("aria-current")),
+            () => Assert.Equal("0", selectedDate.GetAttribute("tabindex")));
     }
 
     /// <summary>
     /// Verifies that native mode controls are exclusive and preserve the active date.
     /// </summary>
-    [Test]
+    [Fact]
     public void ModeControlsAreExclusiveAndPresentTheContainingDayWeekOrMonth()
     {
         using var context = new BunitContext();
@@ -60,39 +62,36 @@ public sealed class CalendarPageTests
         var firstDayOffset = ((int)activeDate.DayOfWeek - (int)CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek + 7) % 7;
         var expectedWeekStart = activeDate.AddDays(-firstDayOffset);
         context.Services.AddSingleton<TimeProvider>(new FixedTimeProvider(activeDate));
+        context.Services.AddScoped<SelectedDateState>();
         var component = context.Render<CalendarPage>();
 
         component.FindAll("input[name='calendar-mode']")[1].Change();
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(component.FindAll("input[name='calendar-mode'][checked]"), Has.Count.EqualTo(1));
-            Assert.That(component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim(), Is.EqualTo("This Week"));
-            Assert.That(component.Find("table.calendar-grid").GetAttribute("aria-label"), Does.Contain(activeDate.ToString("D", CultureInfo.CurrentCulture)));
-            Assert.That(component.FindAll("table.calendar-grid thead th[scope='col']"), Has.Count.EqualTo(7));
-            Assert.That(component.FindAll("table.calendar-grid .calendar-day"), Has.Count.EqualTo(7));
-            Assert.That(component.FindAll("table.calendar-grid .calendar-day")[0].GetAttribute("aria-label"), Is.EqualTo(expectedWeekStart.ToString("D", CultureInfo.CurrentCulture)));
-            Assert.That(component.FindAll(".calendar-day[aria-pressed='true']"), Has.Count.EqualTo(1));
-        });
+        Assert.Multiple(
+            () => Assert.Single(component.FindAll("input[name='calendar-mode'][checked]")),
+            () => Assert.Equal("This Week", component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim()),
+            () => Assert.Contains(activeDate.ToString("D", CultureInfo.CurrentCulture), component.Find("table.calendar-grid").GetAttribute("aria-label"), StringComparison.Ordinal),
+            () => Assert.Equal(7, component.FindAll("table.calendar-grid thead th[scope='col']").Count),
+            () => Assert.Equal(7, component.FindAll("table.calendar-grid .calendar-day").Count),
+            () => Assert.Equal(expectedWeekStart.ToString("D", CultureInfo.CurrentCulture), component.FindAll("table.calendar-grid .calendar-day")[0].GetAttribute("aria-label")),
+            () => Assert.Single(component.FindAll(".calendar-day[aria-pressed='true']")));
 
         component.FindAll("input[name='calendar-mode']")[2].Change();
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(component.FindAll("input[name='calendar-mode'][checked]"), Has.Count.EqualTo(1));
-            Assert.That(component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim(), Is.EqualTo("This Month"));
-            Assert.That(component.Find("table.calendar-grid").GetAttribute("aria-label"), Is.EqualTo("Month of February 2024"));
-            Assert.That(component.FindAll("table.calendar-grid thead th[scope='col']"), Has.Count.EqualTo(7));
-            Assert.That(component.FindAll("table.calendar-grid .calendar-day"), Has.Count.EqualTo(29));
-            Assert.That(component.FindAll("td.calendar-empty-cell[aria-hidden='true']"), Is.Not.Empty);
-            Assert.That(component.Find(".calendar-day[aria-pressed='true']").GetAttribute("aria-label"), Is.EqualTo(activeDate.ToString("D", CultureInfo.CurrentCulture)));
-        });
+        Assert.Multiple(
+            () => Assert.Single(component.FindAll("input[name='calendar-mode'][checked]")),
+            () => Assert.Equal("This Month", component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim()),
+            () => Assert.Equal("Month of February 2024", component.Find("table.calendar-grid").GetAttribute("aria-label")),
+            () => Assert.Equal(7, component.FindAll("table.calendar-grid thead th[scope='col']").Count),
+            () => Assert.Equal(29, component.FindAll("table.calendar-grid .calendar-day").Count),
+            () => Assert.NotEmpty(component.FindAll("td.calendar-empty-cell[aria-hidden='true']")),
+            () => Assert.Equal(activeDate.ToString("D", CultureInfo.CurrentCulture), component.Find(".calendar-day[aria-pressed='true']").GetAttribute("aria-label")));
     }
 
     /// <summary>
     /// Verifies that direct and native keyboard activation select a single focused month date.
     /// </summary>
-    [Test]
+    [Fact]
     public void MonthDatesSupportDirectEnterSpaceAndDirectionalSelection()
     {
         using var context = new BunitContext();
@@ -138,7 +137,7 @@ public sealed class CalendarPageTests
     /// <summary>
     /// Verifies chronological Tab and Shift+Tab selection, including automatic month changes.
     /// </summary>
-    [Test]
+    [Fact]
     public void MonthTabTraversalMovesSelectionInChronologicalOrderAcrossMonthBoundary()
     {
         using var context = new BunitContext();
@@ -150,7 +149,7 @@ public sealed class CalendarPageTests
 
         FindDateButton(component, new DateOnly(2024, 1, 31)).KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
         AssertActiveDate(component, new DateOnly(2024, 2, 1));
-        Assert.That(component.Find("#calendar-period-heading").TextContent, Is.EqualTo("February 2024"));
+        Assert.Equal("February 2024", component.Find("#calendar-period-heading").TextContent);
 
         FindDateButton(component, new DateOnly(2024, 2, 1)).KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
         AssertActiveDate(component, new DateOnly(2024, 1, 31));
@@ -162,7 +161,7 @@ public sealed class CalendarPageTests
     /// <summary>
     /// Verifies chronological Tab and directional movement in the culture-derived weekly grid.
     /// </summary>
-    [Test]
+    [Fact]
     public void WeekGridTabAndArrowsMoveTheSelectedDateAndContainingWeek()
     {
         using var context = new BunitContext();
@@ -177,7 +176,7 @@ public sealed class CalendarPageTests
 
         FindDateButton(component, new DateOnly(2024, 2, 29)).KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
         AssertActiveDate(component, new DateOnly(2024, 3, 7));
-        Assert.That(component.Find("table.calendar-grid").GetAttribute("aria-label"), Does.Contain(new DateOnly(2024, 3, 7).ToString("D", CultureInfo.CurrentCulture)));
+        Assert.Contains(new DateOnly(2024, 3, 7).ToString("D", CultureInfo.CurrentCulture), component.Find("table.calendar-grid").GetAttribute("aria-label"), StringComparison.Ordinal);
 
         FindDateButton(component, new DateOnly(2024, 3, 7)).KeyDown(new KeyboardEventArgs { Key = "ArrowUp" });
         AssertActiveDate(component, new DateOnly(2024, 2, 29));
@@ -186,7 +185,7 @@ public sealed class CalendarPageTests
     /// <summary>
     /// Verifies that Shift+Tab from the first weekly date leaves the grid without changing its selection or period.
     /// </summary>
-    [Test]
+    [Fact]
     public void WeekGridFirstDateShiftTabLeavesToTheActiveModeWithoutChangingTheDateOrPeriod()
     {
         using var context = new BunitContext();
@@ -198,19 +197,16 @@ public sealed class CalendarPageTests
 
         FindDateButton(component, firstDate).KeyDown(new KeyboardEventArgs { Key = "Tab", ShiftKey = true });
 
-        Assert.Multiple(() =>
-        {
-            AssertActiveDate(component, activeDate);
-            Assert.That(component.Find("table.calendar-grid").GetAttribute("aria-label"), Is.EqualTo(weekLabel));
-            Assert.That(context.JSInterop.Invocations, Has.Some.Matches<Bunit.JSRuntimeInvocation>(
-                invocation => invocation.Identifier == "Blazor._internal.domWrapper.focus"));
-        });
+        Assert.Multiple(
+            () => AssertActiveDate(component, activeDate),
+            () => Assert.Equal(weekLabel, component.Find("table.calendar-grid").GetAttribute("aria-label")),
+            () => Assert.Contains(context.JSInterop.Invocations, invocation => invocation.Identifier == "Blazor._internal.domWrapper.focus"));
     }
 
     /// <summary>
     /// Verifies that Tab from each final grid date leaves to period navigation without changing the selected date or period.
     /// </summary>
-    [Test]
+    [Fact]
     public void GridLastDateTabLeavesToPreviousPeriodNavigationWithoutChangingTheDateOrPeriod()
     {
         using var context = new BunitContext();
@@ -221,12 +217,10 @@ public sealed class CalendarPageTests
 
         FindDateButton(component, GetWeekStart(weekActiveDate).AddDays(6)).KeyDown(new KeyboardEventArgs { Key = "Tab" });
 
-        Assert.Multiple(() =>
-        {
-            AssertActiveDate(component, weekActiveDate);
-            Assert.That(component.Find("table.calendar-grid").GetAttribute("aria-label"), Is.EqualTo(weekLabel));
-            AssertFocusWasRequested(context);
-        });
+        Assert.Multiple(
+            () => AssertActiveDate(component, weekActiveDate),
+            () => Assert.Equal(weekLabel, component.Find("table.calendar-grid").GetAttribute("aria-label")),
+            () => AssertFocusWasRequested(context));
 
         var monthActiveDate = new DateOnly(2024, 2, 29);
         SelectMode(component, 2);
@@ -235,18 +229,16 @@ public sealed class CalendarPageTests
 
         FindDateButton(component, monthActiveDate).KeyDown(new KeyboardEventArgs { Key = "Tab" });
 
-        Assert.Multiple(() =>
-        {
-            AssertActiveDate(component, monthActiveDate);
-            Assert.That(component.Find("table.calendar-grid").GetAttribute("aria-label"), Is.EqualTo(monthLabel));
-            AssertFocusWasRequested(context, focusRequestCount);
-        });
+        Assert.Multiple(
+            () => AssertActiveDate(component, monthActiveDate),
+            () => Assert.Equal(monthLabel, component.Find("table.calendar-grid").GetAttribute("aria-label")),
+            () => AssertFocusWasRequested(context, focusRequestCount));
     }
 
     /// <summary>
     /// Verifies that Today exposes one native date control without grid keyboard movement or managed Tab behavior.
     /// </summary>
-    [Test]
+    [Fact]
     public void TodayUsesNativeSequentialAndActivationBehaviorForItsSingleSelectedDate()
     {
         using var context = new BunitContext();
@@ -254,32 +246,27 @@ public sealed class CalendarPageTests
         var component = RenderCalendar(context, activeDate);
         var todayDate = FindDateButton(component, activeDate);
 
-        Assert.That(
-            () => todayDate.KeyDown(new KeyboardEventArgs { Key = "Tab" }),
-            Throws.TypeOf<Bunit.MissingEventHandlerException>());
+        Assert.Throws<Bunit.MissingEventHandlerException>(
+            () => todayDate.KeyDown(new KeyboardEventArgs { Key = "Tab" }));
         todayDate.Click();
 
-        Assert.Multiple(() =>
-        {
-            AssertActiveDate(component, activeDate);
-            Assert.That(component.FindAll("table.calendar-grid"), Is.Empty);
-            Assert.That(todayDate.GetAttribute("tabindex"), Is.EqualTo("0"));
-            Assert.That(context.JSInterop.Invocations, Is.Empty);
-        });
+        Assert.Multiple(
+            () => AssertActiveDate(component, activeDate),
+            () => Assert.Empty(component.FindAll("table.calendar-grid")),
+            () => Assert.Equal("0", todayDate.GetAttribute("tabindex")),
+            () => Assert.Empty(context.JSInterop.Invocations));
 
         MovePeriod(component, "Next");
-        Assert.Multiple(() =>
-        {
-            AssertActiveDate(component, activeDate.AddDays(1));
-            Assert.That(component.Find("#calendar-period-heading").TextContent, Is.EqualTo(activeDate.AddDays(1).ToString("D", CultureInfo.CurrentCulture)));
-            Assert.That(component.Find(".calendar-period-status").TextContent, Is.EqualTo($"Showing {activeDate.AddDays(1).ToString("D", CultureInfo.CurrentCulture)}."));
-        });
+        Assert.Multiple(
+            () => AssertActiveDate(component, activeDate.AddDays(1)),
+            () => Assert.Equal(activeDate.AddDays(1).ToString("D", CultureInfo.CurrentCulture), component.Find("#calendar-period-heading").TextContent),
+            () => Assert.Equal($"Showing {activeDate.AddDays(1).ToString("D", CultureInfo.CurrentCulture)}.", component.Find(".calendar-period-status").TextContent));
     }
 
     /// <summary>
     /// Verifies that a Monday-first culture determines both weekday rendering and horizontal arrow direction.
     /// </summary>
-    [Test]
+    [Fact]
     public void WeekGridUsesCurrentCultureFirstDayForRenderedOrderAndHorizontalArrows()
     {
         using var cultureScope = new CultureScope("de-DE");
@@ -289,8 +276,8 @@ public sealed class CalendarPageTests
         SelectMode(component, 1);
 
         var headers = component.FindAll("table.calendar-grid thead th[scope='col']").Select(header => header.TextContent).ToArray();
-        Assert.That(headers, Is.EqualTo(MondayFirstGermanHeaders));
-        Assert.That(FindDateButton(component, new DateOnly(2024, 2, 26)).GetAttribute("aria-label"), Is.EqualTo(new DateOnly(2024, 2, 26).ToString("D", CultureInfo.CurrentCulture)));
+        Assert.Equal(MondayFirstGermanHeaders, headers);
+        Assert.Equal(new DateOnly(2024, 2, 26).ToString("D", CultureInfo.CurrentCulture), FindDateButton(component, new DateOnly(2024, 2, 26)).GetAttribute("aria-label"));
 
         FindDateButton(component, activeDate).KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
         AssertActiveDate(component, activeDate.AddDays(-1));
@@ -302,7 +289,7 @@ public sealed class CalendarPageTests
     /// <summary>
     /// Verifies that cross-week keyboard movement updates status and retains focus on the selected date.
     /// </summary>
-    [Test]
+    [Fact]
     public void WeekArrowBoundaryUpdatesContainingWeekStatusAndRetainsFocus()
     {
         using var context = new BunitContext();
@@ -314,19 +301,17 @@ public sealed class CalendarPageTests
         FindDateButton(component, activeDate).KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
 
         var expectedDate = activeDate.AddDays(-1);
-        Assert.Multiple(() =>
-        {
-            AssertActiveDate(component, expectedDate);
-            Assert.That(component.Find("table.calendar-grid").GetAttribute("aria-label"), Does.Contain(expectedDate.ToString("D", CultureInfo.CurrentCulture)));
-            Assert.That(component.Find(".calendar-period-status").TextContent, Is.EqualTo($"Showing the week containing {expectedDate.ToString("D", CultureInfo.CurrentCulture)}."));
-            AssertFocusWasRequested(context, focusRequestCount);
-        });
+        Assert.Multiple(
+            () => AssertActiveDate(component, expectedDate),
+            () => Assert.Contains(expectedDate.ToString("D", CultureInfo.CurrentCulture), component.Find("table.calendar-grid").GetAttribute("aria-label"), StringComparison.Ordinal),
+            () => Assert.Equal($"Showing the week containing {expectedDate.ToString("D", CultureInfo.CurrentCulture)}.", component.Find(".calendar-period-status").TextContent),
+            () => AssertFocusWasRequested(context, focusRequestCount));
     }
 
     /// <summary>
     /// Verifies month keyboard and period navigation routes retain focus while changing periods across year and leap-day boundaries.
     /// </summary>
-    [Test]
+    [Fact]
     public void MonthBoundaryRoutesUpdatePeriodStatusAndRetainFocus()
     {
         using var context = new BunitContext();
@@ -356,7 +341,7 @@ public sealed class CalendarPageTests
     /// <summary>
     /// Verifies mode-specific navigation across year and leap-month boundaries.
     /// </summary>
-    [Test]
+    [Fact]
     public void PreviousAndNextMoveTheActiveDateByModeAcrossYearAndLeapMonthBoundaries()
     {
         using var context = new BunitContext();
@@ -384,12 +369,13 @@ public sealed class CalendarPageTests
         SelectMode(leapComponent, 2);
         MovePeriod(leapComponent, "Next");
         AssertActiveDate(leapComponent, new DateOnly(2024, 2, 29));
-        Assert.That(leapComponent.Find("#calendar-period-heading").TextContent, Is.EqualTo("February 2024"));
+        Assert.Equal("February 2024", leapComponent.Find("#calendar-period-heading").TextContent);
     }
 
     private static IRenderedComponent<CalendarPage> RenderCalendar(BunitContext context, DateOnly date)
     {
         context.Services.AddSingleton<TimeProvider>(new FixedTimeProvider(date));
+        context.Services.AddScoped<SelectedDateState>();
         return context.Render<CalendarPage>();
     }
 
@@ -417,13 +403,11 @@ public sealed class CalendarPageTests
 
     private static void AssertCrossPeriodFocusAndStatus(BunitContext context, IRenderedComponent<CalendarPage> component, DateOnly expectedDate, string expectedPeriod, int focusRequestCount)
     {
-        Assert.Multiple(() =>
-        {
-            AssertActiveDate(component, expectedDate);
-            Assert.That(component.Find("#calendar-period-heading").TextContent, Is.EqualTo(expectedPeriod));
-            Assert.That(component.Find(".calendar-period-status").TextContent, Is.EqualTo($"Showing {expectedPeriod}."));
-            AssertFocusWasRequested(context, focusRequestCount);
-        });
+        Assert.Multiple(
+            () => AssertActiveDate(component, expectedDate),
+            () => Assert.Equal(expectedPeriod, component.Find("#calendar-period-heading").TextContent),
+            () => Assert.Equal($"Showing {expectedPeriod}.", component.Find(".calendar-period-status").TextContent),
+            () => AssertFocusWasRequested(context, focusRequestCount));
     }
 
     private static int GetFocusRequestCount(BunitContext context)
@@ -433,24 +417,22 @@ public sealed class CalendarPageTests
 
     private static void AssertFocusWasRequested(BunitContext context, int focusRequestCount = 0)
     {
-        Assert.That(GetFocusRequestCount(context), Is.GreaterThan(focusRequestCount));
+        Assert.True(GetFocusRequestCount(context) > focusRequestCount);
     }
 
     private static void AssertActiveDate(IRenderedComponent<CalendarPage> component, DateOnly expectedDate)
     {
         var activeDates = component.FindAll(".calendar-day[aria-pressed='true']");
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(activeDates, Has.Count.EqualTo(1));
-            Assert.That(activeDates[0].GetAttribute("aria-label"), Is.EqualTo(expectedDate.ToString("D", CultureInfo.CurrentCulture)));
-            Assert.That(activeDates[0].GetAttribute("tabindex"), Is.EqualTo("0"));
-            Assert.That(component.FindAll(".calendar-day[tabindex='0']"), Has.Count.EqualTo(1));
-        });
+        Assert.Multiple(
+            () => Assert.Single(activeDates),
+            () => Assert.Equal(expectedDate.ToString("D", CultureInfo.CurrentCulture), activeDates[0].GetAttribute("aria-label")),
+            () => Assert.Equal("0", activeDates[0].GetAttribute("tabindex")),
+            () => Assert.Single(component.FindAll(".calendar-day[tabindex='0']")));
 
         if (component.FindAll(".calendar-grid").Count > 0)
         {
-            Assert.That(component.FindAll(".calendar-day[aria-pressed='false'][tabindex='-1']"), Is.Not.Empty);
+            Assert.NotEmpty(component.FindAll(".calendar-day[aria-pressed='false'][tabindex='-1']"));
         }
     }
 

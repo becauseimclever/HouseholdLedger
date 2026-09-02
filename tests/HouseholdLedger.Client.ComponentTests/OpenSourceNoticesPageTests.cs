@@ -10,7 +10,7 @@ using HouseholdLedger.Client.OpenSourceNotices;
 using HouseholdLedger.Client.Pages;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
-using NUnit.Framework;
+using Xunit;
 
 /// <summary>
 /// Verifies the rendered open-source notices content.
@@ -29,7 +29,7 @@ public sealed class OpenSourceNoticesPageTests
     /// <summary>
     /// Verifies that the Blazicons.Lucide notice renders its complete manifest content.
     /// </summary>
-    [Test]
+    [Fact]
     public void PageRendersCompleteBlaziconsLucideManifestNotice()
     {
         using var context = new BunitContext();
@@ -37,37 +37,41 @@ public sealed class OpenSourceNoticesPageTests
         var manifestNotice = OpenSourceNoticesManifest.Notices.Single(notice => notice.PackageName == "Blazicons.Lucide");
         var entry = component.Find(".open-source-notice-entry");
 
-        Assert.Multiple(() =>
+        var assertions = new List<Action>
         {
-            Assert.That(entry.QuerySelector("h3")?.TextContent, Is.EqualTo(manifestNotice.PackageName));
-            Assert.That(entry.QuerySelector(".open-source-notice-version")?.TextContent, Is.EqualTo($"Version {manifestNotice.Version}"));
-            Assert.That(entry.QuerySelector("dd")?.TextContent, Is.EqualTo("Runtime assembly"));
-            Assert.That(entry.QuerySelectorAll(".open-source-license-notice"), Has.Length.EqualTo(manifestNotice.RequiredNotices.Count));
+            () => Assert.Equal(manifestNotice.PackageName, entry.QuerySelector("h3")?.TextContent),
+            () => Assert.Equal($"Version {manifestNotice.Version}", entry.QuerySelector(".open-source-notice-version")?.TextContent),
+            () => Assert.Equal("Runtime assembly", entry.QuerySelector("dd")?.TextContent),
+            () => Assert.Equal(manifestNotice.RequiredNotices.Count, entry.QuerySelectorAll(".open-source-license-notice").Length),
+        };
 
-            for (var index = 0; index < manifestNotice.RequiredNotices.Count; index++)
-            {
-                var renderedNotice = entry.QuerySelectorAll(".open-source-license-notice")[index];
-                var expectedNotice = manifestNotice.RequiredNotices[index];
+        for (var index = 0; index < manifestNotice.RequiredNotices.Count; index++)
+        {
+            var renderedNotice = entry.QuerySelectorAll(".open-source-license-notice")[index];
+            var expectedNotice = manifestNotice.RequiredNotices[index];
 
-                Assert.That(renderedNotice.QuerySelector("h5")?.TextContent, Is.EqualTo(expectedNotice.ComponentName));
-                Assert.That(
-                    NormalizeLineEndings(renderedNotice.QuerySelector("pre")?.TextContent),
-                    Is.EqualTo(NormalizeLineEndings(expectedNotice.LicenseText)));
-            }
-        });
+            assertions.Add(() => Assert.Equal(expectedNotice.ComponentName, renderedNotice.QuerySelector("h5")?.TextContent));
+            assertions.Add(() => Assert.Equal(
+                NormalizeLineEndings(expectedNotice.LicenseText),
+                NormalizeLineEndings(renderedNotice.QuerySelector("pre")?.TextContent)));
+        }
+
+        Assert.Multiple(assertions.ToArray());
     }
 
     /// <summary>
     /// Verifies that every source-controlled published third-party entry and its complete required notices render.
     /// </summary>
-    [Test]
+    [Fact]
     public void PageRendersExactPublishedThirdPartyClosureWithCompleteNoticeText()
     {
         using var context = new BunitContext();
         var component = context.Render<OpenSourceNoticesPage>();
         var entries = component.FindAll(".open-source-notice-entry");
 
-        Assert.That(entries, Has.Count.EqualTo(ExpectedPublishedThirdPartyClosure.Length));
+        Assert.Equal(ExpectedPublishedThirdPartyClosure.Length, entries.Count);
+
+        var assertions = new List<Action>();
 
         foreach (var expected in ExpectedPublishedThirdPartyClosure)
         {
@@ -75,82 +79,85 @@ public sealed class OpenSourceNoticesPageTests
             var entry = entries.Single(candidate => candidate.QuerySelector("h3")?.TextContent == expected.PackageName);
             var renderedNotices = entry.QuerySelectorAll(".open-source-license-notice");
 
-            Assert.Multiple(() =>
+            assertions.AddRange(
+            [
+                () => Assert.Equal($"Version {expected.Version}", entry.QuerySelector(".open-source-notice-version")?.TextContent),
+                () => Assert.Equal(expected.PublicationForm, entry.QuerySelector("dd")?.TextContent),
+                () => Assert.Equal(manifestNotice.ProjectUrl.AbsoluteUri, entry.QuerySelector("a")?.GetAttribute("href")),
+                () => Assert.Equal("_blank", entry.QuerySelector("a")?.GetAttribute("target")),
+                () => Assert.Equal("noopener noreferrer", entry.QuerySelector("a")?.GetAttribute("rel")),
+                () => Assert.Equal(manifestNotice.RequiredNotices.Count, renderedNotices.Length),
+            ]);
+
+            for (var index = 0; index < manifestNotice.RequiredNotices.Count; index++)
             {
-                Assert.That(entry.QuerySelector(".open-source-notice-version")?.TextContent, Is.EqualTo($"Version {expected.Version}"));
-                Assert.That(entry.QuerySelector("dd")?.TextContent, Is.EqualTo(expected.PublicationForm));
-                Assert.That(entry.QuerySelector("a")?.GetAttribute("href"), Is.EqualTo(manifestNotice.ProjectUrl.AbsoluteUri));
-                Assert.That(entry.QuerySelector("a")?.GetAttribute("target"), Is.EqualTo("_blank"));
-                Assert.That(entry.QuerySelector("a")?.GetAttribute("rel"), Is.EqualTo("noopener noreferrer"));
-                Assert.That(renderedNotices, Has.Length.EqualTo(manifestNotice.RequiredNotices.Count));
+                var renderedNotice = renderedNotices[index];
+                var expectedNotice = manifestNotice.RequiredNotices[index];
 
-                for (var index = 0; index < manifestNotice.RequiredNotices.Count; index++)
-                {
-                    var renderedNotice = renderedNotices[index];
-                    var expectedNotice = manifestNotice.RequiredNotices[index];
-
-                    Assert.That(renderedNotice.QuerySelector("h5")?.TextContent, Is.EqualTo(expectedNotice.ComponentName));
-                    Assert.That(renderedNotice.QuerySelectorAll("p")[1].TextContent, Is.EqualTo(expectedNotice.CopyrightNotice));
-                    Assert.That(
-                        NormalizeLineEndings(renderedNotice.QuerySelector("pre")?.TextContent),
-                        Is.EqualTo(NormalizeLineEndings(expectedNotice.LicenseText)));
-                    Assert.That(renderedNotice.QuerySelector("a")?.GetAttribute("href"), Is.EqualTo(expectedNotice.SourceUrl.AbsoluteUri));
-                    Assert.That(renderedNotice.QuerySelector("a")?.TextContent, Is.EqualTo("License or source notice"));
-                }
-            });
+                assertions.Add(() => Assert.Equal(expectedNotice.ComponentName, renderedNotice.QuerySelector("h5")?.TextContent));
+                assertions.Add(() => Assert.Equal(expectedNotice.CopyrightNotice, renderedNotice.QuerySelectorAll("p")[1].TextContent));
+                assertions.Add(() => Assert.Equal(
+                    NormalizeLineEndings(expectedNotice.LicenseText),
+                    NormalizeLineEndings(renderedNotice.QuerySelector("pre")?.TextContent)));
+                assertions.Add(() => Assert.Equal(expectedNotice.SourceUrl.AbsoluteUri, renderedNotice.QuerySelector("a")?.GetAttribute("href")));
+                assertions.Add(() => Assert.Equal("License or source notice", renderedNotice.QuerySelector("a")?.TextContent));
+            }
         }
+
+        Assert.Multiple(assertions.ToArray());
     }
 
     /// <summary>
     /// Verifies the page's landmarks, heading hierarchy, scope statement, and output exclusions.
     /// </summary>
-    [Test]
+    [Fact]
     public void PageHasOneMainHeadingAndRendersManifestExclusions()
     {
         using var context = new BunitContext();
         var component = context.Render<OpenSourceNoticesPage>();
 
-        Assert.Multiple(() =>
+        var assertions = new List<Action>
         {
-            Assert.That(component.FindAll("main.open-source-notices-page"), Has.Count.EqualTo(1));
-            Assert.That(component.FindAll("main h1"), Has.Count.EqualTo(1));
-            Assert.That(component.Find("h1").TextContent, Is.EqualTo("Open-source notices"));
-            Assert.That(component.Find(".open-source-notices-scope").TextContent, Is.EqualTo(OpenSourceNoticesManifest.ScopeStatement));
-            Assert.That(component.FindAll("h2"), Has.Count.EqualTo(2));
-            Assert.That(component.FindAll(".open-source-notices-exclusion-list > li"), Has.Count.EqualTo(2));
+            () => Assert.Single(component.FindAll("main.open-source-notices-page")),
+            () => Assert.Single(component.FindAll("main h1")),
+            () => Assert.Equal("Open-source notices", component.Find("h1").TextContent),
+            () => Assert.Equal(OpenSourceNoticesManifest.ScopeStatement, component.Find(".open-source-notices-scope").TextContent),
+            () => Assert.Equal(2, component.FindAll("h2").Count),
+            () => Assert.Equal(2, component.FindAll(".open-source-notices-exclusion-list > li").Count),
+        };
 
-            foreach (var exclusion in OpenSourceNoticesManifest.Exclusions)
-            {
-                var renderedExclusion = component.FindAll(".open-source-notices-exclusion-list > li")
-                    .Single(candidate => candidate.QuerySelector("h3")?.TextContent == exclusion.Name);
+        foreach (var exclusion in OpenSourceNoticesManifest.Exclusions)
+        {
+            var renderedExclusion = component.FindAll(".open-source-notices-exclusion-list > li")
+                .Single(candidate => candidate.QuerySelector("h3")?.TextContent == exclusion.Name);
 
-                Assert.That(renderedExclusion.TextContent, Does.Contain(exclusion.Reason));
-            }
-        });
+            assertions.Add(() => Assert.Contains(exclusion.Reason, renderedExclusion.TextContent, StringComparison.Ordinal));
+        }
+
+        Assert.Multiple(assertions.ToArray());
     }
 
     /// <summary>
     /// Verifies that the current notices route has one auxiliary native link after the workspace grid and no navigation destination.
     /// </summary>
-    [Test]
+    [Fact]
     public void CurrentNoticesRouteUsesOneAuxiliaryLinkOutsideEmptyPrimaryNavigation()
     {
         using var context = new BunitContext();
+        context.Services.AddScoped<HouseholdLedger.Client.State.SelectedDateState>();
         context.Services.GetRequiredService<NavigationManager>().NavigateTo("/open-source-notices");
 
         var component = context.Render<MainLayout>();
         var link = component.Find(".workspace-auxiliary-link");
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(component.FindAll(".workspace-auxiliary-link"), Has.Count.EqualTo(1));
-            Assert.That(link.TagName, Is.EqualTo("A"));
-            Assert.That(link.TextContent, Is.EqualTo("Open-source notices"));
-            Assert.That(link.GetAttribute("href"), Is.EqualTo("/open-source-notices"));
-            Assert.That(link.GetAttribute("aria-current"), Is.EqualTo("page"));
-            Assert.That(component.FindAll("#workspace-navigation a, #workspace-navigation button"), Is.Empty);
-            Assert.That(component.Find(".workspace-grid").CompareDocumentPosition(link).ToString(), Is.EqualTo("Following"));
-        });
+        Assert.Multiple(
+            () => Assert.Single(component.FindAll(".workspace-auxiliary-link")),
+            () => Assert.Equal("A", link.TagName),
+            () => Assert.Equal("Open-source notices", link.TextContent),
+            () => Assert.Equal("/open-source-notices", link.GetAttribute("href")),
+            () => Assert.Equal("page", link.GetAttribute("aria-current")),
+            () => Assert.Empty(component.FindAll("#workspace-navigation a, #workspace-navigation button")),
+            () => Assert.Equal("Following", component.Find(".workspace-grid").CompareDocumentPosition(link).ToString()));
     }
 
     private static string NormalizeLineEndings(string? text) => text?.Replace("\r\n", "\n", StringComparison.Ordinal) ?? string.Empty;

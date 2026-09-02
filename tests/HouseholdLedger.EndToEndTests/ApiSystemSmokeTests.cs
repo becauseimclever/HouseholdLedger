@@ -11,13 +11,14 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 
-using NUnit.Framework;
+using Xunit;
+using Xunit.Sdk;
 
 /// <summary>
 /// Verifies the published API through its language-neutral HTTP boundary.
 /// </summary>
-[TestFixture]
-[NonParallelizable]
+[CollectionDefinition("End-to-end process resources", DisableParallelization = true)]
+[Collection("End-to-end process resources")]
 public sealed class ApiSystemSmokeTests
 {
     private const string ApiArtifactEnvironmentVariable = "HOUSEHOLDLEDGER_API_ARTIFACT";
@@ -29,7 +30,7 @@ public sealed class ApiSystemSmokeTests
     /// Verifies that a separate API process serves health and its OpenAPI contract.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task SeparateApiProcessServesHealthAndOpenApiContract()
     {
         var apiAssemblyPath = GetRequiredApiArtifact();
@@ -41,7 +42,7 @@ public sealed class ApiSystemSmokeTests
         try
         {
             process = StartApiProcess(apiAssemblyPath, baseAddress, diagnostics);
-            TestContext.Progress.WriteLine(
+            TestContext.Current.TestOutputHelper?.WriteLine(
                 $"API system smoke process={process.Id} port={port} artifact={apiAssemblyPath}");
 
             using var client = new HttpClient
@@ -76,13 +77,13 @@ public sealed class ApiSystemSmokeTests
         var configuredPath = Environment.GetEnvironmentVariable(ApiArtifactEnvironmentVariable);
         if (string.IsNullOrWhiteSpace(configuredPath))
         {
-            throw new AssertionException(
+            throw new XunitException(
                 $"Set {ApiArtifactEnvironmentVariable} to the normalized absolute path of a freshly built or published {ApiAssemblyFileName} before running this system test.");
         }
 
         if (!Path.IsPathFullyQualified(configuredPath))
         {
-            throw new AssertionException(
+            throw new XunitException(
                 $"{ApiArtifactEnvironmentVariable} must be an absolute path, but was '{configuredPath}'.");
         }
 
@@ -93,19 +94,19 @@ public sealed class ApiSystemSmokeTests
 
         if (!string.Equals(configuredPath, fullPath, pathComparison))
         {
-            throw new AssertionException(
+            throw new XunitException(
                 $"{ApiArtifactEnvironmentVariable} must be a normalized absolute path. Configured '{configuredPath}', normalized '{fullPath}'.");
         }
 
         if (!string.Equals(Path.GetFileName(fullPath), ApiAssemblyFileName, StringComparison.Ordinal))
         {
-            throw new AssertionException(
+            throw new XunitException(
                 $"{ApiArtifactEnvironmentVariable} must name exactly '{ApiAssemblyFileName}', but was '{Path.GetFileName(fullPath)}'.");
         }
 
         if (!File.Exists(fullPath))
         {
-            throw new AssertionException(
+            throw new XunitException(
                 $"{ApiArtifactEnvironmentVariable} points to a file that does not exist: '{fullPath}'.");
         }
 
@@ -246,10 +247,10 @@ public sealed class ApiSystemSmokeTests
         var body = await response.Content.ReadAsStringAsync();
         using var document = JsonDocument.Parse(body);
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        Assert.That(response.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/json"));
-        Assert.That(document.RootElement.ValueKind, Is.EqualTo(JsonValueKind.Object));
-        Assert.That(document.RootElement.GetProperty("status").GetString(), Is.EqualTo("available"));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(JsonValueKind.Object, document.RootElement.ValueKind);
+        Assert.Equal("available", document.RootElement.GetProperty("status").GetString());
     }
 
     private static async Task AssertOpenApiResponse(HttpClient client)
@@ -268,15 +269,15 @@ public sealed class ApiSystemSmokeTests
             .Select(property => property.GetString())
             .ToArray();
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        Assert.That(response.Content.Headers.ContentType?.MediaType, Is.EqualTo("application/json"));
-        Assert.That(root.GetProperty("openapi").GetString(), Does.StartWith("3.1."));
-        Assert.That(successSchema.GetProperty("$ref").GetString(), Is.EqualTo("#/components/schemas/HealthResponse"));
-        Assert.That(healthSchema.GetProperty("type").GetString(), Is.EqualTo("object"));
-        Assert.That(requiredProperties, Does.Contain("status"));
-        Assert.That(
-            healthSchema.GetProperty("properties").GetProperty("status").GetProperty("type").GetString(),
-            Is.EqualTo("string"));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        Assert.StartsWith("3.1.", root.GetProperty("openapi").GetString(), StringComparison.Ordinal);
+        Assert.Equal("#/components/schemas/HealthResponse", successSchema.GetProperty("$ref").GetString());
+        Assert.Equal("object", healthSchema.GetProperty("type").GetString());
+        Assert.Contains("status", requiredProperties);
+        Assert.Equal(
+            "string",
+            healthSchema.GetProperty("properties").GetProperty("status").GetProperty("type").GetString());
     }
 
     private static async Task StopOwnedProcess(Process process)
@@ -295,7 +296,7 @@ public sealed class ApiSystemSmokeTests
         }
         catch (OperationCanceledException)
         {
-            TestContext.Error.WriteLine(
+            TestContext.Current.TestOutputHelper?.WriteLine(
                 $"Test-owned API process {process.Id} did not exit within {ShutdownTimeout} after termination.");
         }
     }

@@ -33,11 +33,11 @@ dotnet test tests/HouseholdLedger.Api.IntegrationTests --no-build --no-restore
 ```
 
 API integration tests use `WebApplicationFactory`; they do not require a
-separately running API. The 22 Client cases are classified as 12 unit, 8 bUnit
-component, and 2 structural tests. They do not require a browser or live API.
+separately running API. The 37 Client cases cover unit, bUnit component, and
+structural behavior. They do not require a browser or live API.
 
-The EndToEndTests project uses NUnit and contains one separate-process HTTP
-system smoke plus desktop and mobile browser cases. Its test project has no
+The EndToEndTests project uses xUnit v3 and contains one separate-process HTTP
+system smoke plus two desktop browser journeys. Its test project has no
 HouseholdLedger project reference. The HTTP smoke starts a freshly published
 API assembly with a minimal environment, calls health and runtime OpenAPI over
 HTTP, and stops its owned process. Run it alone when the approved browser
@@ -137,14 +137,11 @@ runtime. It does not use Selenium, Selenium Manager, Playwright, a cloud grid,
 or a runtime downloader. Before launching any browser process, the tests enforce
 the approved Firefox and geckodriver SHA-256 values.
 
-The complete E2E run requires six normalized absolute paths and two distinct,
-available loopback ports:
+The complete E2E run requires five normalized absolute paths and one available
+loopback port:
 
 - `HOUSEHOLDLEDGER_API_ARTIFACT`: a freshly published file named exactly
   `HouseholdLedger.Api.dll`.
-- `HOUSEHOLDLEDGER_CLIENT_PUBLISH_DIR`: the freshly published Client
-  `wwwroot` containing `index.html`, `appsettings.json`, and
-  `_framework/blazor.webassembly.js`.
 - `HOUSEHOLDLEDGER_FIREFOX_BINARY`: the approved Firefox executable.
 - `HOUSEHOLDLEDGER_GECKODRIVER`: the approved geckodriver executable.
 - `HOUSEHOLDLEDGER_E2E_PROFILE_ROOT`: an existing, test-owned directory where
@@ -153,16 +150,14 @@ available loopback ports:
   run writes screenshots and diagnostics.
 - `HOUSEHOLDLEDGER_E2E_API_PORT`: an available loopback TCP port reserved for
   the test-owned API host.
-- `HOUSEHOLDLEDGER_E2E_CLIENT_PORT`: a different available loopback TCP port
-  reserved for the test-owned static Client host.
 
-Use fresh API and Client publishes for every run:
+Use a fresh API publish for every run. It includes the referenced Client static
+web assets:
 
 ```powershell
 $publishRoot = Join-Path ([System.IO.Path]::GetTempPath()) `
   ("HouseholdLedger-BrowserE2E-" + [guid]::NewGuid().ToString("N"))
 $apiOutput = Join-Path $publishRoot "api"
-$clientOutput = Join-Path $publishRoot "client"
 $profileRoot = Join-Path $publishRoot "profiles"
 $e2eOutput = Join-Path $publishRoot "output"
 
@@ -171,14 +166,8 @@ try {
     --no-restore --output $apiOutput
   if ($LASTEXITCODE -ne 0) { throw "API publish failed." }
 
-  dotnet publish src/HouseholdLedger.Client --configuration Release `
-    --no-restore --output $clientOutput
-  if ($LASTEXITCODE -ne 0) { throw "Client publish failed." }
-
   $env:HOUSEHOLDLEDGER_API_ARTIFACT = Join-Path `
     $apiOutput "HouseholdLedger.Api.dll"
-  $env:HOUSEHOLDLEDGER_CLIENT_PUBLISH_DIR = Join-Path `
-    $clientOutput "wwwroot"
   $env:HOUSEHOLDLEDGER_FIREFOX_BINARY = Join-Path $env:LOCALAPPDATA `
     "HouseholdLedger\BrowserTestRuntime\firefox\153.0.1-eme-free\core\firefox.exe"
   $env:HOUSEHOLDLEDGER_GECKODRIVER = Join-Path $env:LOCALAPPDATA `
@@ -187,7 +176,6 @@ try {
   $env:HOUSEHOLDLEDGER_E2E_PROFILE_ROOT = $profileRoot
   $env:HOUSEHOLDLEDGER_E2E_OUTPUT_DIR = $e2eOutput
   $env:HOUSEHOLDLEDGER_E2E_API_PORT = "51271"
-  $env:HOUSEHOLDLEDGER_E2E_CLIENT_PORT = "51272"
 
   dotnet test tests/HouseholdLedger.EndToEndTests `
     --configuration Release --no-restore
@@ -195,39 +183,34 @@ try {
 }
 finally {
   Remove-Item Env:HOUSEHOLDLEDGER_API_ARTIFACT -ErrorAction SilentlyContinue
-  Remove-Item Env:HOUSEHOLDLEDGER_CLIENT_PUBLISH_DIR -ErrorAction SilentlyContinue
   Remove-Item Env:HOUSEHOLDLEDGER_FIREFOX_BINARY -ErrorAction SilentlyContinue
   Remove-Item Env:HOUSEHOLDLEDGER_GECKODRIVER -ErrorAction SilentlyContinue
   Remove-Item Env:HOUSEHOLDLEDGER_E2E_PROFILE_ROOT -ErrorAction SilentlyContinue
   Remove-Item Env:HOUSEHOLDLEDGER_E2E_OUTPUT_DIR -ErrorAction SilentlyContinue
   Remove-Item Env:HOUSEHOLDLEDGER_E2E_API_PORT -ErrorAction SilentlyContinue
-  Remove-Item Env:HOUSEHOLDLEDGER_E2E_CLIENT_PORT -ErrorAction SilentlyContinue
   Remove-Item $publishRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 ```
 
-Before using the fixed example ports, confirm that both are available and
-reserve them for this workflow. The test validates the ports before it starts
-its owned hosts and rejects equal or in-use values. Do not point the profile or
-output variables at a shared directory. The test removes each profile; the
-outer `finally` block removes the allocated output and fresh publishes.
+Before using the example port, confirm that it is available and reserve it for
+this workflow. The test validates the port before it starts its owned host. Do
+not point the profile or output variables at a shared directory. The test
+removes each profile; the outer `finally` block removes the allocated output
+and fresh publish.
 
-The two browser cases set and verify exact inner viewports of `1440x900` and
-`500x844`. Each case proves that the published standalone WebAssembly Client
-loads, calls the separately hosted API across origins, and receives the API's
-explicit CORS permission. Resource Timing must contain the configured
-`/api/v1/health` URL. Assertions cover the document title, landmarks, calendar
-period and caption, honest empty state, not-found route and return interaction,
-skip link, key-region geometry, and visible text containment.
+The browser cases use the published API URL to exercise the API-hosted
+WebAssembly Client. Current assertions cover the calendar workspace, calendar
+interaction, open-source notices navigation and return behavior,
+accessibility, normal-flow geometry, and visible text containment.
 
-Two complete consecutive runs passed all three EndToEndTests cases on
-2026-08-03 in 8.7 seconds and 8.1 seconds. Each run used fresh publishes and
-unique loopback ports and profiles. Cleanup removed the owned API, Firefox,
-geckodriver, and Client-host processes; released ports; removed profiles,
-temporary publish outputs, and process-scoped environment variables; and left
-no running owned process.
+Historical two-host evidence consists of two complete consecutive runs that
+passed all three EndToEndTests cases on 2026-08-03 in 8.7 seconds and 8.1
+seconds. Each run used fresh publishes and unique loopback ports and profiles.
+Cleanup removed the owned API, Firefox, geckodriver, and Client-host processes;
+released ports; removed profiles, temporary publish outputs, and
+process-scoped environment variables; and left no running owned process.
 
-The hardened browser checks cover post-navigation `error` and
+Those historical hardened browser checks cover post-navigation `error` and
 `unhandledrejection` events, explicit API health status, critical same-origin
 Resource Timing entries, and static-host response status. Direct W3C WebDriver
 Classic cannot inject diagnostics before navigation or retrieve Firefox console
@@ -253,8 +236,8 @@ Selenium or Playwright to this package-free test path.
 
 Run the focused system-test workflow above first. For a full solution test, the
 same explicit artifact contract applies because the solution includes the
-EndToEndTests project. Use the browser workflow's fresh API and Client publishes
-and all four environment variables, replace the focused `dotnet test` target
+EndToEndTests project. Use the browser workflow's fresh API publish and explicit
+environment variables, replace the focused `dotnet test` target
 with `HouseholdLedger.slnx`, and retain the same `finally` cleanup. The remaining
 validation commands are:
 

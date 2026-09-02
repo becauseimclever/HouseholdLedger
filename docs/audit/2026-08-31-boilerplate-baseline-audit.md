@@ -32,7 +32,7 @@ observed failures that motivated remediation.
 
 ## Remediation Status Addendum
 
-**Addendum date:** 2026-08-31
+**Addendum date:** 2026-08-31; updated 2026-09-01
 
 **Evidence boundary:** This addendum records retained remediation evidence and
 dependency-admission decisions produced after the initial snapshot. The
@@ -40,27 +40,36 @@ documentation owner did not rerun a build, restore, test, format, package,
 server, or browser command. File and declaration inspection was read-only
 except for this report.
 
-**Current verdict:** **The baseline is improved but remains not
-feature-ready.** Locked restore and the whole-solution build are now clean,
-the known CRLF defect is fixed, and the API hosted-routing test now exercises
-the real referenced Client assets. The baseline still retains two obsolete,
-unreferenced files whose deletion is blocked by workspace/editor mutation
-behavior; the empty Domain and Application test projects still await approved
-framework alignment; current guidance beyond this audit remains stale; and no
-automated CI gate is admitted under current dependency policy.
+**Current verdict:** **The baseline's B-01, B-02, B-04, B-05, and B-06
+remediation is complete.** Locked restore and the whole-solution build are
+clean, the obsolete composition files are removed, all test projects and
+sources consistently use xUnit v3, and WebAssembly.Server is centrally
+versioned. B-03, B-07, and optional B-08 remain separate concerns.
 
 | Finding | Current status | Current evidence or decision |
 | --- | --- | --- |
 | B-01 | **Remediated** | Only the Client and API integration lock files changed. Locked restores and the 13-project no-restore solution build succeeded with zero warnings and errors; no declared package identity/version or SDK policy changed. |
-| B-02 | **Partially Remediated / Blocked** | The API hosted-routing test cleanup is remediated. The obsolete provider and composition script remain tracked, unchanged, and unreferenced because independent deletion attempts did not persist. |
-| B-03 | **Decision Required / Deferred** | GitHub Actions CI is rejected under current dependency policy unless the user approves the recorded exceptions. A manual local quality gate is the policy-compliant fallback. |
+| B-02 | **Remediated** | The obsolete provider and composition script are deleted, the notices browser journey uses the single hosted API URL, and active engineering guidance describes one-host operation. |
+| B-03 | **Deferred** | No automated CI gate exists. The simplified dependency policy no longer creates a blanket admission blocker, but CI implementation remains outside this remediation. |
 | B-04 | **Remediated** | The browser journey test was normalized from bare LF to required CRLF with no semantic content difference; focused whitespace verification passed with zero diagnostics. |
-| B-05 | **Awaiting Approval** | The reviewed recommendation is to align both empty unit-test projects to the already-central NUnit packages and remove the then-unused central xUnit runner declaration. No manifest or lock mutation is approved yet. |
-| B-06 | **Awaiting Approval** | The reviewed recommendation is to centralize the API's exact existing WebAssembly.Server `10.0.10` version and remove its override. No manifest or lock mutation is approved yet. |
+| B-05 | **Remediated** | All seven test projects and their sources consistently use xUnit v3. The intentionally empty Domain and Application projects compile as honest test boundaries; real tests remain required when behavior is added. |
+| B-06 | **Remediated** | WebAssembly.Server `10.0.10` is centrally declared and the API override is removed. The API integration lock changed only from `Transitive` to `CentralTransitive` for the same version and hash. |
 | B-07 | **Unresolved** | Current guidance beyond this audit has not been aligned and must not be represented as remediated. |
 | B-08 | **Optional Later** | No current decision changes the original recommendation. |
 
 ### Remediated Validation Evidence
+
+- On 2026-09-01, all seven test projects restored in locked mode as part of
+  the solution restore and all 13 solution projects built successfully with
+  zero warnings and errors. Migrated xUnit suites passed: API Contracts 3/3,
+  API Integration 14/14, and Client Component 37/37. Infrastructure passed its
+  resource-free test 1/1 and skipped the PostgreSQL case because no isolated
+  database connection was configured. End-to-end sources build and discover;
+  browser/process journeys require their documented external runtime inputs.
+- The WebAssembly.Server centralization retained `10.0.10` and its existing
+  content hash. Locked API restore passed without a lock change; the API
+  integration lock records only the expected central-management
+  reclassification.
 
 - Lock consistency was repaired only in the
   [Client lock file](../../src/HouseholdLedger.Client/packages.lock.json) and
@@ -333,7 +342,7 @@ focused whitespace verification with zero diagnostics. The later clean
 whole-solution build also resolves the initial downstream project-load
 uncertainty; no broad full-format result is claimed.
 
-### B-05 Required Medium Before Domain/Application Behavior: Unit-Test Projects Discover No Tests (Awaiting Approval)
+### B-05 Required Medium Before Domain/Application Behavior: Unit-Test Projects Discover No Tests (Remediated)
 
 **Observed evidence:** The Domain and Application unit-test project files each
 reference `Microsoft.NET.Test.Sdk` and `xunit.runner.visualstudio`, but neither
@@ -345,12 +354,13 @@ an honest executable test boundary with a reviewed framework declaration and
 real behavior tests, or remove/rename non-test scaffolds so they do not imply
 coverage. Do not add placeholder assertions merely to increase a count.
 
-**Current status:** The dependency review recommends the already-central NUnit
-framework and adapter used by the other five test projects. Explicit user
-approval is required before manifests or locks change; the test-boundary gap
-therefore remains unresolved.
+**Current status:** All seven test projects now reference xUnit v3 consistently,
+and all existing test sources have migrated from NUnit. The Domain and
+Application projects remain intentionally empty until those layers gain
+behavior; they compile as executable test boundaries and must receive real
+behavior tests with their first implementation slice.
 
-### B-06 Required Low: WebAssembly Server Version Bypasses Central Management (Awaiting Approval)
+### B-06 Required Low: WebAssembly Server Version Bypasses Central Management (Remediated)
 
 **Observed evidence:** The API project uses `VersionOverride="10.0.10"` for
 `Microsoft.AspNetCore.Components.WebAssembly.Server`; no corresponding
@@ -360,9 +370,10 @@ therefore remains unresolved.
 remove the override. This centralizes an existing declaration; it must not be
 used to change the version without dependency admission review and approval.
 
-**Current status:** Dependency-neutral centralization of exact version
-`10.0.10` is recommended, with no semantic lock delta expected. Explicit user
-approval remains required before mutation.
+**Current status:** `10.0.10` is centrally declared and the API uses an
+unversioned `PackageReference`. The API integration lock reclassified the same
+package/version/hash from `Transitive` to `CentralTransitive`; locked solution
+restore and build passed.
 
 ### B-07 Required Low: Retained Guidance Describes Superseded Behavior (Unresolved)
 

@@ -17,10 +17,11 @@ are not implemented yet.
 - Standalone Blazor WebAssembly
 - ASP.NET Core MVC and OpenAPI
 - EF Core, Npgsql, and PostgreSQL at the Infrastructure boundary
-- NUnit and bUnit tests, with xUnit runner scaffolding for empty unit projects
+- xUnit v3 and bUnit tests
 
-The Client and API build and publish independently. Any frontend can consume
-the HTTP/OpenAPI contract without referencing server implementation assemblies.
+The API references, publishes, and serves the Blazor WebAssembly Client as one
+hosted application. Any replacement frontend can consume the HTTP/OpenAPI
+contract without referencing server implementation assemblies.
 The package-free direct-W3C browser path is approved and verified: pinned
 Firefox and geckodriver hashes are enforced, and two fresh hardened runs passed
 all three E2E cases. The real PostgreSQL test remains blocked because Podman
@@ -33,7 +34,7 @@ all three E2E cases. The real PostgreSQL test remains blocked because Podman
 3. Run the appropriate layers in [Testing](docs/development/testing.md).
 4. Follow the [Contribution Guide](docs/development/contributing.md).
 
-Dependency additions require review before installation. Read
+Dependency changes use the proportionate checks in
 [Dependency Governance](docs/development/dependency-governance.md). Browser E2E
 approval, runtime review, and residual observability limit are recorded in the
 [Browser E2E Dependency Review](docs/development/browser-e2e-dependency-review.md).

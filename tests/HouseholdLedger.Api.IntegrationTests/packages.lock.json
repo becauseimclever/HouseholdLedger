@@ -109,14 +109,6 @@
           "Microsoft.JSInterop": "10.0.10"
         }
       },
-      "Microsoft.AspNetCore.Components.WebAssembly.Server": {
-        "type": "Transitive",
-        "resolved": "10.0.10",
-        "contentHash": "4VZTIYe3nJ3im3ILpcpPp9LJbJ43lYeDAJSQQosAogz889by8FRaMCpjo8YFeXLBFDGpNYJSBPNBYLdeq8bn1A==",
-        "dependencies": {
-          "Microsoft.AspNetCore.Components.WebAssembly": "10.0.10"
-        }
-      },
       "Microsoft.AspNetCore.Metadata": {
         "type": "Transitive",
         "resolved": "10.0.10",
@@ -630,6 +622,15 @@
           "Microsoft.Extensions.Configuration.Json": "10.0.10",
           "Microsoft.Extensions.Logging": "10.0.10",
           "Microsoft.JSInterop.WebAssembly": "10.0.10"
+        }
+      },
+      "Microsoft.AspNetCore.Components.WebAssembly.Server": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.10, )",
+        "resolved": "10.0.10",
+        "contentHash": "4VZTIYe3nJ3im3ILpcpPp9LJbJ43lYeDAJSQQosAogz889by8FRaMCpjo8YFeXLBFDGpNYJSBPNBYLdeq8bn1A==",
+        "dependencies": {
+          "Microsoft.AspNetCore.Components.WebAssembly": "10.0.10"
         }
       },
       "Microsoft.AspNetCore.OpenApi": {

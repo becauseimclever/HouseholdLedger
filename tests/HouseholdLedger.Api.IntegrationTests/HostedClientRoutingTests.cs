@@ -7,7 +7,7 @@ namespace HouseholdLedger.Api.IntegrationTests;
 using System.Net;
 
 using Microsoft.AspNetCore.Mvc.Testing;
-using NUnit.Framework;
+using Xunit;
 
 /// <summary>
 /// Verifies API-hosted Client routing boundaries through the real host.
@@ -18,41 +18,42 @@ public sealed class HostedClientRoutingTests
     /// Verifies that the API hosts the referenced Client without masking API or OpenAPI failures.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task FrameworkHostedClientServesEntryAssetsAndEligibleDeepLinksWithoutMaskingApiRoutes()
     {
         await using var factory = new WebApplicationFactory<Program>();
         using var client = ApiTestClient.Create(factory);
 
-        using var rootResponse = await client.GetAsync("/");
-        using var deepLinkResponse = await client.GetAsync("/calendar/2026-08");
-        using var frameworkAssetResponse = await client.GetAsync("/_framework/blazor.webassembly.js");
-        using var unknownApiResponse = await client.GetAsync("/api/v1/missing.json");
-        using var unknownOpenApiResponse = await client.GetAsync("/openapi/missing.json");
+        var cancellationToken = TestContext.Current.CancellationToken;
+        using var rootResponse = await client.GetAsync("/", cancellationToken);
+        using var deepLinkResponse = await client.GetAsync("/calendar/2026-08", cancellationToken);
+        using var frameworkAssetResponse = await client.GetAsync(
+            "/_framework/blazor.webassembly.js",
+            cancellationToken);
+        using var unknownApiResponse = await client.GetAsync("/api/v1/missing.json", cancellationToken);
+        using var unknownOpenApiResponse = await client.GetAsync("/openapi/missing.json", cancellationToken);
 
-        var rootBody = await rootResponse.Content.ReadAsStringAsync();
-        var deepLinkBody = await deepLinkResponse.Content.ReadAsStringAsync();
-        var frameworkAssetBody = await frameworkAssetResponse.Content.ReadAsStringAsync();
-        var unknownApiBody = await unknownApiResponse.Content.ReadAsStringAsync();
-        var unknownOpenApiBody = await unknownOpenApiResponse.Content.ReadAsStringAsync();
+        var rootBody = await rootResponse.Content.ReadAsStringAsync(cancellationToken);
+        var deepLinkBody = await deepLinkResponse.Content.ReadAsStringAsync(cancellationToken);
+        var frameworkAssetBody = await frameworkAssetResponse.Content.ReadAsStringAsync(cancellationToken);
+        var unknownApiBody = await unknownApiResponse.Content.ReadAsStringAsync(cancellationToken);
+        var unknownOpenApiBody = await unknownOpenApiResponse.Content.ReadAsStringAsync(cancellationToken);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(rootResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-            Assert.That(rootResponse.Content.Headers.ContentType?.MediaType, Is.EqualTo("text/html"));
-            Assert.That(rootBody, Does.Contain("<script src=\"_framework/blazor.webassembly.js\"></script>"));
-            Assert.That(deepLinkResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-            Assert.That(deepLinkResponse.Content.Headers.ContentType?.MediaType, Is.EqualTo("text/html"));
-            Assert.That(deepLinkBody, Is.EqualTo(rootBody));
-            Assert.That(frameworkAssetResponse.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-            Assert.That(frameworkAssetResponse.Content.Headers.ContentType?.MediaType, Is.EqualTo("text/javascript"));
-            Assert.That(frameworkAssetBody, Is.Not.Empty);
-            Assert.That(unknownApiResponse.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
-            Assert.That(unknownApiResponse.Content.Headers.ContentType?.MediaType, Is.Not.EqualTo("text/html"));
-            Assert.That(unknownApiBody, Is.Not.EqualTo(rootBody));
-            Assert.That(unknownOpenApiResponse.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
-            Assert.That(unknownOpenApiResponse.Content.Headers.ContentType?.MediaType, Is.Not.EqualTo("text/html"));
-            Assert.That(unknownOpenApiBody, Is.Not.EqualTo(rootBody));
-        });
+        Assert.Multiple(
+            () => Assert.Equal(HttpStatusCode.OK, rootResponse.StatusCode),
+            () => Assert.Equal("text/html", rootResponse.Content.Headers.ContentType?.MediaType),
+            () => Assert.Contains("<script src=\"_framework/blazor.webassembly.js\"></script>", rootBody, StringComparison.Ordinal),
+            () => Assert.Equal(HttpStatusCode.OK, deepLinkResponse.StatusCode),
+            () => Assert.Equal("text/html", deepLinkResponse.Content.Headers.ContentType?.MediaType),
+            () => Assert.Equal(rootBody, deepLinkBody),
+            () => Assert.Equal(HttpStatusCode.OK, frameworkAssetResponse.StatusCode),
+            () => Assert.Equal("text/javascript", frameworkAssetResponse.Content.Headers.ContentType?.MediaType),
+            () => Assert.NotEmpty(frameworkAssetBody),
+            () => Assert.Equal(HttpStatusCode.NotFound, unknownApiResponse.StatusCode),
+            () => Assert.NotEqual("text/html", unknownApiResponse.Content.Headers.ContentType?.MediaType),
+            () => Assert.NotEqual(rootBody, unknownApiBody),
+            () => Assert.Equal(HttpStatusCode.NotFound, unknownOpenApiResponse.StatusCode),
+            () => Assert.NotEqual("text/html", unknownOpenApiResponse.Content.Headers.ContentType?.MediaType),
+            () => Assert.NotEqual(rootBody, unknownOpenApiBody));
     }
 }

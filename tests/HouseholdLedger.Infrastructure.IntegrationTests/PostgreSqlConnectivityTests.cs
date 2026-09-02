@@ -4,33 +4,33 @@
 
 namespace HouseholdLedger.Infrastructure.IntegrationTests;
 
-using System.Data;
-using System.Globalization;
-
+using HouseholdLedger.Application.Transactions;
+using HouseholdLedger.Domain.Transactions;
 using HouseholdLedger.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using NUnit.Framework;
+using Xunit;
 
 /// <summary>
 /// Verifies the persistence boundary against an isolated PostgreSQL database.
 /// </summary>
+[Collection(PostgreSqlConnectivityTests.PostgreSqlCollectionDefinition.Name)]
 public sealed class PostgreSqlConnectivityTests
 {
     private const string ConnectionStringEnvironmentVariable =
         "HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING";
 
     /// <summary>
-    /// Verifies that the empty context connects without creating a schema.
+    /// Verifies that migrations provision PostgreSQL and a transaction persists and rereads.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
-    public async Task EmptyContextConnectsWithoutCreatingTables()
+    [Fact]
+    public async Task MigrationsProvisionTransactionPersistence()
     {
         var connectionString = Environment.GetEnvironmentVariable(ConnectionStringEnvironmentVariable);
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            Assert.Ignore($"Set {ConnectionStringEnvironmentVariable} to an isolated PostgreSQL database.");
+            Assert.Skip($"Set {ConnectionStringEnvironmentVariable} to an isolated PostgreSQL database.");
         }
 
         var services = new ServiceCollection();
@@ -39,37 +39,47 @@ public sealed class PostgreSqlConnectivityTests
         await using var provider = services.BuildServiceProvider(validateScopes: true);
         await using var scope = provider.CreateAsyncScope();
         await using var context = scope.ServiceProvider.GetRequiredService<HouseholdLedgerDbContext>();
-        var cancellationToken = TestContext.CurrentContext.CancellationToken;
+        var cancellationToken = TestContext.Current.CancellationToken;
 
-        await context.Database.OpenConnectionAsync(cancellationToken);
+        await context.Database.MigrateAsync(cancellationToken);
+        var repository = scope.ServiceProvider.GetRequiredService<IExpenseTransactionRepository>();
+        var ledgerDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        var transaction = new ExpenseTransaction(
+            Guid.NewGuid(),
+            ledgerDate,
+            12.34m,
+            ExpenseClassification.Culture);
+
+        await repository.AddAsync(transaction, cancellationToken);
+        var returned = await repository.ListByDateAsync(ledgerDate, cancellationToken);
+
         try
         {
-            var tableCount = await CountPublicTablesAsync(context, cancellationToken);
+            var persisted = Assert.Single(returned, item => item.Id == transaction.Id);
 
-            Assert.Multiple(() =>
-            {
-                Assert.That(context.Database.ProviderName, Is.EqualTo("Npgsql.EntityFrameworkCore.PostgreSQL"));
-                Assert.That(context.Model.GetEntityTypes(), Is.Empty);
-                Assert.That(context.Database.GetMigrations(), Is.Empty);
-                Assert.That(tableCount, Is.Zero);
-            });
+            Assert.Multiple(
+                () => Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", context.Database.ProviderName),
+                () => Assert.Equal(12.34m, persisted.Amount),
+                () => Assert.Equal(ExpenseClassification.Culture, persisted.Classification),
+                () => Assert.True(persisted.Sequence > 0),
+                () => Assert.Contains(context.Database.GetAppliedMigrations(), migration => migration.EndsWith("AddExpenseTransactions", StringComparison.Ordinal)));
         }
         finally
         {
-            await context.Database.CloseConnectionAsync();
+            context.ExpenseTransactions.Remove(transaction);
+            await context.SaveChangesAsync(cancellationToken);
         }
-
-        Assert.That(context.Database.GetDbConnection().State, Is.EqualTo(ConnectionState.Closed));
     }
 
-    private static async Task<int> CountPublicTablesAsync(
-        HouseholdLedgerDbContext context,
-        CancellationToken cancellationToken)
+    /// <summary>
+    /// Prevents tests using the shared external database from overlapping other collections.
+    /// </summary>
+    [CollectionDefinition(Name, DisableParallelization = true)]
+    public sealed class PostgreSqlCollectionDefinition
     {
-        await using var command = context.Database.GetDbConnection().CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM pg_catalog.pg_tables WHERE schemaname = 'public'";
-        var result = await command.ExecuteScalarAsync(cancellationToken);
-
-        return Convert.ToInt32(result, CultureInfo.InvariantCulture);
+        /// <summary>
+        /// The xUnit collection name.
+        /// </summary>
+        public const string Name = "PostgreSQL database";
     }
 }

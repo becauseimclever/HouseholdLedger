@@ -6,10 +6,11 @@ namespace HouseholdLedger.Infrastructure.IntegrationTests;
 
 using System.Data;
 
+using HouseholdLedger.Domain.Transactions;
 using HouseholdLedger.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using NUnit.Framework;
+using Xunit;
 
 /// <summary>
 /// Verifies the PostgreSQL persistence registration boundary.
@@ -20,10 +21,10 @@ public sealed class InfrastructureRegistrationTests
         "Host=127.0.0.1;Port=5432;Database=household_ledger_registration_test;Username=test";
 
     /// <summary>
-    /// Verifies that registration selects Npgsql and exposes an empty scoped context without opening a connection.
+    /// Verifies that registration selects Npgsql and exposes the transaction model without opening a connection.
     /// </summary>
-    [Test]
-    public void RegistrationConfiguresEmptyNpgsqlContextWithoutConnecting()
+    [Fact]
+    public void RegistrationConfiguresTransactionNpgsqlContextWithoutConnecting()
     {
         var services = new ServiceCollection();
 
@@ -32,12 +33,12 @@ public sealed class InfrastructureRegistrationTests
         using var provider = services.BuildServiceProvider(validateScopes: true);
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<HouseholdLedgerDbContext>();
+        var transactionEntity = Assert.Single(context.Model.GetEntityTypes());
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(context.Database.ProviderName, Is.EqualTo("Npgsql.EntityFrameworkCore.PostgreSQL"));
-            Assert.That(context.Model.GetEntityTypes(), Is.Empty);
-            Assert.That(context.Database.GetDbConnection().State, Is.EqualTo(ConnectionState.Closed));
-        });
+        Assert.Multiple(
+            () => Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", context.Database.ProviderName),
+            () => Assert.Equal(typeof(ExpenseTransaction), transactionEntity.ClrType),
+            () => Assert.Equal("numeric(18,2)", transactionEntity.FindProperty(nameof(ExpenseTransaction.Amount))?.GetColumnType()),
+            () => Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State));
     }
 }

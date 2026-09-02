@@ -8,7 +8,7 @@ using System.Net;
 using System.Text.Json;
 
 using Microsoft.AspNetCore.Mvc.Testing;
-using NUnit.Framework;
+using Xunit;
 
 /// <summary>
 /// Verifies framework problem responses through the real ASP.NET Core host.
@@ -19,20 +19,23 @@ public sealed class ProblemDetailsTests
     /// Verifies that MVC method rejection uses the standard problem shape.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task UnsupportedHealthMethodReturnsProblemDetails()
     {
         await using var factory = new WebApplicationFactory<Program>();
         using var client = ApiTestClient.Create(factory);
 
-        using var response = await client.PostAsync("/api/v1/health", content: null);
-        var body = await response.Content.ReadAsStringAsync();
+        using var response = await client.PostAsync(
+            "/api/v1/health",
+            content: null,
+            TestContext.Current.CancellationToken);
+        var body = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         using var document = JsonDocument.Parse(body);
         var mediaType = response.Content.Headers.ContentType?.MediaType;
         var problemStatus = document.RootElement.GetProperty("status").GetInt32();
 
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.MethodNotAllowed));
-        Assert.That(mediaType, Is.EqualTo("application/problem+json"));
-        Assert.That(problemStatus, Is.EqualTo((int)HttpStatusCode.MethodNotAllowed));
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
+        Assert.Equal("application/problem+json", mediaType);
+        Assert.Equal((int)HttpStatusCode.MethodNotAllowed, problemStatus);
     }
 }

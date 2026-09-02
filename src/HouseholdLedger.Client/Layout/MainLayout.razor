@@ -42,7 +42,14 @@
         </section>
         <aside id="workspace-inspector" class="workspace-pane inspector-pane" aria-labelledby="inspector-heading" hidden="@(!inspectorExpanded)">
             <h2 id="inspector-heading">Inspector</h2>
-            <p class="inspector-empty-state">No calendar item selected</p>
+            @if (SelectedDate.Value is null)
+            {
+                <p class="inspector-empty-state">No calendar item selected</p>
+            }
+            else
+            {
+                <HouseholdLedger.Client.Components.TransactionInspector />
+            }
         </aside>
     </div>
 

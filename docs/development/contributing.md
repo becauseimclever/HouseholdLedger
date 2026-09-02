@@ -12,8 +12,8 @@ assuming a user's income, family structure, goals, or financial experience.
    A small, localized UI change, bug fix, maintenance repair, or validation-only
    task may proceed from clear, observable acceptance criteria in the request.
 2. Confirm the owning layer in the [Architecture Overview](../architecture/overview.md).
-3. Complete dependency review before adding any package, tool, image, runtime,
-   or downloaded asset.
+3. Apply the proportionate dependency checks in
+  [Dependency Governance](dependency-governance.md).
 4. Keep work inside `HouseholdLedger`; `BudgetExperiment` is read-only reference
    material.
 5. Record exclusive ownership of shared files and external resources when work
@@ -34,18 +34,18 @@ Proceed autonomously with routine local repairs, test fixes, lock-file
 consistency updates, and validation reruns that do not materially expand product
 behavior, scope, dependencies, risk, or file ownership. Request one concise
 user decision or clarification only when it is needed for a material scope or
-product-behavior change, destructive or risky operation, new dependency, data
-migration, security or privacy decision, external service, or a conflict with
+product-behavior change, destructive or risky operation, dependency with a
+material legal, security, privacy, operational, or cost concern, data
+migration, external service, or a conflict with
 the Kakeibo and calendar-centered product direction.
 
 Do not require a final documentation audit by default. A feature is complete
 when its applicable acceptance criteria are implemented and supported by
 proportionate validation evidence. Create a separate audit only when the user
 requests one, a release or compliance gate requires an independently retained
-review, or unresolved evidence needs a formal decision record. The dependency
-review and approval requirements in
-[Dependency Governance](dependency-governance.md) remain mandatory for every
-dependency change.
+review, or unresolved evidence needs a formal decision record. Routine FOSS
+dependency maintenance follows the normal implementation and validation
+workflow without a separate approval round trip.
 
 ## Code and Boundary Rules
 

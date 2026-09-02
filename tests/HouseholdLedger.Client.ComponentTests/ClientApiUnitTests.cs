@@ -10,7 +10,7 @@ using System.Text.Json;
 
 using HouseholdLedger.Client.Api;
 using Microsoft.Extensions.Configuration;
-using NUnit.Framework;
+using Xunit;
 
 /// <summary>
 /// Verifies client API configuration and transport behavior at the unit-test layer.
@@ -22,8 +22,9 @@ public sealed class ClientApiUnitTests
     /// </summary>
     /// <param name="configuredValue">The configured base address.</param>
     /// <param name="expectedValue">The normalized base address.</param>
-    [TestCase("http://api.example.test", "http://api.example.test/")]
-    [TestCase("https://api.example.test/root/", "https://api.example.test/root/")]
+    [Theory]
+    [InlineData("http://api.example.test", "http://api.example.test/")]
+    [InlineData("https://api.example.test/root/", "https://api.example.test/root/")]
     public void ApiConfigurationReturnsNormalizedHttpBaseAddress(
         string configuredValue,
         string expectedValue)
@@ -35,17 +36,18 @@ public sealed class ClientApiUnitTests
 
         var result = ApiConfiguration.GetBaseAddress(configuration);
 
-        Assert.That(result, Is.EqualTo(new Uri(expectedValue)));
+        Assert.Equal(new Uri(expectedValue), result);
     }
 
     /// <summary>
     /// Verifies that missing and unsupported base addresses fail with actionable configuration guidance.
     /// </summary>
     /// <param name="configuredValue">The invalid configured value.</param>
-    [TestCase(null)]
-    [TestCase("")]
-    [TestCase("api.example.test")]
-    [TestCase("ftp://api.example.test")]
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("api.example.test")]
+    [InlineData("ftp://api.example.test")]
     public void ApiConfigurationRejectsInvalidBaseAddress(string? configuredValue)
     {
         var configuration = new ConfigurationManager
@@ -56,16 +58,16 @@ public sealed class ClientApiUnitTests
         var exception = Assert.Throws<InvalidOperationException>(
             () => ApiConfiguration.GetBaseAddress(configuration));
 
-        Assert.That(
-            exception!.Message,
-            Is.EqualTo("Static configuration 'Api:BaseUrl' must be an absolute HTTP or HTTPS URL."));
+        Assert.Equal(
+            "Static configuration 'Api:BaseUrl' must be an absolute HTTP or HTTPS URL.",
+            exception.Message);
     }
 
     /// <summary>
     /// Verifies the exact health request URI and documented available JSON outcome.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task HealthApiClientRequestsVersionedHealthUriAndReturnsAvailable()
     {
         HttpRequestMessage? capturedRequest = null;
@@ -76,17 +78,15 @@ public sealed class ClientApiUnitTests
         }));
         var client = new HealthApiClient(httpClient);
 
-        var result = await client.IsAvailableAsync();
+        var result = await client.IsAvailableAsync(TestContext.Current.CancellationToken);
 
-        Assert.Multiple(() =>
-        {
-            Assert.That(result, Is.True);
-            Assert.That(capturedRequest, Is.Not.Null);
-            Assert.That(capturedRequest!.Method, Is.EqualTo(HttpMethod.Get));
-            Assert.That(
-                capturedRequest.RequestUri,
-                Is.EqualTo(new Uri("https://api.example.test/root/api/v1/health")));
-        });
+        Assert.Multiple(
+            () => Assert.True(result),
+            () => Assert.NotNull(capturedRequest),
+            () => Assert.Equal(HttpMethod.Get, capturedRequest!.Method),
+            () => Assert.Equal(
+                new Uri("https://api.example.test/root/api/v1/health"),
+                capturedRequest!.RequestUri));
     }
 
     /// <summary>
@@ -94,49 +94,50 @@ public sealed class ClientApiUnitTests
     /// </summary>
     /// <param name="content">The successful JSON response body.</param>
     /// <returns>A task representing the asynchronous test.</returns>
-    [TestCase("{\"status\":\"unavailable\"}")]
-    [TestCase("{\"status\":\"Available\"}")]
-    [TestCase("{\"status\":null}")]
+    [Theory]
+    [InlineData("{\"status\":\"unavailable\"}")]
+    [InlineData("{\"status\":\"Available\"}")]
+    [InlineData("{\"status\":null}")]
     public async Task HealthApiClientReturnsFalseForOtherSuccessfulJson(string content)
     {
         using var httpClient = CreateHttpClient(new DelegateHandler((_, _) =>
             Task.FromResult(JsonResponse(HttpStatusCode.OK, content))));
         var client = new HealthApiClient(httpClient);
 
-        var result = await client.IsAvailableAsync();
+        var result = await client.IsAvailableAsync(TestContext.Current.CancellationToken);
 
-        Assert.That(result, Is.False);
+        Assert.False(result);
     }
 
     /// <summary>
     /// Verifies that malformed successful JSON is exposed to the presentation fallback.
     /// </summary>
-    [Test]
-    public void HealthApiClientThrowsForMalformedSuccessfulJson()
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async Task HealthApiClientThrowsForMalformedSuccessfulJson()
     {
         using var httpClient = CreateHttpClient(new DelegateHandler((_, _) =>
             Task.FromResult(JsonResponse(HttpStatusCode.OK, "not-json"))));
         var client = new HealthApiClient(httpClient);
 
-        Assert.That(
-            async () => await client.IsAvailableAsync(),
-            Throws.TypeOf<JsonException>());
+        await Assert.ThrowsAsync<JsonException>(
+            () => client.IsAvailableAsync(TestContext.Current.CancellationToken));
     }
 
     /// <summary>
     /// Verifies that an unsuccessful response returns false without reading its body as JSON.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
-    [Test]
+    [Fact]
     public async Task HealthApiClientReturnsFalseForUnsuccessfulResponse()
     {
         using var httpClient = CreateHttpClient(new DelegateHandler((_, _) =>
             Task.FromResult(JsonResponse(HttpStatusCode.ServiceUnavailable, "not-json"))));
         var client = new HealthApiClient(httpClient);
 
-        var result = await client.IsAvailableAsync();
+        var result = await client.IsAvailableAsync(TestContext.Current.CancellationToken);
 
-        Assert.That(result, Is.False);
+        Assert.False(result);
     }
 
     private static HttpClient CreateHttpClient(HttpMessageHandler handler)

@@ -6,6 +6,7 @@ namespace HouseholdLedger.Client.Pages;
 
 using System.Globalization;
 
+using HouseholdLedger.Client.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
@@ -49,6 +50,12 @@ public partial class CalendarPage : ComponentBase
     /// </summary>
     [Inject]
     private TimeProvider Clock { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the shared selected-date state.
+    /// </summary>
+    [Inject]
+    private SelectedDateState SelectedDate { get; set; } = null!;
 
     private DateOnly ActiveDate { get; set; }
 
@@ -206,6 +213,7 @@ public partial class CalendarPage : ComponentBase
     private void SelectDate(DateOnly date, bool shouldFocus)
     {
         this.ActiveDate = date;
+        this.SelectedDate.Select(date);
         this.pendingFocus = shouldFocus && this.CurrentMode != CalendarMode.Today
             ? FocusTarget.ActiveDate
             : FocusTarget.None;

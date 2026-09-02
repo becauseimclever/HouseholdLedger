@@ -71,14 +71,11 @@ those resources.
 ## Browser E2E Rejects Its Inputs
 
 Use the self-cleaning fresh-publish workflow in [Testing](testing.md). The
-complete run requires six normalized absolute paths and two distinct, available
-loopback ports:
+complete run requires five normalized absolute paths and one available
+loopback port:
 
 - `HOUSEHOLDLEDGER_API_ARTIFACT` must name an existing file named exactly
    `HouseholdLedger.Api.dll`.
-- `HOUSEHOLDLEDGER_CLIENT_PUBLISH_DIR` must name the published Client
-   `wwwroot`, including `index.html`, `appsettings.json`, and
-   `_framework/blazor.webassembly.js`.
 - `HOUSEHOLDLEDGER_FIREFOX_BINARY` must name the approved Firefox 153.0.1
    EME-free `firefox.exe`.
 - `HOUSEHOLDLEDGER_GECKODRIVER` must name the approved geckodriver 0.37.1
@@ -86,12 +83,11 @@ loopback ports:
 - `HOUSEHOLDLEDGER_E2E_PROFILE_ROOT` and `HOUSEHOLDLEDGER_E2E_OUTPUT_DIR` must
    name existing, test-owned directories. They must not be shared with another
    run.
-- `HOUSEHOLDLEDGER_E2E_API_PORT` and `HOUSEHOLDLEDGER_E2E_CLIENT_PORT` must be
-   different, currently available loopback ports.
+- `HOUSEHOLDLEDGER_E2E_API_PORT` must be a currently available loopback port.
 
-Relative paths, unresolved `.` or `..` segments, stale publish directories,
-different executable names, version mismatches, and executable SHA-256
-mismatches are rejected before browser launch. Do not add
+Relative paths, unresolved `.` or `..` segments, stale API artifacts, different
+executable names, version mismatches, and executable SHA-256 mismatches are
+rejected before browser launch. Do not add
 Selenium, Playwright, a browser manager, or a runtime downloader as a
 workaround. See the
 [Browser E2E Dependency Review](browser-e2e-dependency-review.md).

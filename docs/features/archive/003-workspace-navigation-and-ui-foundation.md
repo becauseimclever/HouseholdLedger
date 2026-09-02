@@ -2,17 +2,17 @@
 
 ## Status
 
-Status: Approved / implementation in progress
+Status: Complete.
 
-- Approval authority: the user. The orchestrator cannot approve this document
-  on the user's behalf.
-- Approval record: the user authorized implementation through completion on
-  2026-08-04. The user approved the desktop-only scope refinement recorded on
-  2026-08-06. Deferring expressly unimplemented responsive behavior does not
-  require a further approval renewal.
-- Implementation state: completed implementation-wave work remains authorized.
-  This specification does not claim that later waves, validation, audit, or
-  final feature completion have occurred.
+- The desktop workspace, independent pane controls, central calendar region,
+  accessible labels and focus treatment, and neutral inspector were implemented
+  and validated by focused component and retained browser evidence.
+- The earlier audit's Lucide closure gate reflected the former dependency
+  process. Current risk-based dependency governance, central versioning, locked
+  restore, NuGet audit, shipped notices, and Feature 008 evidence close that
+  historical process concern without another approval document.
+- Responsive narrow-viewport redesign remains deferred; it is not incomplete
+  Feature 003 work.
 - Research date: 2026-08-04.
 - Relationship to Feature 002: Feature 002 is the completed hosted runtime
   proof. This feature changes the visible Client workspace only after approval;
@@ -256,27 +256,16 @@ Feature 003 is done only when all of the following are true:
    that the implemented shell needs end-user guidance; this shell alone does
    not create a documentation requirement.
 
-## Recommended Follow-On Feature Breakdown
+## Follow-On Features
 
-The approved follow-on proposals are separate drafts. They do not authorize
-implementation and must retain their own user approval records:
-
-1. [Feature 004: Calendar Item Selection and Inspector Detail Contract](004-calendar-item-selection-and-inspector-detail-contract.md): Define an
-   accessible calendar selection model, selection lifecycle, neutral selection
-   rules, and the use-case/read-model contract that supplies inspector data.
-   This feature must settle selection semantics, data shape, persistence
-   boundaries, and whether selection is URL-addressable before properties are
-   displayed.
-2. [Feature 007: Calendar Entry Recording](007-calendar-entry-recording.md): Define the first real Kakeibo-informed record
-   workflow, validation, category language, and calendar representation only
-   after the selection/detail contract is approved.
-3. [Feature 005: Workspace Navigation Destinations](005-workspace-navigation-destinations.md): Define concrete destinations and
-   information architecture only when their user outcomes are known. It should
-   not use shell labels as implied commitments to accounts, reports, settings,
-   or other unapproved areas.
-4. [Feature 006: Workspace Pane Preference Persistence](006-workspace-pane-preference-persistence.md): Decide whether pane state should
-   persist and, if so, establish privacy, storage, accessibility, and fallback
-   behavior separately from this transient shell state.
+- [Feature 004](004-calendar-item-selection-and-inspector-detail-contract.md)
+  completed transient calendar selection.
+- [Feature 005](005-record-a-transaction-for-selected-day.md) owns selected-day
+  transaction reading and first recording.
+- [Feature 007](007-correct-or-remove-selected-day-transaction.md) plans
+  correction and removal.
+- Navigation destinations, pane-preference persistence, and narrow-viewport
+  redesign remain unnumbered until a user outcome makes one worth scheduling.
 
 ## Future Responsive Workspace Behavior Proposal
 

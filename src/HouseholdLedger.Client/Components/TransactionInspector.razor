@@ -1,0 +1,72 @@
+@using System.Globalization
+@using HouseholdLedger.Api.Contracts
+@using Microsoft.AspNetCore.Components.Web
+
+@if (SelectedDate.Value is not DateOnly selectedDate)
+{
+    <p class="inspector-empty-state">No calendar day selected</p>
+}
+else
+{
+    <section class="transaction-inspector" aria-labelledby="selected-day-heading">
+        <h3 id="selected-day-heading">@selectedDate.ToString("D", CultureInfo.CurrentCulture)</h3>
+        <p class="transaction-currency">Expenses in USD</p>
+
+        <form @onsubmit="SaveAsync" @onsubmit:preventDefault="true" aria-label="Record an expense">
+            <div class="transaction-field">
+                <label for="transaction-amount">Amount (USD)</label>
+                <input id="transaction-amount" name="amount" type="text" inputmode="decimal" autocomplete="off" value="@amountText" @oninput="UpdateAmount" aria-invalid="@HasAmountError" aria-describedby="transaction-amount-error" />
+                @if (amountError is not null)
+                {
+                    <p id="transaction-amount-error" class="transaction-error">@amountError</p>
+                }
+            </div>
+
+            <div class="transaction-field">
+                <label for="transaction-classification">Classification</label>
+                <select id="transaction-classification" name="classification" value="@classification" @onchange="UpdateClassification" aria-invalid="@HasClassificationError" aria-describedby="transaction-classification-error">
+                    <option value="">Choose a classification</option>
+                    @foreach (var option in Classifications)
+                    {
+                        <option value="@option">@option</option>
+                    }
+                </select>
+                @if (classificationError is not null)
+                {
+                    <p id="transaction-classification-error" class="transaction-error">@classificationError</p>
+                }
+            </div>
+
+            <button type="submit" disabled="@isSaving">@(isSaving ? "Saving" : "Save expense")</button>
+        </form>
+
+        <div class="transaction-status" role="status" aria-live="polite">
+            @if (isLoading)
+            {
+                <p>Loading transactions</p>
+            }
+            else if (loadError)
+            {
+                <p>Transactions are unavailable. Select the day again to retry.</p>
+            }
+            else if (transactions.Count == 0)
+            {
+                <p>No transactions recorded for this day.</p>
+            }
+            else
+            {
+                <ol class="transaction-list">
+                    @foreach (var transaction in transactions)
+                    {
+                        <li><span>@transaction.Classification</span><strong>@transaction.Amount.ToString("C", UsdCulture)</strong></li>
+                    }
+                </ol>
+            }
+
+            @if (saveError is not null)
+            {
+                <p class="transaction-error">@saveError</p>
+            }
+        </div>
+    </section>
+}

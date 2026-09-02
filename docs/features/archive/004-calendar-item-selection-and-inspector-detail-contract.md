@@ -2,15 +2,15 @@
 
 ## Status
 
-Status: Draft - awaiting explicit user approval; implementation is not
-authorized.
+Status: Complete.
 
-- This is a proposal only. It cannot start implementation until the user
-  explicitly approves this amended document.
-- Proposal date: 2026-08-04. Amendment date: 2026-08-06.
-- Depends on the approved, pending implementation workspace shell in
-  [Feature 003](003-workspace-navigation-and-ui-foundation.md). It does not
-  treat Feature 003 as implemented or validated.
+- Proposed: 2026-08-04; amended: 2026-08-06; completed: 2026-08-06.
+- The final re-audit marks AC-01 through AC-06 and every Definition of Done item
+  `Met`, including deterministic component coverage and retained desktop browser
+  evidence.
+- Feature 003 supplies the completed desktop workspace shell. Feature 005 now
+  consumes the transient selected date without changing this feature's original
+  Client-only responsibility.
 
 ## Context and Outcome
 
@@ -211,10 +211,9 @@ approved implementation uses the narrow Client validation selected by Test
 Architecture; API, database, OpenAPI, persistence, full-solution, and
 browser-matrix validation remain outside this slice.
 
-## Dependency-Ordered Implementation Waves
+## Implementation Record
 
-Implementation is not authorized. After explicit user approval, the
-orchestrator assigns exclusive ownership sequentially:
+Implementation used the following two bounded responsibilities:
 
 | Order | Specialist | Exclusive writable ownership | Responsibility and boundary | Required checks |
 | --- | --- | --- | --- | --- |
@@ -243,13 +242,13 @@ Feature 004 is done only when all of the following are true:
 5. The audit confirms the calendar remains the accessible central desktop work
    area and clock-dependent behavior uses controlled time.
 
-## Open Questions Requiring Product Decisions
+## Deferred Questions
 
 1. Which separately approved feature will define the persisted application
   settings experience and its defaults, validation, migration, privacy, and
   the effect of configured week boundaries or formatting on these modes?
-2. Which later feature will freeze the inspector's truthful day-detail read
-   model and allowed transaction capabilities before inspector implementation?
+2. Feature 005 defines the inspector's selected-day transaction contract and
+  first recording behavior.
 3. Should a later user-approved feature add a distinct command that returns the
   active date to the current date? This feature deliberately does not infer
   one from the `Today` label.
@@ -266,15 +265,11 @@ Feature 004 is done only when all of the following are true:
 | 2026-08-06 | Retain managed Tab and arrow movement in weekly/monthly grids, but give Today a reachable selected date without pretending it is a multi-day grid. | The requested keyboard contract applies where multiple calendar dates are presented; truthful semantics prevent fictitious grid behavior. |
 | 2026-08-06 | Use Client-local current culture/time and culture-derived week start as provisional presentation defaults. | Persisted application settings remain a separate product responsibility; the injected clock keeps initial-date behavior deterministic. |
 | 2026-08-06 | Keep inspector data, settings, persistence, API/data work, and financial semantics deferred. | No truthful business data or approved cross-layer contract exists for them. |
+| 2026-08-06 | Final re-audit marked Feature 004 complete. | AC-01 through AC-06 and all Definition of Done items were supported by focused component and retained browser evidence. |
 
 ## Dependencies
 
 - [Feature 003](003-workspace-navigation-and-ui-foundation.md) provides the
   desktop workspace shell and owns the inspector structure and neutral state.
-- [Feature 005](005-workspace-navigation-destinations.md) remains responsible
-  for workspace destinations and routes.
-- [Feature 006](006-workspace-pane-preference-persistence.md) remains
-  responsible for any pane-preference persistence decision.
-- [Feature 007](007-calendar-entry-recording.md) still requires a separately
-  approved truthful transaction/data and use-case contract before recording can
-  be designed or implemented.
+- [Feature 005](005-record-a-transaction-for-selected-day.md) consumes selected
+  dates and owns transaction data, persistence, API, and inspector behavior.
