@@ -4,7 +4,7 @@
 
 .status-line,
 .status-message {
-    color: #3d4b43;
+    color: var(--hl-text-secondary);
     font-size: 0.8125rem;
 }
 
@@ -18,12 +18,12 @@
     width: 0.625rem;
     height: 0.625rem;
     border-radius: 50%;
-    background: #718079;
+    background: var(--hl-text-disabled);
 }
 
 .available .status-dot {
-    background: #16806f;
-    box-shadow: 0 0 0 0.1875rem #d5eee8;
+    background: var(--hl-status-success);
+    box-shadow: 0 0 0 0.1875rem var(--hl-status-success-background);
 }
 
 .loading .status-dot {
@@ -34,12 +34,12 @@
     display: grid;
     max-width: 20rem;
     padding-left: 0.75rem;
-    border-left: 0.1875rem solid #b83b2d;
+    border-left: 0.1875rem solid var(--hl-border-error);
     gap: 0.2rem;
 }
 
 .status-message strong {
-    color: #76251d;
+    color: var(--hl-status-error);
 }
 
 .status-message button {
@@ -48,9 +48,9 @@
     padding: 0;
     border: 0;
     background: transparent;
-    color: #0b6358;
+    color: var(--hl-text-link);
     cursor: pointer;
-    font-weight: 800;
+    font-weight: var(--hl-weight-control);
     text-decoration: underline;
     text-underline-offset: 0.15rem;
 }

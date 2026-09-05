@@ -58,37 +58,26 @@ Use `-Port <port>` only when a fixed isolated loopback port is needed. The
 default selects an available port. Compare mode is nonmutating, and automated
 tests do not update the artifact.
 
-## Run the API and Client
+## Run the Application
 
-The API and standalone WebAssembly client are separate applications. No launch
-profiles are committed, so allocate their origins explicitly.
-
-In one PowerShell terminal, run the API at the address already configured as the
-client's default API base URL:
+The API hosts the Blazor WebAssembly client and serves the API from the same
+origin. No launch profiles are committed, so select the development environment
+and listening address explicitly:
 
 ```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
 $env:ASPNETCORE_URLS = "https://localhost:7241"
-$env:Cors__AllowedOrigins__0 = "https://localhost:7242"
 dotnet run --project src/HouseholdLedger.Api --no-build
 ```
 
-In a second PowerShell terminal, run the client:
-
-```powershell
-dotnet run --project src/HouseholdLedger.Client --no-build --urls https://localhost:7242
-```
-
-Open `https://localhost:7242`. The shell should show the current calendar period
+Open `https://localhost:7241`. The shell should show the current calendar period
 and API health. Verify the API independently at
 `https://localhost:7241/api/v1/health`. Its generated OpenAPI document is at
 `https://localhost:7241/openapi/v1.json`.
 
-`Cors__AllowedOrigins__0` is the environment-variable form of
-`Cors:AllowedOrigins:0`. Add another numbered value only when another explicit
-frontend origin is required. The API does not enable a wildcard origin.
-
-To use a different API origin, change `Api:BaseUrl` in the Client's public
-static configuration and make the API listen on that origin. Browser-delivered
+For a separately hosted custom frontend, configure an explicit
+`Cors:AllowedOrigins` entry on the API and set that frontend's API base URL to
+the API origin. The API does not enable a wildcard origin. Browser-delivered
 configuration is public and must never contain credentials or secrets.
 
 ## Publish the Hosted Application
@@ -103,6 +92,23 @@ The API output is an ASP.NET Core application that includes and serves the
 referenced Blazor WebAssembly Client. A replacement frontend may still consume
 the language-neutral HTTP/OpenAPI contract without referencing server
 implementation assemblies.
+
+Run the published application from its output directory so that the process
+uses the deployed `wwwroot` as its content root:
+
+```powershell
+Push-Location artifacts/publish/api
+$env:ASPNETCORE_ENVIRONMENT = "Production"
+$env:ASPNETCORE_URLS = "https://localhost:7241"
+dotnet HouseholdLedger.Api.dll
+```
+
+Starting the published DLL from another working directory requires setting its
+content root explicitly. Starting unpublished build output under `Production`
+is not a deployment substitute: ASP.NET Core intentionally enables source-tree
+static web assets only for local `Development`. Published output serves the
+Client in `Production`, `Staging`, and other runtime environments without that
+development-only behavior.
 
 Generated `artifacts` content is local output and must not be committed.
 

@@ -44,6 +44,36 @@ public sealed class TransactionEndpointTests
             () => Assert.Equal("Necessities", transactions![0].Classification));
     }
 
+    /// <summary>Verifies the calendar summary returns daily and month-to-date expense totals.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task MonthlySummaryReturnsDailyAndMonthToDateTotals()
+    {
+        await using var factory = new TransactionApiFactory();
+        using var client = ApiTestClient.Create(factory);
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        using var firstCreateResponse = await client.PostAsJsonAsync(
+            "/api/v1/days/2026-09-01/transactions",
+            new CreateExpenseTransactionRequest(12.25m, "Necessities"),
+            cancellationToken);
+        using var secondCreateResponse = await client.PostAsJsonAsync(
+            "/api/v1/days/2026-09-03/transactions",
+            new CreateExpenseTransactionRequest(7.75m, "Culture"),
+            cancellationToken);
+        var summaries = await client.GetFromJsonAsync<DailyExpenseSummaryResponse[]>(
+            "/api/v1/months/2026/9/expense-summary",
+            cancellationToken);
+
+        Assert.Multiple(
+            () => Assert.Equal(HttpStatusCode.Created, firstCreateResponse.StatusCode),
+            () => Assert.Equal(HttpStatusCode.Created, secondCreateResponse.StatusCode),
+            () => Assert.Equal(30, summaries!.Length),
+            () => Assert.Equal(new DailyExpenseSummaryResponse(new DateOnly(2026, 9, 1), 12.25m, 12.25m), summaries![0]),
+            () => Assert.Equal(new DailyExpenseSummaryResponse(new DateOnly(2026, 9, 2), 0m, 12.25m), summaries![1]),
+            () => Assert.Equal(new DailyExpenseSummaryResponse(new DateOnly(2026, 9, 3), 7.75m, 20m), summaries![2]));
+    }
+
     /// <summary>Verifies correction and removal are persisted under the selected date.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
@@ -155,6 +185,20 @@ public sealed class TransactionEndpointTests
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult<IReadOnlyList<ExpenseTransaction>>(
                 this.transactions.Where(transaction => transaction.Date == ledgerDate).ToArray());
+        }
+
+        public Task<IReadOnlyList<ExpenseTransaction>> ListByDateRangeAsync(
+            DateOnly startDate,
+            DateOnly endDate,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<ExpenseTransaction>>(
+                this.transactions
+                    .Where(transaction => transaction.Date >= startDate && transaction.Date < endDate)
+                    .OrderBy(transaction => transaction.Date)
+                    .ThenBy(transaction => transaction.Sequence)
+                    .ToArray());
         }
 
         public Task UpdateAsync(ExpenseTransaction transaction, CancellationToken cancellationToken)

@@ -2,7 +2,7 @@
     display: grid;
     min-height: 100vh;
     grid-template-rows: auto minmax(0, 1fr) auto;
-    background: var(--workspace-canvas);
+    background: var(--hl-surface-canvas);
 }
 
 .workspace-toolbar {
@@ -11,17 +11,16 @@
     align-items: center;
     justify-content: space-between;
     padding-inline: 0.75rem;
-    border-bottom: 0.0625rem solid var(--workspace-border-strong);
-    background: var(--workspace-toolbar);
+    border-bottom: 0.0625rem solid var(--hl-border-strong);
+    background: var(--hl-surface-chrome);
     gap: 1rem;
 }
 
 .workspace-name {
     margin: 0;
-    color: var(--workspace-strong-text);
-    font-family: Georgia, "Times New Roman", serif;
+    color: var(--hl-text-primary);
     font-size: 1rem;
-    font-weight: 700;
+    font-weight: var(--hl-weight-heading);
 }
 
 .workspace-tools {
@@ -38,15 +37,15 @@
     padding: 0;
     place-items: center;
     border: 0.0625rem solid transparent;
-    border-radius: 0.25rem;
+    border-radius: var(--hl-radius-control);
     background: transparent;
-    color: var(--workspace-strong-text);
+    color: var(--hl-text-primary);
     cursor: pointer;
 }
 
 .pane-toggle:hover {
-    border-color: var(--workspace-border-strong);
-    background: var(--workspace-hover);
+    border-color: var(--hl-border-strong);
+    background: var(--hl-surface-hover);
 }
 
 .pane-toggle-tooltip {
@@ -57,15 +56,15 @@
     width: max-content;
     max-width: min(15rem, calc(100vw - 1.5rem));
     padding: 0.4rem 0.55rem;
-    border-radius: 0.25rem;
-    background: var(--workspace-tooltip);
-    color: #ffffff;
+    border-radius: var(--hl-radius-control);
+    background: var(--hl-surface-elevated);
+    color: var(--hl-text-primary);
     font-size: 0.8125rem;
-    font-weight: 700;
+    font-weight: var(--hl-weight-control);
     opacity: 0;
     pointer-events: none;
     transform: translateY(-0.2rem);
-    transition: opacity 120ms ease, transform 120ms ease;
+    transition: opacity var(--hl-transition-short) ease, transform var(--hl-transition-short) ease;
 }
 
 .pane-toggle:hover .pane-toggle-tooltip,
@@ -77,33 +76,36 @@
 .workspace-pane {
     min-width: 0;
     padding: 1.25rem;
-    border-color: var(--workspace-border);
-    background: var(--workspace-pane);
+    border-color: var(--hl-border-default);
+    background: var(--hl-surface-panel);
 }
 
 .navigation-pane {
+    grid-area: navigation;
     border-right-style: solid;
     border-right-width: 0.0625rem;
 }
 
 .inspector-pane {
+    grid-area: inspector;
     border-left-style: solid;
     border-left-width: 0.0625rem;
 }
 
 .workspace-pane h2 {
     margin: 0;
-    color: var(--workspace-muted-text);
+    color: var(--hl-text-secondary);
     font-size: 0.75rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
+    font-weight: var(--hl-weight-heading);
+    letter-spacing: 0;
     text-transform: uppercase;
 }
 
 .calendar-workspace {
+    grid-area: main;
     min-width: 0;
     padding: 1.5rem;
-    background: var(--workspace-main);
+    background: var(--hl-surface-work);
 }
 
 .workspace-auxiliary {
@@ -111,18 +113,18 @@
     min-height: 3.5rem;
     align-items: center;
     padding-inline: 0.75rem;
-    border-top: 0.0625rem solid var(--workspace-border-strong);
-    background: var(--workspace-toolbar);
+    border-top: 0.0625rem solid var(--hl-border-strong);
+    background: var(--hl-surface-chrome);
 }
 
 .workspace-auxiliary-link {
-    color: var(--workspace-strong-text);
+    color: var(--hl-text-primary);
     font-size: 0.875rem;
-    font-weight: 700;
+    font-weight: var(--hl-weight-control);
 }
 
 .workspace-auxiliary-link:hover {
-    color: var(--workspace-strong-text);
+    color: var(--hl-text-link-hover);
 }
 
 .workspace-auxiliary-link[aria-current="page"] {
@@ -131,13 +133,13 @@
 }
 
 .workspace-auxiliary-link:focus-visible {
-    outline: 0.1875rem solid #b83b2d;
-    outline-offset: 0.1875rem;
+    outline: var(--hl-focus-width) solid var(--hl-action-focus);
+    outline-offset: var(--hl-focus-offset);
 }
 
 .inspector-empty-state {
     margin: 1.5rem 0 0;
-    color: var(--workspace-muted-text);
+    color: var(--hl-text-secondary);
     font-size: 0.9375rem;
     line-height: 1.5;
 }
@@ -150,11 +152,11 @@
     }
 
     .navigation-pane {
-        border-bottom: 0.0625rem solid var(--workspace-border);
+        border-bottom: 0.0625rem solid var(--hl-border-default);
     }
 
     .inspector-pane {
-        border-top: 0.0625rem solid var(--workspace-border);
+        border-top: 0.0625rem solid var(--hl-border-default);
     }
 
     .calendar-workspace {

@@ -5,30 +5,35 @@
 
 .error-code {
     margin-bottom: 0.5rem;
-    color: #b83b2d;
+    color: var(--hl-status-error);
     font-size: 0.875rem;
-    font-weight: 800;
-    letter-spacing: 0.08em;
+    font-weight: var(--hl-weight-heading);
+    letter-spacing: 0;
 }
 
 h1 {
     margin: 0 0 0.75rem;
-    color: #17352e;
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: clamp(2rem, 6vw, 3.5rem);
-    font-weight: 500;
+    color: var(--hl-text-primary);
+    font-size: 3rem;
+    font-weight: var(--hl-weight-heading);
 }
 
 p {
-    color: #526159;
+    color: var(--hl-text-secondary);
 }
 
 a {
     display: inline-block;
     margin-top: 1rem;
     padding-bottom: 0.2rem;
-    border-bottom: 0.125rem solid #b83b2d;
-    color: #17352e;
-    font-weight: 800;
+    border-bottom: 0.125rem solid var(--hl-border-selected);
+    color: var(--hl-text-link);
+    font-weight: var(--hl-weight-control);
     text-decoration: none;
+}
+
+@media (max-width: 30rem) {
+    h1 {
+        font-size: 2.25rem;
+    }
 }

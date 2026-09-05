@@ -27,11 +27,11 @@ public sealed class ApiSystemSmokeTests
     private static readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(10);
 
     /// <summary>
-    /// Verifies that a separate API process serves health and its OpenAPI contract.
+    /// Verifies that a separate production API process serves the hosted Client and API contract.
     /// </summary>
     /// <returns>A task representing the asynchronous test.</returns>
     [Fact]
-    public async Task SeparateApiProcessServesHealthAndOpenApiContract()
+    public async Task PublishedProductionProcessServesHostedClientHealthAndOpenApiContract()
     {
         var apiAssemblyPath = GetRequiredApiArtifact();
         var port = ReserveLoopbackPort();
@@ -52,6 +52,7 @@ public sealed class ApiSystemSmokeTests
             };
 
             await WaitUntilHealthy(client, process, diagnostics);
+            await AssertHostedClientResponse(client);
             await AssertHealthResponse(client);
             await AssertOpenApiResponse(client);
         }
@@ -151,8 +152,8 @@ public sealed class ApiSystemSmokeTests
         CopyEnvironmentVariable(startInfo, "DOTNET_ROOT(x86)");
         CopyEnvironmentVariable(startInfo, "TEMP");
         CopyEnvironmentVariable(startInfo, "TMP");
-        startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
-        startInfo.Environment["DOTNET_ENVIRONMENT"] = "Development";
+        startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Production";
+        startInfo.Environment["DOTNET_ENVIRONMENT"] = "Production";
         startInfo.Environment["ASPNETCORE_URLS"] = baseAddress.AbsoluteUri;
         startInfo.Environment["ConnectionStrings__HouseholdLedger"] = string.Empty;
 
@@ -239,6 +240,22 @@ public sealed class ApiSystemSmokeTests
 
         throw new TimeoutException(
             $"The API did not become healthy within {StartupTimeout}. Last probe: {lastException?.Message}");
+    }
+
+    private static async Task AssertHostedClientResponse(HttpClient client)
+    {
+        using var rootResponse = await client.GetAsync("/");
+        using var frameworkResponse = await client.GetAsync("/_framework/blazor.webassembly.js");
+        var rootBody = await rootResponse.Content.ReadAsStringAsync();
+        var frameworkBody = await frameworkResponse.Content.ReadAsStringAsync();
+
+        Assert.Multiple(
+            () => Assert.Equal(HttpStatusCode.OK, rootResponse.StatusCode),
+            () => Assert.Equal("text/html", rootResponse.Content.Headers.ContentType?.MediaType),
+            () => Assert.Contains("_framework/blazor.webassembly.js", rootBody, StringComparison.Ordinal),
+            () => Assert.Equal(HttpStatusCode.OK, frameworkResponse.StatusCode),
+            () => Assert.Equal("text/javascript", frameworkResponse.Content.Headers.ContentType?.MediaType),
+            () => Assert.NotEmpty(frameworkBody));
     }
 
     private static async Task AssertHealthResponse(HttpClient client)

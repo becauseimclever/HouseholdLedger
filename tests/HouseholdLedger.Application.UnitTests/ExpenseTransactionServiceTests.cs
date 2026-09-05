@@ -51,6 +51,28 @@ public sealed class ExpenseTransactionServiceTests
             () => Assert.Equal(8m, results[1].Amount));
     }
 
+    /// <summary>Verifies monthly summaries include zero days and cumulative spending.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SummarizeMonthReturnsDailyTotalsAndMonthToDateSpending()
+    {
+        var repository = new StubRepository();
+        repository.Items.Add(new ExpenseTransaction(Guid.NewGuid(), new DateOnly(2026, 9, 1), 5m, ExpenseClassification.Necessities, 1));
+        repository.Items.Add(new ExpenseTransaction(Guid.NewGuid(), new DateOnly(2026, 9, 1), 8m, ExpenseClassification.Unexpected, 2));
+        repository.Items.Add(new ExpenseTransaction(Guid.NewGuid(), new DateOnly(2026, 9, 3), 2.50m, ExpenseClassification.Culture, 3));
+        repository.Items.Add(new ExpenseTransaction(Guid.NewGuid(), new DateOnly(2026, 10, 1), 100m, ExpenseClassification.Optional, 4));
+        var service = new ExpenseTransactionService(repository);
+
+        var results = await service.SummarizeMonthAsync(2026, 9, TestContext.Current.CancellationToken);
+
+        Assert.Multiple(
+            () => Assert.Equal(30, results.Count),
+            () => Assert.Equal(new DailyExpenseSummaryDto(new DateOnly(2026, 9, 1), 13m, 13m), results[0]),
+            () => Assert.Equal(new DailyExpenseSummaryDto(new DateOnly(2026, 9, 2), 0m, 13m), results[1]),
+            () => Assert.Equal(new DailyExpenseSummaryDto(new DateOnly(2026, 9, 3), 2.50m, 15.50m), results[2]),
+            () => Assert.Equal(new DailyExpenseSummaryDto(new DateOnly(2026, 9, 30), 0m, 15.50m), results[^1]));
+    }
+
     /// <summary>Verifies correction persists a date-scoped transaction.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
@@ -130,6 +152,20 @@ public sealed class ExpenseTransactionServiceTests
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult<IReadOnlyList<ExpenseTransaction>>(
             this.Items.Where(transaction => transaction.Date == ledgerDate).ToArray());
+        }
+
+        public Task<IReadOnlyList<ExpenseTransaction>> ListByDateRangeAsync(
+            DateOnly startDate,
+            DateOnly endDate,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<ExpenseTransaction>>(
+                this.Items
+                    .Where(transaction => transaction.Date >= startDate && transaction.Date < endDate)
+                    .OrderBy(transaction => transaction.Date)
+                    .ThenBy(transaction => transaction.Sequence)
+                    .ToArray());
         }
 
         public Task UpdateAsync(ExpenseTransaction transaction, CancellationToken cancellationToken)

@@ -45,6 +45,20 @@ public sealed class ExpenseTransactionRepository(HouseholdLedgerDbContext dbCont
     }
 
     /// <inheritdoc/>
+    public async Task<IReadOnlyList<ExpenseTransaction>> ListByDateRangeAsync(
+        DateOnly startDate,
+        DateOnly endDate,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.ExpenseTransactions
+            .AsNoTracking()
+            .Where(transaction => transaction.Date >= startDate && transaction.Date < endDate)
+            .OrderBy(transaction => transaction.Date)
+            .ThenBy(transaction => transaction.Sequence)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task UpdateAsync(ExpenseTransaction transaction, CancellationToken cancellationToken)
     {
         await dbContext.SaveChangesAsync(cancellationToken);

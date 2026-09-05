@@ -48,6 +48,7 @@ public sealed class BrowserCalendarJourneyTests
         var runId = $"{DateTime.UtcNow:yyyyMMdd-HHmmssfff}-{Environment.ProcessId}";
         var profilePath = Path.Combine(inputs.ProfileRoot, runId, "profile");
         var screenshotPath = Path.Combine(inputs.OutputDirectory, $"workspace-shell-{runId}.png");
+        var mobileScreenshotPath = Path.Combine(inputs.OutputDirectory, $"workspace-shell-{runId}-mobile.png");
         Process? apiProcess = null;
         Process? driverProcess = null;
         W3cWebDriver? browser = null;
@@ -81,13 +82,26 @@ public sealed class BrowserCalendarJourneyTests
             await AssertCalendarFeatureAsync(browser, timeout.Token);
             await AssertTransactionFeatureAsync(browser, timeout.Token);
             await AssertWorkspaceShellAsync(browser, apiOrigin, timeout.Token);
+            await AssertDesignSystemAsync(browser, timeout.Token);
 
             var screenshot = await browser.TakeScreenshotAsync(timeout.Token);
             await File.WriteAllBytesAsync(screenshotPath, screenshot, timeout.Token);
             var screenshotHash = Convert.ToHexString(SHA256.HashData(screenshot)).ToLowerInvariant();
+            await SetViewportAsync(browser, 500, 844, timeout.Token);
+            var mobileState = await GetDesignSystemStateAsync(browser, timeout.Token);
+            Assert.Multiple(
+                () => Assert.True(mobileState.GetProperty("scrollWidth").GetInt32() <= 500),
+                () => Assert.True(mobileState.GetProperty("navigation").GetProperty("bottom").GetDouble()
+                    <= mobileState.GetProperty("main").GetProperty("top").GetDouble()),
+                () => Assert.True(mobileState.GetProperty("main").GetProperty("bottom").GetDouble()
+                    <= mobileState.GetProperty("inspector").GetProperty("top").GetDouble()));
+            var mobileScreenshot = await browser.TakeScreenshotAsync(timeout.Token);
+            await File.WriteAllBytesAsync(mobileScreenshotPath, mobileScreenshot, timeout.Token);
+            var mobileScreenshotHash = Convert.ToHexString(SHA256.HashData(mobileScreenshot)).ToLowerInvariant();
             TestContext.Current.TestOutputHelper?.WriteLine($"Feature003 browser api={apiOrigin} apiPid={apiProcess.Id} firefoxPid={firefoxProcessId} geckodriverPid={driverProcess.Id}");
             TestContext.Current.TestOutputHelper?.WriteLine($"Feature003 runtime hashes firefox={inputs.FirefoxHash} geckodriver={inputs.GeckodriverHash}");
             TestContext.Current.TestOutputHelper?.WriteLine($"Feature003 screenshot bytes={screenshot.Length} sha256={screenshotHash}");
+            TestContext.Current.TestOutputHelper?.WriteLine($"Feature009 mobile screenshot bytes={mobileScreenshot.Length} sha256={mobileScreenshotHash}");
         }
         finally
         {
@@ -144,8 +158,15 @@ public sealed class BrowserCalendarJourneyTests
 
     private static async Task SetDesktopViewportAsync(W3cWebDriver browser, CancellationToken cancellationToken)
     {
-        const int width = 1440;
-        const int height = 900;
+        await SetViewportAsync(browser, 1440, 900, cancellationToken);
+    }
+
+    private static async Task SetViewportAsync(
+        W3cWebDriver browser,
+        int width,
+        int height,
+        CancellationToken cancellationToken)
+    {
         var chrome = await browser.ExecuteScriptAsync(
             "return { width: window.outerWidth - window.innerWidth, height: window.outerHeight - window.innerHeight };",
             null,
@@ -153,6 +174,157 @@ public sealed class BrowserCalendarJourneyTests
         await browser.SetWindowRectAsync(
             width + chrome.GetProperty("width").GetInt32(),
             height + chrome.GetProperty("height").GetInt32(),
+            cancellationToken);
+    }
+
+    private static async Task AssertDesignSystemAsync(
+        W3cWebDriver browser,
+        CancellationToken cancellationToken)
+    {
+        var defaultState = await GetDesignSystemStateAsync(browser, cancellationToken);
+        Assert.Multiple(
+            () => Assert.Equal("workbench-dark", defaultState.GetProperty("theme").GetString()),
+            () => Assert.Equal("dark", defaultState.GetProperty("colorScheme").GetString()),
+            () => Assert.True(defaultState.GetProperty("textContrast").GetDouble() >= 4.5),
+            () => Assert.True(defaultState.GetProperty("secondaryContrast").GetDouble() >= 4.5),
+            () => Assert.True(defaultState.GetProperty("focusContrast").GetDouble() >= 3),
+            () => Assert.True(defaultState.GetProperty("inputBorderContrast").GetDouble() >= 3));
+
+        await SetThemeOverridesAsync(
+            browser,
+            new Dictionary<string, string>
+            {
+                ["--hl-surface-chrome"] = "rgb(20, 70, 48)",
+                ["--hl-action-primary"] = "rgb(140, 65, 20)",
+            },
+            cancellationToken);
+        var visualOverride = await GetDesignSystemStateAsync(browser, cancellationToken);
+        Assert.Multiple(
+            () => Assert.NotEqual(defaultState.GetProperty("chrome").GetString(), visualOverride.GetProperty("chrome").GetString()),
+            () => Assert.NotEqual(defaultState.GetProperty("primaryAction").GetString(), visualOverride.GetProperty("primaryAction").GetString()));
+
+        await ClearThemeOverridesAsync(browser, cancellationToken);
+        var restoredVisual = await GetDesignSystemStateAsync(browser, cancellationToken);
+        Assert.Multiple(
+            () => Assert.Equal(defaultState.GetProperty("chrome").GetString(), restoredVisual.GetProperty("chrome").GetString()),
+            () => Assert.Equal(defaultState.GetProperty("primaryAction").GetString(), restoredVisual.GetProperty("primaryAction").GetString()));
+
+        await SetThemeOverridesAsync(
+            browser,
+            new Dictionary<string, string>
+            {
+                ["--hl-workspace-areas"] = "\"inspector main navigation\"",
+                ["--hl-workspace-columns"] = "var(--hl-workspace-inspector-extent) minmax(0, 1fr) var(--hl-workspace-navigation-extent)",
+            },
+            cancellationToken);
+        var swapped = await GetDesignSystemStateAsync(browser, cancellationToken);
+        Assert.Multiple(
+            () => Assert.True(swapped.GetProperty("inspector").GetProperty("right").GetDouble()
+                <= swapped.GetProperty("main").GetProperty("left").GetDouble()),
+            () => Assert.True(swapped.GetProperty("main").GetProperty("right").GetDouble()
+                <= swapped.GetProperty("navigation").GetProperty("left").GetDouble()));
+
+        await SetThemeOverridesAsync(browser, CreateVerticalLayoutOverrides(), cancellationToken);
+        await AssertVerticalLayoutAsync(browser, includeNavigation: true, includeInspector: true, cancellationToken);
+        await ClickAndWaitForToggleStateAsync(browser, "workspace-navigation", false, cancellationToken);
+        await AssertVerticalLayoutAsync(browser, includeNavigation: false, includeInspector: true, cancellationToken);
+        await ClickAndWaitForToggleStateAsync(browser, "workspace-inspector", false, cancellationToken);
+        await AssertVerticalLayoutAsync(browser, includeNavigation: false, includeInspector: false, cancellationToken);
+        await ClickAndWaitForToggleStateAsync(browser, "workspace-navigation", true, cancellationToken);
+        await AssertVerticalLayoutAsync(browser, includeNavigation: true, includeInspector: false, cancellationToken);
+        await ClickAndWaitForToggleStateAsync(browser, "workspace-inspector", true, cancellationToken);
+        await AssertVerticalLayoutAsync(browser, includeNavigation: true, includeInspector: true, cancellationToken);
+
+        await ClearThemeOverridesAsync(browser, cancellationToken);
+        var restoredLayout = await GetDesignSystemStateAsync(browser, cancellationToken);
+        Assert.Multiple(
+            () => Assert.True(restoredLayout.GetProperty("navigation").GetProperty("right").GetDouble()
+                <= restoredLayout.GetProperty("main").GetProperty("left").GetDouble()),
+            () => Assert.True(restoredLayout.GetProperty("main").GetProperty("right").GetDouble()
+                <= restoredLayout.GetProperty("inspector").GetProperty("left").GetDouble()));
+    }
+
+    private static Dictionary<string, string> CreateVerticalLayoutOverrides()
+    {
+        return new Dictionary<string, string>
+        {
+            ["--hl-workspace-areas"] = "\"navigation\" \"main\" \"inspector\"",
+            ["--hl-workspace-columns"] = "minmax(0, 1fr)",
+            ["--hl-workspace-rows"] = "auto minmax(20rem, 1fr) auto",
+            ["--hl-workspace-no-navigation-areas"] = "\"main\" \"inspector\"",
+            ["--hl-workspace-no-navigation-columns"] = "minmax(0, 1fr)",
+            ["--hl-workspace-no-navigation-rows"] = "minmax(20rem, 1fr) auto",
+            ["--hl-workspace-no-inspector-areas"] = "\"navigation\" \"main\"",
+            ["--hl-workspace-no-inspector-columns"] = "minmax(0, 1fr)",
+            ["--hl-workspace-no-inspector-rows"] = "auto minmax(20rem, 1fr)",
+            ["--hl-workspace-main-only-areas"] = "\"main\"",
+            ["--hl-workspace-main-only-columns"] = "minmax(0, 1fr)",
+            ["--hl-workspace-main-only-rows"] = "minmax(20rem, 1fr)",
+        };
+    }
+
+    private static async Task AssertVerticalLayoutAsync(
+        W3cWebDriver browser,
+        bool includeNavigation,
+        bool includeInspector,
+        CancellationToken cancellationToken)
+    {
+        var state = await GetDesignSystemStateAsync(browser, cancellationToken);
+        var grid = state.GetProperty("grid");
+        var main = state.GetProperty("main");
+        Assert.True(main.GetProperty("height").GetDouble() >= 320);
+        if (includeNavigation)
+        {
+            Assert.True(state.GetProperty("navigation").GetProperty("bottom").GetDouble()
+                <= main.GetProperty("top").GetDouble());
+        }
+        else
+        {
+            Assert.Equal(grid.GetProperty("top").GetDouble(), main.GetProperty("top").GetDouble(), 1);
+        }
+
+        if (includeInspector)
+        {
+            Assert.True(main.GetProperty("bottom").GetDouble()
+                <= state.GetProperty("inspector").GetProperty("top").GetDouble());
+        }
+        else
+        {
+            Assert.Equal(grid.GetProperty("bottom").GetDouble(), main.GetProperty("bottom").GetDouble(), 1);
+        }
+    }
+
+    private static async Task SetThemeOverridesAsync(
+        W3cWebDriver browser,
+        IReadOnlyDictionary<string, string> overrides,
+        CancellationToken cancellationToken)
+    {
+        await browser.ExecuteScriptAsync(
+            "for (const [name, value] of Object.entries(arguments[0])) document.documentElement.style.setProperty(name, value);",
+            [overrides],
+            cancellationToken);
+    }
+
+    private static async Task ClearThemeOverridesAsync(
+        W3cWebDriver browser,
+        CancellationToken cancellationToken)
+    {
+        await browser.ExecuteScriptAsync(
+            "for (const name of [...document.documentElement.style]) if (name.startsWith('--hl-')) document.documentElement.style.removeProperty(name);",
+            null,
+            cancellationToken);
+    }
+
+    private static async Task<JsonElement> GetDesignSystemStateAsync(
+        W3cWebDriver browser,
+        CancellationToken cancellationToken)
+    {
+        return await browser.ExecuteScriptAsync(
+            "const rect = element => { const box = element.getBoundingClientRect(); return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height }; };"
+            + " const rgb = value => value.match(/[\\d.]+/g).slice(0, 3).map(Number); const luminance = value => { const channels = rgb(value).map(item => { item /= 255; return item <= .04045 ? item / 12.92 : Math.pow((item + .055) / 1.055, 2.4); }); return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2]; }; const contrast = (a, b) => { const first = luminance(a); const second = luminance(b); return (Math.max(first, second) + .05) / (Math.min(first, second) + .05); };"
+            + " const root = getComputedStyle(document.documentElement); const toolbar = getComputedStyle(document.querySelector('.workspace-toolbar')); const paneHeading = getComputedStyle(document.querySelector('.workspace-pane h2')); const pane = getComputedStyle(document.querySelector('.workspace-pane')); const input = getComputedStyle(document.querySelector('#transaction-amount')); const action = getComputedStyle(document.querySelector('#workspace-inspector form button')); const toggle = document.querySelector('.pane-toggle'); toggle.focus(); const toggleStyle = getComputedStyle(toggle);"
+            + " return { theme: document.documentElement.dataset.theme, colorScheme: root.colorScheme, chrome: toolbar.backgroundColor, primaryAction: action.backgroundColor, textContrast: contrast(root.color, root.backgroundColor), secondaryContrast: contrast(paneHeading.color, pane.backgroundColor), focusContrast: contrast(toggleStyle.outlineColor, toolbar.backgroundColor), inputBorderContrast: contrast(input.borderColor, input.backgroundColor), scrollWidth: document.documentElement.scrollWidth, grid: rect(document.querySelector('.workspace-grid')), navigation: rect(document.querySelector('#workspace-navigation')), main: rect(document.querySelector('#calendar-workspace')), inspector: rect(document.querySelector('#workspace-inspector')) };",
+            null,
             cancellationToken);
     }
 
@@ -177,15 +349,16 @@ public sealed class BrowserCalendarJourneyTests
 
     private static async Task AssertCalendarFeatureAsync(W3cWebDriver browser, CancellationToken cancellationToken)
     {
-        var today = await GetCalendarStateAsync(browser, cancellationToken);
+        var initialMonth = await GetCalendarStateAsync(browser, cancellationToken);
         Assert.Multiple(
-            () => Assert.Equal(3, today.GetProperty("modeCount").GetInt32()),
-            () => Assert.Equal("Today", today.GetProperty("activeMode").GetString()),
-            () => Assert.Equal(0, today.GetProperty("gridCount").GetInt32()),
-            () => Assert.Equal(1, today.GetProperty("selectedCount").GetInt32()),
-            () => Assert.Equal(1, today.GetProperty("tabStopCount").GetInt32()),
-            () => Assert.Equal("true", today.GetProperty("selectedPressed").GetString()),
-            () => Assert.Contains("No calendar item selected", today.GetProperty("inspectorText").GetString(), StringComparison.Ordinal));
+            () => Assert.Equal(3, initialMonth.GetProperty("modeCount").GetInt32()),
+            () => Assert.Equal("This Month", initialMonth.GetProperty("activeMode").GetString()),
+            () => Assert.Equal(1, initialMonth.GetProperty("gridCount").GetInt32()),
+            () => Assert.Equal(1, initialMonth.GetProperty("selectedCount").GetInt32()),
+            () => Assert.Equal(1, initialMonth.GetProperty("tabStopCount").GetInt32()),
+            () => Assert.Equal("true", initialMonth.GetProperty("selectedPressed").GetString()),
+            () => Assert.Equal("date", initialMonth.GetProperty("selectedCurrent").GetString()),
+            () => Assert.Contains("Expenses in USD", initialMonth.GetProperty("inspectorText").GetString(), StringComparison.Ordinal));
 
         await ClickCalendarControlAsync(browser, "fieldset.calendar-mode-picker label:nth-of-type(2) input", cancellationToken);
         var week = await GetCalendarStateAsync(browser, cancellationToken);
@@ -335,7 +508,7 @@ public sealed class BrowserCalendarJourneyTests
     {
         return await browser.ExecuteScriptAsync(
             "const calendar = document.querySelector('#calendar-workspace'); const inspector = document.querySelector('#workspace-inspector'); const selected = calendar?.querySelector(\".calendar-day[aria-pressed='true']\"); const box = calendar?.getBoundingClientRect(); const inspectorBox = inspector?.getBoundingClientRect();"
-            + " return { modeCount: calendar?.querySelectorAll(\"input[name='calendar-mode']\").length ?? 0, activeMode: calendar?.querySelector(\"input[name='calendar-mode']:checked\")?.parentElement?.textContent?.trim() ?? '', gridCount: calendar?.querySelectorAll('table.calendar-grid').length ?? 0, weekdayCount: calendar?.querySelectorAll('table.calendar-grid th[scope=col]').length ?? 0, dayCount: calendar?.querySelectorAll('.calendar-grid .calendar-day').length ?? 0, selectedCount: calendar?.querySelectorAll(\".calendar-day[aria-pressed='true']\").length ?? 0, selectedLabel: selected?.getAttribute('aria-label') ?? '', selectedPressed: selected?.getAttribute('aria-pressed') ?? '', tabStopCount: calendar?.querySelectorAll(\".calendar-day[tabindex='0']\").length ?? 0, focusedLabel: document.activeElement?.getAttribute('aria-label') ?? '', heading: calendar?.querySelector('#calendar-period-heading')?.textContent?.trim() ?? '', periodStatus: calendar?.querySelector('.calendar-period-status')?.textContent?.trim() ?? '', inspectorText: inspector?.textContent?.trim() ?? '', calendarWidth: box?.width ?? 0, calendarRight: box?.right ?? 0, inspectorLeft: inspectorBox?.left ?? 0, scrollWidth: document.documentElement.scrollWidth };",
+            + " return { modeCount: calendar?.querySelectorAll(\"input[name='calendar-mode']\").length ?? 0, activeMode: calendar?.querySelector(\"input[name='calendar-mode']:checked\")?.parentElement?.textContent?.trim() ?? '', gridCount: calendar?.querySelectorAll('table.calendar-grid').length ?? 0, weekdayCount: calendar?.querySelectorAll('table.calendar-grid th[scope=col]').length ?? 0, dayCount: calendar?.querySelectorAll('.calendar-grid .calendar-day').length ?? 0, selectedCount: calendar?.querySelectorAll(\".calendar-day[aria-pressed='true']\").length ?? 0, selectedLabel: selected?.getAttribute('aria-label') ?? '', selectedPressed: selected?.getAttribute('aria-pressed') ?? '', selectedCurrent: selected?.getAttribute('aria-current') ?? '', tabStopCount: calendar?.querySelectorAll(\".calendar-day[tabindex='0']\").length ?? 0, focusedLabel: document.activeElement?.getAttribute('aria-label') ?? '', heading: calendar?.querySelector('#calendar-period-heading')?.textContent?.trim() ?? '', periodStatus: calendar?.querySelector('.calendar-period-status')?.textContent?.trim() ?? '', inspectorText: inspector?.textContent?.trim() ?? '', calendarWidth: box?.width ?? 0, calendarRight: box?.right ?? 0, inspectorLeft: inspectorBox?.left ?? 0, scrollWidth: document.documentElement.scrollWidth };",
             null,
             cancellationToken);
     }

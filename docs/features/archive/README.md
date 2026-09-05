@@ -13,6 +13,7 @@ as historical product, acceptance, and decision records.
 | [006](006-workspace-pane-preference-persistence.md) | Superseded | Combined its transaction proposal into Feature 005 and deferred pane preferences. |
 | [007](007-correct-or-remove-selected-day-transaction.md) | Complete | Added selected-day transaction correction and confirmed permanent removal. |
 | [008](008-open-source-notices-page.md) | Complete | Added published open-source attribution in the application. |
+| [009](009-themeable-design-system-and-workbench-dark-theme.md) | Complete | Added the custom semantic-token design system and themeable three-pane `Workbench Dark` workspace. |
 
 Historical audits remain in [`docs/audit`](../../audit/). Archived documents are
 not active implementation gates and should not be edited to rewrite historical

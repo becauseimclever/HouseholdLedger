@@ -12,6 +12,9 @@ public sealed class SelectedDateState
     /// <summary>Occurs after the selected date changes.</summary>
     public event Action<DateOnly>? Changed;
 
+    /// <summary>Occurs after transactions for a date may have changed.</summary>
+    public event Action<DateOnly>? TransactionsChanged;
+
     /// <summary>Gets the selected date, or <see langword="null"/> before selection.</summary>
     public DateOnly? Value { get; private set; }
 
@@ -21,5 +24,12 @@ public sealed class SelectedDateState
     {
         this.Value = ledgerDate;
         this.Changed?.Invoke(ledgerDate);
+    }
+
+    /// <summary>Notifies calendar consumers that a date's transaction summary changed.</summary>
+    /// <param name="ledgerDate">The affected ledger date.</param>
+    public void NotifyTransactionsChanged(DateOnly ledgerDate)
+    {
+        this.TransactionsChanged?.Invoke(ledgerDate);
     }
 }

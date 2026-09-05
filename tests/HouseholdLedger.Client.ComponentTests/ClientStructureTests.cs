@@ -16,6 +16,34 @@ using Xunit;
 public sealed class ClientStructureTests
 {
     private static readonly string[] ExpectedProductReferences = ["HouseholdLedger.Api.Contracts"];
+    private static readonly string[] RequiredThemeTokens =
+    [
+        "--hl-surface-canvas",
+        "--hl-surface-chrome",
+        "--hl-surface-work",
+        "--hl-surface-panel",
+        "--hl-surface-input",
+        "--hl-text-primary",
+        "--hl-text-secondary",
+        "--hl-text-link",
+        "--hl-border-default",
+        "--hl-border-input",
+        "--hl-action-primary",
+        "--hl-action-focus",
+        "--hl-status-success",
+        "--hl-status-warning",
+        "--hl-status-error",
+        "--hl-status-information",
+        "--hl-font-ui",
+        "--hl-font-monospace",
+        "--hl-radius-control",
+        "--hl-transition-short",
+        "--hl-workspace-areas",
+        "--hl-workspace-columns",
+        "--hl-workspace-no-navigation-areas",
+        "--hl-workspace-no-inspector-areas",
+        "--hl-workspace-main-only-areas",
+    ];
 
     /// <summary>
     /// Verifies that every Razor file uses a matching compiled partial code-behind type.
@@ -62,6 +90,65 @@ public sealed class ClientStructureTests
             .Where(name => name?.StartsWith("HouseholdLedger.", StringComparison.Ordinal) == true);
 
         Assert.Equivalent(ExpectedProductReferences, householdLedgerReferences);
+    }
+
+    /// <summary>Verifies Workbench Dark is established before WebAssembly starts.</summary>
+    [Fact]
+    public void StaticHostDeclaresWorkbenchDarkThemeAndMatchingBrowserChrome()
+    {
+        var index = File.ReadAllText(Path.Combine(FindClientDirectory(), "wwwroot", "index.html"));
+
+        Assert.Multiple(
+            () => Assert.Contains("data-theme=\"workbench-dark\"", index, StringComparison.Ordinal),
+            () => Assert.Contains("name=\"theme-color\" content=\"#181818\"", index, StringComparison.Ordinal),
+            () => Assert.Contains("href=\"HouseholdLedger.Api.styles.css\"", index, StringComparison.Ordinal));
+    }
+
+    /// <summary>Verifies all scoped styles consume the single semantic token contract.</summary>
+    [Fact]
+    public void ClientStylesUseOnlySemanticThemeTokensForRenderedColors()
+    {
+        var clientDirectory = FindClientDirectory();
+        var appCss = File.ReadAllText(Path.Combine(clientDirectory, "wwwroot", "css", "app.css"));
+        var scopedStyleFiles = Directory.GetFiles(clientDirectory, "*.razor.css", SearchOption.AllDirectories);
+        var assertions = RequiredThemeTokens
+            .Select<string, Action>(token => () => Assert.Contains(token, appCss, StringComparison.Ordinal))
+            .ToList();
+
+        assertions.Add(() => Assert.Contains("color-scheme: dark", appCss, StringComparison.Ordinal));
+        assertions.Add(() => Assert.DoesNotContain("--workspace-", appCss, StringComparison.Ordinal));
+        assertions.Add(() => Assert.DoesNotContain("--calendar-", appCss, StringComparison.Ordinal));
+        foreach (var styleFile in scopedStyleFiles)
+        {
+            var css = File.ReadAllText(styleFile);
+            assertions.Add(() => Assert.DoesNotMatch(@"#[0-9a-fA-F]{3,8}\b|\brgb\(|\bhsl\(", css));
+            assertions.Add(() => Assert.DoesNotContain("--workspace-", css, StringComparison.Ordinal));
+            assertions.Add(() => Assert.DoesNotContain("--calendar-", css, StringComparison.Ordinal));
+        }
+
+        Assert.Multiple(assertions.ToArray());
+    }
+
+    /// <summary>Verifies theme placement does not depend on markup order or side-specific controls.</summary>
+    [Fact]
+    public void WorkspaceUsesStableSemanticOrderAndThemeOwnedNamedAreas()
+    {
+        var clientDirectory = FindClientDirectory();
+        var markup = File.ReadAllText(Path.Combine(clientDirectory, "Layout", "MainLayout.razor"));
+        var layoutCss = File.ReadAllText(Path.Combine(clientDirectory, "Layout", "MainLayout.razor.css"));
+        var navigationIndex = markup.IndexOf("<nav", StringComparison.Ordinal);
+        var mainIndex = markup.IndexOf("<section id=\"calendar-workspace\"", StringComparison.Ordinal);
+        var inspectorIndex = markup.IndexOf("<aside", StringComparison.Ordinal);
+
+        Assert.Multiple(
+            () => Assert.True(navigationIndex >= 0 && navigationIndex < mainIndex && mainIndex < inspectorIndex),
+            () => Assert.Contains("grid-area: navigation", layoutCss, StringComparison.Ordinal),
+            () => Assert.Contains("grid-area: main", layoutCss, StringComparison.Ordinal),
+            () => Assert.Contains("grid-area: inspector", layoutCss, StringComparison.Ordinal),
+            () => Assert.DoesNotContain("PanelLeft", markup, StringComparison.Ordinal),
+            () => Assert.DoesNotContain("PanelRight", markup, StringComparison.Ordinal),
+            () => Assert.Contains("NavigationToggleLabel", markup, StringComparison.Ordinal),
+            () => Assert.Contains("InspectorToggleLabel", markup, StringComparison.Ordinal));
     }
 
     private static string FindClientDirectory()

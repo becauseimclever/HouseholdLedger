@@ -10,12 +10,12 @@
 }
 
 .transaction-inspector h3 {
-    color: var(--workspace-strong-text);
+    color: var(--hl-text-primary);
     font-size: 1rem;
 }
 
 .transaction-currency {
-    color: var(--workspace-muted-text);
+    color: var(--hl-text-secondary);
     font-size: 0.875rem;
 }
 
@@ -30,9 +30,9 @@
 }
 
 .transaction-field label {
-    color: var(--workspace-strong-text);
+    color: var(--hl-text-primary);
     font-size: 0.875rem;
-    font-weight: 700;
+    font-weight: var(--hl-weight-control);
 }
 
 .transaction-field input,
@@ -40,36 +40,42 @@
     width: 100%;
     min-height: 2.5rem;
     padding: 0.5rem;
-    border: 0.0625rem solid var(--workspace-border-strong);
-    border-radius: 0.25rem;
-    background: var(--workspace-pane);
-    color: var(--workspace-strong-text);
+    border: 0.0625rem solid var(--hl-border-input);
+    border-radius: var(--hl-radius-control);
+    background: var(--hl-surface-input);
+    color: var(--hl-text-primary);
     font: inherit;
 }
 
 .transaction-inspector button {
     min-height: 2.5rem;
     border: 0;
-    border-radius: 0.25rem;
-    background: #176b4d;
-    color: #ffffff;
+    border-radius: var(--hl-radius-control);
+    background: var(--hl-action-primary);
+    color: var(--hl-action-primary-text);
     font: inherit;
-    font-weight: 700;
+    font-weight: var(--hl-weight-control);
+}
+
+.transaction-inspector button:hover:not(:disabled) {
+    background: var(--hl-action-primary-hover);
 }
 
 .transaction-inspector button:disabled {
-    opacity: 0.65;
+    background: var(--hl-surface-elevated);
+    color: var(--hl-text-disabled);
+    cursor: not-allowed;
 }
 
 .transaction-field input:focus-visible,
 .transaction-field select:focus-visible,
 .transaction-inspector button:focus-visible {
-    outline: 0.1875rem solid #b83b2d;
-    outline-offset: 0.125rem;
+    outline: var(--hl-focus-width) solid var(--hl-action-focus);
+    outline-offset: var(--hl-focus-offset);
 }
 
 .transaction-error {
-    color: #a12d22;
+    color: var(--hl-status-error);
     font-size: 0.8125rem;
 }
 
@@ -88,7 +94,7 @@
 .transaction-list li {
     display: grid;
     padding-block: 0.75rem;
-    border-bottom: 0.0625rem solid var(--workspace-border);
+    border-bottom: 0.0625rem solid var(--hl-border-default);
     gap: 0.75rem;
 }
 
@@ -106,13 +112,19 @@
 }
 
 .transaction-inspector .secondary-action {
-    border: 0.0625rem solid var(--workspace-border-strong);
-    background: var(--workspace-pane);
-    color: var(--workspace-strong-text);
+    border: 0.0625rem solid var(--hl-border-input);
+    background: var(--hl-surface-input);
+    color: var(--hl-text-primary);
 }
 
 .transaction-inspector .danger-action {
-    background: #a12d22;
+    background: var(--hl-status-error-background);
+    color: var(--hl-status-error);
+}
+
+.transaction-inspector .danger-action:hover:not(:disabled) {
+    background: var(--hl-status-error-background);
+    border-color: var(--hl-border-error);
 }
 
 .transaction-edit-form,

@@ -61,6 +61,10 @@ public sealed class PostgreSqlConnectivityTests
             var revised = Assert.Single(
                 await repository.ListByDateAsync(ledgerDate, cancellationToken),
                 item => item.Id == transaction.Id);
+            var dateRange = await repository.ListByDateRangeAsync(
+                ledgerDate,
+                ledgerDate.AddDays(1),
+                cancellationToken);
             await repository.RemoveAsync(persisted, cancellationToken);
             var afterRemoval = await repository.ListByDateAsync(ledgerDate, cancellationToken);
 
@@ -69,6 +73,7 @@ public sealed class PostgreSqlConnectivityTests
                 () => Assert.Equal(45.67m, revised.Amount),
                 () => Assert.Equal(ExpenseClassification.Unexpected, revised.Classification),
                 () => Assert.True(revised.Sequence > 0),
+                () => Assert.Contains(dateRange, item => item.Id == transaction.Id),
                 () => Assert.DoesNotContain(afterRemoval, item => item.Id == transaction.Id),
                 () => Assert.Contains(context.Database.GetAppliedMigrations(), migration => migration.EndsWith("AddExpenseTransactions", StringComparison.Ordinal)));
         }

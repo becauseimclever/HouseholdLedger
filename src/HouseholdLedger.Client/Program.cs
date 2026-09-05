@@ -34,6 +34,7 @@ public static class Program
                 new Uri(serviceProvider.GetRequiredService<NavigationManager>().BaseUri, UriKind.Absolute)),
         });
         builder.Services.AddScoped<IHealthApiClient, HealthApiClient>();
+        builder.Services.AddScoped<IMonthlyExpenseSummaryApiClient, MonthlyExpenseSummaryApiClient>();
         builder.Services.AddScoped<ITransactionsApiClient, TransactionsApiClient>();
         builder.Services.AddScoped<SelectedDateState>();
         builder.Services.AddSingleton(TimeProvider.System);

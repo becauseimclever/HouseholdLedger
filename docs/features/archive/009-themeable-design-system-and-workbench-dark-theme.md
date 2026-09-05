@@ -2,12 +2,16 @@
 
 ## Status
 
-Status: Planned - implementation has not started.
+Status: Complete.
 
 - Planned: 2026-09-01.
+- Completed: 2026-09-02.
 - User direction: build a custom, themeable HouseholdLedger design system.
 - The first and default theme is inspired by Visual Studio Code's dark
   workbench without copying its branding, assets, or exact stylesheet.
+- Focused Client structure tests, the PostgreSQL-backed hosted browser journey,
+  and manual desktop/mobile inspection verify the acceptance criteria and
+  Definition of Done.
 
 ## Outcome
 
@@ -239,7 +243,6 @@ and a separate final documentation audit are not required for completion.
 
 - Feature 003's archived workspace established the current layout and local CSS
   ownership that this feature restyles.
-- Features 004, 005, and 008 established the calendar, transaction inspector,
-  and notices surfaces included in the migration.
-- Feature 007 may reuse the resulting tokens when its edit and removal controls
-  are implemented; Feature 009 does not implement Feature 007 behavior.
+- Features 004, 005, 007, and 008 established the calendar, transaction
+  inspector, correction/removal, and notices surfaces included in the
+  migration.

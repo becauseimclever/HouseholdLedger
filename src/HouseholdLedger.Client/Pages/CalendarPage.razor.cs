@@ -6,6 +6,8 @@ namespace HouseholdLedger.Client.Pages;
 
 using System.Globalization;
 
+using HouseholdLedger.Api.Contracts;
+using HouseholdLedger.Client.Api;
 using HouseholdLedger.Client.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -13,8 +15,13 @@ using Microsoft.AspNetCore.Components.Web;
 /// <summary>
 /// Presents the calendar workspace surface.
 /// </summary>
-public partial class CalendarPage : ComponentBase
+public partial class CalendarPage : ComponentBase, IDisposable
 {
+    private static readonly CultureInfo UsdCulture = CultureInfo.GetCultureInfo("en-US");
+    private readonly CancellationTokenSource lifetimeCancellation = new();
+    private IReadOnlyDictionary<DateOnly, DailyExpenseSummaryResponse> expenseSummaries =
+        new Dictionary<DateOnly, DailyExpenseSummaryResponse>();
+
     private DateOnly currentDate;
     private ElementReference activeDateControl;
     private ElementReference monthModeControl;
@@ -52,6 +59,12 @@ public partial class CalendarPage : ComponentBase
     private TimeProvider Clock { get; set; } = null!;
 
     /// <summary>
+    /// Gets or sets the monthly expense summary client.
+    /// </summary>
+    [Inject]
+    private IMonthlyExpenseSummaryApiClient MonthlyExpenseSummaryApi { get; set; } = null!;
+
+    /// <summary>
     /// Gets or sets the shared selected-date state.
     /// </summary>
     [Inject]
@@ -59,7 +72,7 @@ public partial class CalendarPage : ComponentBase
 
     private DateOnly ActiveDate { get; set; }
 
-    private CalendarMode CurrentMode { get; set; } = CalendarMode.Today;
+    private CalendarMode CurrentMode { get; set; } = CalendarMode.Month;
 
     private IReadOnlyList<IReadOnlyList<DateOnly?>> MonthWeeks => this.GetMonthWeeks();
 
@@ -86,10 +99,22 @@ public partial class CalendarPage : ComponentBase
         .ToArray();
 
     /// <inheritdoc/>
-    protected override void OnInitialized()
+    public void Dispose()
+    {
+        this.SelectedDate.TransactionsChanged -= this.OnTransactionsChanged;
+        this.lifetimeCancellation.Cancel();
+        this.lifetimeCancellation.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    /// <inheritdoc/>
+    protected override async Task OnInitializedAsync()
     {
         this.currentDate = DateOnly.FromDateTime(this.Clock.GetLocalNow().DateTime);
         this.ActiveDate = this.currentDate;
+        this.SelectedDate.TransactionsChanged += this.OnTransactionsChanged;
+        this.SelectedDate.Select(this.currentDate);
+        await this.LoadExpenseSummariesAsync();
     }
 
     /// <inheritdoc/>
@@ -121,6 +146,10 @@ public partial class CalendarPage : ComponentBase
     }
 
     private static string AccessibleDateName(DateOnly date) => date.ToString("D", CultureInfo.CurrentCulture);
+
+    private static string FormatCurrency(decimal amount) => amount.ToString("C", UsdCulture);
+
+    private static string GetSummaryId(DateOnly date) => $"expense-summary-{date:yyyyMMdd}";
 
     private string? CurrentDateState(DateOnly date) => date == this.currentDate ? "date" : null;
 
@@ -156,26 +185,55 @@ public partial class CalendarPage : ComponentBase
         return weeks;
     }
 
-    private void HandleGridKeyDown(DateOnly date, KeyboardEventArgs args)
+    private DailyExpenseSummaryResponse? GetExpenseSummary(DateOnly date) =>
+        this.expenseSummaries.GetValueOrDefault(date);
+
+    private async Task LoadExpenseSummariesAsync()
+    {
+        var year = this.ActiveDate.Year;
+        var month = this.ActiveDate.Month;
+        this.expenseSummaries = new Dictionary<DateOnly, DailyExpenseSummaryResponse>();
+
+        try
+        {
+            var summaries = await this.MonthlyExpenseSummaryApi.GetAsync(
+                year,
+                month,
+                this.lifetimeCancellation.Token);
+            if (this.ActiveDate.Year == year && this.ActiveDate.Month == month)
+            {
+                this.expenseSummaries = summaries.ToDictionary(summary => summary.Date);
+            }
+        }
+        catch (OperationCanceledException) when (this.lifetimeCancellation.IsCancellationRequested)
+        {
+        }
+        catch (HttpRequestException)
+        {
+            this.expenseSummaries = new Dictionary<DateOnly, DailyExpenseSummaryResponse>();
+        }
+    }
+
+    private async Task HandleGridKeyDown(DateOnly date, KeyboardEventArgs args)
     {
         switch (args.Key)
         {
             case "Enter":
             case " ":
             case "Spacebar":
-                this.SelectDate(date, true);
+                await this.SelectDateAsync(date, true);
                 break;
             case "ArrowLeft":
-                this.SelectDate(date.AddDays(-1), true);
+                await this.SelectDateAsync(date.AddDays(-1), true);
                 break;
             case "ArrowRight":
-                this.SelectDate(date.AddDays(1), true);
+                await this.SelectDateAsync(date.AddDays(1), true);
                 break;
             case "ArrowUp":
-                this.SelectDate(date.AddDays(-7), true);
+                await this.SelectDateAsync(date.AddDays(-7), true);
                 break;
             case "ArrowDown":
-                this.SelectDate(date.AddDays(7), true);
+                await this.SelectDateAsync(date.AddDays(7), true);
                 break;
             case "Tab" when args.ShiftKey && date == this.GetFirstDisplayedDate():
                 this.pendingFocus = FocusTarget.ActiveMode;
@@ -184,7 +242,7 @@ public partial class CalendarPage : ComponentBase
                 this.pendingFocus = FocusTarget.PreviousPeriod;
                 break;
             case "Tab":
-                this.SelectDate(date.AddDays(args.ShiftKey ? -1 : 1), true);
+                await this.SelectDateAsync(date.AddDays(args.ShiftKey ? -1 : 1), true);
                 break;
         }
     }
@@ -197,7 +255,7 @@ public partial class CalendarPage : ComponentBase
         ? this.WeekDates[^1]
         : new DateOnly(this.ActiveDate.Year, this.ActiveDate.Month, 1).AddMonths(1).AddDays(-1);
 
-    private void MoveActiveDate(int direction)
+    private async Task MoveActiveDate(int direction)
     {
         var targetDate = this.CurrentMode switch
         {
@@ -207,20 +265,42 @@ public partial class CalendarPage : ComponentBase
             _ => throw new InvalidOperationException("The calendar mode is not supported."),
         };
 
-        this.SelectDate(targetDate, true);
+        await this.SelectDateAsync(targetDate, true);
     }
 
-    private void SelectDate(DateOnly date, bool shouldFocus)
+    private void OnTransactionsChanged(DateOnly ledgerDate)
     {
+        if (ledgerDate.Year == this.ActiveDate.Year && ledgerDate.Month == this.ActiveDate.Month)
+        {
+            _ = this.InvokeAsync(async () =>
+            {
+                await this.LoadExpenseSummariesAsync();
+                this.StateHasChanged();
+            });
+        }
+    }
+
+    private async Task SelectDateAsync(DateOnly date, bool shouldFocus)
+    {
+        var monthChanged = date.Year != this.ActiveDate.Year || date.Month != this.ActiveDate.Month;
         this.ActiveDate = date;
         this.SelectedDate.Select(date);
         this.pendingFocus = shouldFocus && this.CurrentMode != CalendarMode.Today
             ? FocusTarget.ActiveDate
             : FocusTarget.None;
+
+        if (monthChanged && this.CurrentMode == CalendarMode.Month)
+        {
+            await this.LoadExpenseSummariesAsync();
+        }
     }
 
-    private void SetMode(CalendarMode mode)
+    private async Task SetMode(CalendarMode mode)
     {
         this.CurrentMode = mode;
+        if (mode == CalendarMode.Month)
+        {
+            await this.LoadExpenseSummariesAsync();
+        }
     }
 }

@@ -173,6 +173,7 @@ public partial class TransactionInspector : ComponentBase, IDisposable
             this.amountText = string.Empty;
             this.classification = string.Empty;
             await this.LoadAsync(ledgerDate, cancellationToken);
+            this.SelectedDate.NotifyTransactionsChanged(ledgerDate);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -257,6 +258,7 @@ public partial class TransactionInspector : ComponentBase, IDisposable
                 ? "The expense no longer exists."
                 : "Expense updated.";
             await this.LoadAsync(ledgerDate, cancellationToken);
+            this.SelectedDate.NotifyTransactionsChanged(ledgerDate);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -315,6 +317,7 @@ public partial class TransactionInspector : ComponentBase, IDisposable
                 ? "The expense no longer exists."
                 : "Expense removed.";
             await this.LoadAsync(ledgerDate, cancellationToken);
+            this.SelectedDate.NotifyTransactionsChanged(ledgerDate);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

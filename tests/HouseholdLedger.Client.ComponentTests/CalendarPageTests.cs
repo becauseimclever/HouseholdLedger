@@ -7,6 +7,8 @@ namespace HouseholdLedger.Client.ComponentTests;
 using System.Globalization;
 
 using Bunit;
+using HouseholdLedger.Api.Contracts;
+using HouseholdLedger.Client.Api;
 using HouseholdLedger.Client.Pages;
 using HouseholdLedger.Client.State;
 using Microsoft.AspNetCore.Components.Web;
@@ -23,7 +25,7 @@ public sealed class CalendarPageTests
     private static readonly string[] MondayFirstGermanHeaders = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 
     /// <summary>
-    /// Verifies that the injected client-local date initializes the selected Today presentation.
+    /// Verifies that the injected client-local date initializes the selected Month presentation.
     /// </summary>
     [Fact]
     public void InitialRenderUsesInjectedLocalDateAndExposesOneActivePresentationMode()
@@ -31,11 +33,13 @@ public sealed class CalendarPageTests
         using var context = new BunitContext();
         var expectedDate = new DateOnly(2024, 2, 29);
         context.Services.AddSingleton<TimeProvider>(new FixedTimeProvider(expectedDate));
+        context.Services.AddSingleton<IMonthlyExpenseSummaryApiClient>(new StubMonthlyExpenseSummaryApiClient());
         context.Services.AddScoped<SelectedDateState>();
 
         var component = context.Render<CalendarPage>();
         var modes = component.FindAll("input[name='calendar-mode']");
-        var selectedDate = component.Find(".calendar-today .calendar-day");
+        var selectedDate = component.Find(".calendar-grid .calendar-day[aria-pressed='true']");
+        var selectedDateState = context.Services.GetRequiredService<SelectedDateState>();
 
         Assert.Multiple(
             () => Assert.Single(component.FindAll("main.calendar-page")),
@@ -43,12 +47,13 @@ public sealed class CalendarPageTests
             () => Assert.Equal("Calendar", component.Find("main.calendar-page h1").TextContent),
             () => Assert.Equal(3, modes.Count),
             () => Assert.Equal(1, modes.Count(mode => mode.HasAttribute("checked"))),
-            () => Assert.Equal("Today", component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim()),
-            () => Assert.Empty(component.FindAll("table.calendar-grid")),
+            () => Assert.Equal("This Month", component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim()),
+            () => Assert.Single(component.FindAll("table.calendar-grid")),
             () => Assert.Equal(expectedDate.ToString("D", CultureInfo.CurrentCulture), selectedDate.GetAttribute("aria-label")),
             () => Assert.Equal("true", selectedDate.GetAttribute("aria-pressed")),
             () => Assert.Equal("date", selectedDate.GetAttribute("aria-current")),
-            () => Assert.Equal("0", selectedDate.GetAttribute("tabindex")));
+            () => Assert.Equal("0", selectedDate.GetAttribute("tabindex")),
+            () => Assert.Equal(expectedDate, selectedDateState.Value));
     }
 
     /// <summary>
@@ -62,6 +67,7 @@ public sealed class CalendarPageTests
         var firstDayOffset = ((int)activeDate.DayOfWeek - (int)CultureInfo.CurrentCulture.DateTimeFormat.FirstDayOfWeek + 7) % 7;
         var expectedWeekStart = activeDate.AddDays(-firstDayOffset);
         context.Services.AddSingleton<TimeProvider>(new FixedTimeProvider(activeDate));
+        context.Services.AddSingleton<IMonthlyExpenseSummaryApiClient>(new StubMonthlyExpenseSummaryApiClient());
         context.Services.AddScoped<SelectedDateState>();
         var component = context.Render<CalendarPage>();
 
@@ -86,6 +92,70 @@ public sealed class CalendarPageTests
             () => Assert.Equal(29, component.FindAll("table.calendar-grid .calendar-day").Count),
             () => Assert.NotEmpty(component.FindAll("td.calendar-empty-cell[aria-hidden='true']")),
             () => Assert.Equal(activeDate.ToString("D", CultureInfo.CurrentCulture), component.Find(".calendar-day[aria-pressed='true']").GetAttribute("aria-label")));
+    }
+
+    /// <summary>
+    /// Verifies month cells present their date, daily total, and cumulative monthly spending.
+    /// </summary>
+    [Fact]
+    public void MonthCellsPresentDailyAndMonthToDateExpenseTotals()
+    {
+        using var context = new BunitContext();
+        var activeDate = new DateOnly(2024, 2, 2);
+        var api = new StubMonthlyExpenseSummaryApiClient();
+        api.Seed(new DailyExpenseSummaryResponse(activeDate, 7.25m, 19.75m));
+        context.Services.AddSingleton<TimeProvider>(new FixedTimeProvider(activeDate));
+        context.Services.AddSingleton<IMonthlyExpenseSummaryApiClient>(api);
+        context.Services.AddScoped<SelectedDateState>();
+
+        var component = context.Render<CalendarPage>();
+        var dateButton = FindDateButton(component, activeDate);
+        var summary = component.Find($"#{dateButton.GetAttribute("aria-describedby")}");
+
+        Assert.Multiple(
+            () => Assert.Equal("2", dateButton.QuerySelector(".calendar-day-date-number")!.TextContent),
+            () => Assert.Contains("Daily total$7.25", summary.TextContent, StringComparison.Ordinal),
+            () => Assert.Contains("Month to date$19.75", summary.TextContent, StringComparison.Ordinal),
+            () => Assert.Equal(1, api.GetCallCount));
+    }
+
+    /// <summary>Verifies month navigation refreshes the displayed month's expense summaries.</summary>
+    [Fact]
+    public void MonthNavigationLoadsTheNewMonthsExpenseSummaries()
+    {
+        using var context = new BunitContext();
+        var initialDate = new DateOnly(2024, 2, 29);
+        var nextMonthDate = new DateOnly(2024, 3, 29);
+        var api = new StubMonthlyExpenseSummaryApiClient();
+        api.Seed(new DailyExpenseSummaryResponse(nextMonthDate, 9m, 23m));
+        context.Services.AddSingleton<TimeProvider>(new FixedTimeProvider(initialDate));
+        context.Services.AddSingleton<IMonthlyExpenseSummaryApiClient>(api);
+        context.Services.AddScoped<SelectedDateState>();
+        var component = context.Render<CalendarPage>();
+
+        MovePeriod(component, "Next");
+
+        Assert.Multiple(
+            () => Assert.Equal("March 2024", component.Find("#calendar-period-heading").TextContent),
+            () => Assert.Contains("Daily total$9.00", FindDateButton(component, nextMonthDate).TextContent, StringComparison.Ordinal),
+            () => Assert.Equal(2, api.GetCallCount));
+    }
+
+    /// <summary>Verifies transaction mutations refresh the visible month's summaries.</summary>
+    [Fact]
+    public void TransactionChangesRefreshTheVisibleMonth()
+    {
+        using var context = new BunitContext();
+        var activeDate = new DateOnly(2024, 2, 29);
+        var api = new StubMonthlyExpenseSummaryApiClient();
+        context.Services.AddSingleton<TimeProvider>(new FixedTimeProvider(activeDate));
+        context.Services.AddSingleton<IMonthlyExpenseSummaryApiClient>(api);
+        context.Services.AddScoped<SelectedDateState>();
+        var component = context.Render<CalendarPage>();
+
+        context.Services.GetRequiredService<SelectedDateState>().NotifyTransactionsChanged(activeDate);
+
+        component.WaitForAssertion(() => Assert.Equal(2, api.GetCallCount));
     }
 
     /// <summary>
@@ -244,6 +314,7 @@ public sealed class CalendarPageTests
         using var context = new BunitContext();
         var activeDate = new DateOnly(2024, 2, 29);
         var component = RenderCalendar(context, activeDate);
+        SelectMode(component, 0);
         var todayDate = FindDateButton(component, activeDate);
 
         Assert.Throws<Bunit.MissingEventHandlerException>(
@@ -346,6 +417,7 @@ public sealed class CalendarPageTests
     {
         using var context = new BunitContext();
         var component = RenderCalendar(context, new DateOnly(2024, 12, 31));
+        SelectMode(component, 0);
 
         MovePeriod(component, "Next");
         AssertActiveDate(component, new DateOnly(2025, 1, 1));
@@ -375,6 +447,7 @@ public sealed class CalendarPageTests
     private static IRenderedComponent<CalendarPage> RenderCalendar(BunitContext context, DateOnly date)
     {
         context.Services.AddSingleton<TimeProvider>(new FixedTimeProvider(date));
+        context.Services.AddSingleton<IMonthlyExpenseSummaryApiClient>(new StubMonthlyExpenseSummaryApiClient());
         context.Services.AddScoped<SelectedDateState>();
         return context.Render<CalendarPage>();
     }
@@ -441,6 +514,29 @@ public sealed class CalendarPageTests
         public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
 
         public override DateTimeOffset GetUtcNow() => new(date.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+    }
+
+    private sealed class StubMonthlyExpenseSummaryApiClient : IMonthlyExpenseSummaryApiClient
+    {
+        private readonly List<DailyExpenseSummaryResponse> summaries = [];
+
+        public int GetCallCount { get; private set; }
+
+        public Task<IReadOnlyList<DailyExpenseSummaryResponse>> GetAsync(
+            int year,
+            int month,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            this.GetCallCount++;
+            return Task.FromResult<IReadOnlyList<DailyExpenseSummaryResponse>>(
+                this.summaries.Where(summary => summary.Date.Year == year && summary.Date.Month == month).ToArray());
+        }
+
+        public void Seed(DailyExpenseSummaryResponse summary)
+        {
+            this.summaries.Add(summary);
+        }
     }
 
     private sealed class CultureScope : IDisposable

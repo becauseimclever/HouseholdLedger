@@ -40,6 +40,35 @@ public sealed class ExpenseTransactionService(IExpenseTransactionRepository repo
         return transactions.Select(Map).ToArray();
     }
 
+    /// <summary>Summarizes daily and cumulative expenses for one month.</summary>
+    /// <param name="year">The calendar year.</param>
+    /// <param name="month">The calendar month.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>One expense summary for each day in the month.</returns>
+    public async Task<IReadOnlyList<DailyExpenseSummaryDto>> SummarizeMonthAsync(
+        int year,
+        int month,
+        CancellationToken cancellationToken = default)
+    {
+        var firstDate = new DateOnly(year, month, 1);
+        var endDate = firstDate.AddMonths(1);
+        var transactions = await repository.ListByDateRangeAsync(firstDate, endDate, cancellationToken);
+        var totalsByDate = transactions
+            .GroupBy(transaction => transaction.Date)
+            .ToDictionary(group => group.Key, group => group.Sum(transaction => transaction.Amount));
+        var summaries = new List<DailyExpenseSummaryDto>(DateTime.DaysInMonth(year, month));
+        var monthToDateTotal = 0m;
+
+        for (var date = firstDate; date < endDate; date = date.AddDays(1))
+        {
+            var dailyTotal = totalsByDate.GetValueOrDefault(date);
+            monthToDateTotal += dailyTotal;
+            summaries.Add(new DailyExpenseSummaryDto(date, dailyTotal, monthToDateTotal));
+        }
+
+        return summaries;
+    }
+
     /// <summary>Revises the correctable details of one date-scoped expense.</summary>
     /// <param name="ledgerDate">The transaction's ledger date.</param>
     /// <param name="transactionId">The transaction identifier.</param>

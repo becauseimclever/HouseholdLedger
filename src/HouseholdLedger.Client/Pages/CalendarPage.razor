@@ -51,7 +51,7 @@
                         aria-pressed="true"
                         aria-current="@CurrentDateState(ActiveDate)"
                         tabindex="0"
-                        @onclick="() => SelectDate(ActiveDate, true)">
+                        @onclick="() => SelectDateAsync(ActiveDate, true)">
                     <span class="calendar-day-weekday">@ActiveDate.ToString("dddd", CurrentCulture)</span>
                     <span class="calendar-day-number">@ActiveDate.Day</span>
                     <span class="calendar-day-month">@ActiveDate.ToString("MMMM yyyy", CurrentCulture)</span>
@@ -76,11 +76,11 @@
                             <td>
                                 @if (date == ActiveDate)
                                 {
-                                    <button @ref="activeDateControl" class="calendar-day" type="button" aria-label="@AccessibleDateName(date)" aria-pressed="true" aria-current="@CurrentDateState(date)" tabindex="0" @onclick="() => SelectDate(date, true)" @onkeydown="args => HandleGridKeyDown(date, args)" @onkeydown:preventDefault="true">@date.Day</button>
+                                    <button @ref="activeDateControl" class="calendar-day" type="button" aria-label="@AccessibleDateName(date)" aria-pressed="true" aria-current="@CurrentDateState(date)" tabindex="0" @onclick="() => SelectDateAsync(date, true)" @onkeydown="args => HandleGridKeyDown(date, args)" @onkeydown:preventDefault="true">@date.Day</button>
                                 }
                                 else
                                 {
-                                    <button class="calendar-day" type="button" aria-label="@AccessibleDateName(date)" aria-pressed="false" aria-current="@CurrentDateState(date)" tabindex="-1" @onclick="() => SelectDate(date, true)" @onkeydown="args => HandleGridKeyDown(date, args)" @onkeydown:preventDefault="true">@date.Day</button>
+                                    <button class="calendar-day" type="button" aria-label="@AccessibleDateName(date)" aria-pressed="false" aria-current="@CurrentDateState(date)" tabindex="-1" @onclick="() => SelectDateAsync(date, true)" @onkeydown="args => HandleGridKeyDown(date, args)" @onkeydown:preventDefault="true">@date.Day</button>
                                 }
                             </td>
                         }
@@ -110,11 +110,29 @@
                                     <td>
                                         @if (day == ActiveDate)
                                         {
-                                            <button @ref="activeDateControl" class="calendar-day" type="button" aria-label="@AccessibleDateName(day)" aria-pressed="true" aria-current="@CurrentDateState(day)" tabindex="0" @onclick="() => SelectDate(day, true)" @onkeydown="args => HandleGridKeyDown(day, args)" @onkeydown:preventDefault="true">@day.Day</button>
+                                            <button @ref="activeDateControl" class="calendar-day" type="button" aria-label="@AccessibleDateName(day)" aria-describedby="@(GetExpenseSummary(day) is null ? null : GetSummaryId(day))" aria-pressed="true" aria-current="@CurrentDateState(day)" tabindex="0" @onclick="() => SelectDateAsync(day, true)" @onkeydown="args => HandleGridKeyDown(day, args)" @onkeydown:preventDefault="true">
+                                                <span class="calendar-day-date-number">@day.Day</span>
+                                                @if (GetExpenseSummary(day) is { } summary)
+                                                {
+                                                    <span id="@GetSummaryId(day)" class="calendar-day-summary">
+                                                        <span><span>Daily total</span><strong>@FormatCurrency(summary.DailyTotal)</strong></span>
+                                                        <span><span>Month to date</span><strong>@FormatCurrency(summary.MonthToDateTotal)</strong></span>
+                                                    </span>
+                                                }
+                                            </button>
                                         }
                                         else
                                         {
-                                            <button class="calendar-day" type="button" aria-label="@AccessibleDateName(day)" aria-pressed="false" aria-current="@CurrentDateState(day)" tabindex="-1" @onclick="() => SelectDate(day, true)" @onkeydown="args => HandleGridKeyDown(day, args)" @onkeydown:preventDefault="true">@day.Day</button>
+                                            <button class="calendar-day" type="button" aria-label="@AccessibleDateName(day)" aria-describedby="@(GetExpenseSummary(day) is null ? null : GetSummaryId(day))" aria-pressed="false" aria-current="@CurrentDateState(day)" tabindex="-1" @onclick="() => SelectDateAsync(day, true)" @onkeydown="args => HandleGridKeyDown(day, args)" @onkeydown:preventDefault="true">
+                                                <span class="calendar-day-date-number">@day.Day</span>
+                                                @if (GetExpenseSummary(day) is { } summary)
+                                                {
+                                                    <span id="@GetSummaryId(day)" class="calendar-day-summary">
+                                                        <span><span>Daily total</span><strong>@FormatCurrency(summary.DailyTotal)</strong></span>
+                                                        <span><span>Month to date</span><strong>@FormatCurrency(summary.MonthToDateTotal)</strong></span>
+                                                    </span>
+                                                }
+                                            </button>
                                         }
                                     </td>
                                 }

@@ -35,6 +35,57 @@
         }
       }
     },
+    "/api/v1/months/{year}/{month}/expense-summary": {
+      "get": {
+        "tags": [
+          "MonthlyExpenseSummary"
+        ],
+        "summary": "Gets daily totals and month-to-date spending for one calendar month.",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "description": "The calendar year.",
+            "required": true,
+            "schema": {
+              "maximum": 9999,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "description": "The calendar month.",
+            "required": true,
+            "schema": {
+              "maximum": 12,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One summary for every day in the month.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DailyExpenseSummaryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/days/{ledgerDate}/transactions": {
       "get": {
         "tags": [
@@ -293,6 +344,40 @@
         },
         "description": "Requests creation of one expense for a route-selected date."
       },
+      "DailyExpenseSummaryResponse": {
+        "required": [
+          "date",
+          "dailyTotal",
+          "monthToDateTotal"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "description": "The summarized ledger date.",
+            "format": "date"
+          },
+          "dailyTotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The total expenses recorded on the date.",
+            "format": "double"
+          },
+          "monthToDateTotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The total expenses from the first of the month through the date.",
+            "format": "double"
+          }
+        },
+        "description": "Describes one day\u0027s expense total and month-to-date spending."
+      },
       "ExpenseTransactionResponse": {
         "required": [
           "id",
@@ -454,6 +539,9 @@
   "tags": [
     {
       "name": "Health"
+    },
+    {
+      "name": "MonthlyExpenseSummary"
     },
     {
       "name": "Transactions"

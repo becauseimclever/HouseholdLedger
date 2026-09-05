@@ -1,6 +1,6 @@
 .open-source-notices-page {
     max-width: 70rem;
-    color: var(--workspace-strong-text);
+    color: var(--hl-text-primary);
 }
 
 .open-source-notices-page h1,
@@ -8,8 +8,7 @@
 .open-source-notices-page h3,
 .open-source-notices-page h4,
 .open-source-notices-page h5 {
-    font-family: Georgia, "Times New Roman", serif;
-    font-weight: 500;
+    font-weight: var(--hl-weight-heading);
 }
 
 .open-source-notices-page h1 {
@@ -39,13 +38,13 @@
 
 .open-source-notices-header {
     padding-bottom: 1.5rem;
-    border-bottom: 0.0625rem solid var(--workspace-border-strong);
+    border-bottom: 0.0625rem solid var(--hl-border-strong);
 }
 
 .open-source-notices-scope {
     max-width: 52rem;
     margin: 0.75rem 0 0;
-    color: var(--workspace-muted-text);
+    color: var(--hl-text-secondary);
     line-height: 1.5;
 }
 
@@ -64,7 +63,7 @@
 .open-source-notice-entry,
 .open-source-notices-exclusion-list li {
     padding-block: 1.5rem;
-    border-top: 0.0625rem solid var(--workspace-border);
+    border-top: 0.0625rem solid var(--hl-border-default);
 }
 
 .open-source-notice-entry:first-child,
@@ -81,19 +80,19 @@
 
 .open-source-notice-entry-header a,
 .open-source-license-notice a {
-    color: var(--workspace-strong-text);
-    font-weight: 700;
+    color: var(--hl-text-link);
+    font-weight: var(--hl-weight-control);
 }
 
 .open-source-notice-entry-header a:focus-visible,
 .open-source-license-notice a:focus-visible {
-    outline: 0.1875rem solid #b83b2d;
-    outline-offset: 0.1875rem;
+    outline: var(--hl-focus-width) solid var(--hl-action-focus);
+    outline-offset: var(--hl-focus-offset);
 }
 
 .open-source-notice-version {
     margin: 0.25rem 0 0;
-    color: var(--workspace-muted-text);
+    color: var(--hl-text-secondary);
     font-size: 0.875rem;
 }
 
@@ -110,7 +109,7 @@
 
 .open-source-notice-details dt {
     font-size: 0.875rem;
-    font-weight: 800;
+    font-weight: var(--hl-weight-heading);
 }
 
 .open-source-notice-details dd {
@@ -135,10 +134,10 @@
     margin: 0.75rem 0;
     padding: 1rem;
     overflow-wrap: anywhere;
-    border: 0.0625rem solid var(--workspace-border);
-    background: var(--workspace-main);
+    border: 0.0625rem solid var(--hl-border-default);
+    background: var(--hl-surface-elevated);
     color: inherit;
-    font: 0.875rem/1.5 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    font: 0.875rem/1.5 var(--hl-font-monospace);
     white-space: pre-wrap;
 }
 

@@ -33,6 +33,16 @@ public interface IExpenseTransactionRepository
     /// <returns>The transactions recorded on the date.</returns>
     Task<IReadOnlyList<ExpenseTransaction>> ListByDateAsync(DateOnly ledgerDate, CancellationToken cancellationToken);
 
+    /// <summary>Returns transactions in a half-open ledger-date range.</summary>
+    /// <param name="startDate">The inclusive first ledger date.</param>
+    /// <param name="endDate">The exclusive final ledger date.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The transactions in date and creation order.</returns>
+    Task<IReadOnlyList<ExpenseTransaction>> ListByDateRangeAsync(
+        DateOnly startDate,
+        DateOnly endDate,
+        CancellationToken cancellationToken);
+
     /// <summary>Persists changes to one transaction.</summary>
     /// <param name="transaction">The revised transaction.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
