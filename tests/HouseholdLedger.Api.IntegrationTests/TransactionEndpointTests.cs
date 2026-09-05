@@ -74,7 +74,7 @@ public sealed class TransactionEndpointTests
             () => Assert.Equal(new DailyExpenseSummaryResponse(new DateOnly(2026, 9, 3), 7.75m, 20m), summaries![2]));
     }
 
-    /// <summary>Verifies correction and removal are persisted under the selected date.</summary>
+    /// <summary>Verifies correction and removal update selected-day records and monthly summaries.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task ReviseThenRemoveUpdatesTheAuthoritativeSelectedDayList()
@@ -95,19 +95,29 @@ public sealed class TransactionEndpointTests
             TestContext.Current.CancellationToken);
         var revised = await reviseResponse.Content.ReadFromJsonAsync<ExpenseTransactionResponse>(
             TestContext.Current.CancellationToken);
+        var revisedSummaries = await client.GetFromJsonAsync<DailyExpenseSummaryResponse[]>(
+            "/api/v1/months/2026/9/expense-summary",
+            TestContext.Current.CancellationToken);
         using var removeResponse = await client.DeleteAsync(
             $"/api/v1/days/{ledgerDate:yyyy-MM-dd}/transactions/{created.Id}",
             TestContext.Current.CancellationToken);
         var transactions = await client.GetFromJsonAsync<ExpenseTransactionResponse[]>(
             $"/api/v1/days/{ledgerDate:yyyy-MM-dd}/transactions",
             TestContext.Current.CancellationToken);
+        var removedSummaries = await client.GetFromJsonAsync<DailyExpenseSummaryResponse[]>(
+            "/api/v1/months/2026/9/expense-summary",
+            TestContext.Current.CancellationToken);
 
         Assert.Multiple(
             () => Assert.Equal(HttpStatusCode.OK, reviseResponse.StatusCode),
             () => Assert.Equal(21.50m, revised!.Amount),
             () => Assert.Equal("Culture", revised!.Classification),
+            () => Assert.Equal(21.50m, revisedSummaries![0].DailyTotal),
+            () => Assert.Equal(21.50m, revisedSummaries![0].MonthToDateTotal),
             () => Assert.Equal(HttpStatusCode.NoContent, removeResponse.StatusCode),
-            () => Assert.Empty(transactions!));
+            () => Assert.Empty(transactions!),
+            () => Assert.Equal(0m, removedSummaries![0].DailyTotal),
+            () => Assert.Equal(0m, removedSummaries![0].MonthToDateTotal));
     }
 
     /// <summary>Verifies invalid and wrong-date corrections do not mutate the transaction.</summary>

@@ -4,7 +4,9 @@
 
 namespace HouseholdLedger.Infrastructure.IntegrationTests;
 
+using HouseholdLedger.Application.Accounts;
 using HouseholdLedger.Application.Transactions;
+using HouseholdLedger.Domain.Accounts;
 using HouseholdLedger.Domain.Transactions;
 using HouseholdLedger.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -81,6 +83,69 @@ public sealed class PostgreSqlConnectivityTests
         {
             await context.ExpenseTransactions
                 .Where(item => item.Id == transaction.Id)
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>Verifies migrations provision deterministic account persistence and normalized uniqueness.</summary>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async Task MigrationsProvisionAccountPersistenceAndUniqueness()
+    {
+        var connectionString = Environment.GetEnvironmentVariable(ConnectionStringEnvironmentVariable);
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            Assert.Skip($"Set {ConnectionStringEnvironmentVariable} to an isolated PostgreSQL database.");
+        }
+
+        var services = new ServiceCollection();
+        services.AddHouseholdLedgerInfrastructure(connectionString);
+
+        await using var provider = services.BuildServiceProvider(validateScopes: true);
+        await using var scope = provider.CreateAsyncScope();
+        await using var context = scope.ServiceProvider.GetRequiredService<HouseholdLedgerDbContext>();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var accountIdentifiers = new[]
+        {
+            Guid.Parse("10000000-0000-0000-0000-000000000001"),
+            Guid.Parse("10000000-0000-0000-0000-000000000002"),
+            Guid.Parse("10000000-0000-0000-0000-000000000003"),
+        };
+
+        await context.Database.MigrateAsync(cancellationToken);
+        await context.Accounts
+            .Where(account => accountIdentifiers.Contains(account.Id))
+            .ExecuteDeleteAsync(cancellationToken);
+        var repository = scope.ServiceProvider.GetRequiredService<IAccountRepository>();
+
+        try
+        {
+            Assert.True(await repository.TryAddAsync(
+                new Account(accountIdentifiers[0], "Household Checking"),
+                cancellationToken));
+            Assert.True(await repository.TryAddAsync(
+                new Account(accountIdentifiers[1], "Cash Wallet"),
+                cancellationToken));
+            Assert.True(await repository.TryAddAsync(
+                new Account(accountIdentifiers[2], "Rainy Day Savings"),
+                cancellationToken));
+            var duplicateAdded = await repository.TryAddAsync(
+                new Account(Guid.NewGuid(), "cash wallet"),
+                cancellationToken);
+            var accounts = await repository.ListAsync(cancellationToken);
+            var fixtures = accounts.Where(account => accountIdentifiers.Contains(account.Id)).ToArray();
+
+            Assert.Multiple(
+                () => Assert.False(duplicateAdded),
+                () => Assert.Equal(accountIdentifiers[1], fixtures[0].Id),
+                () => Assert.Equal(accountIdentifiers[0], fixtures[1].Id),
+                () => Assert.Equal(accountIdentifiers[2], fixtures[2].Id),
+                () => Assert.Contains(context.Database.GetAppliedMigrations(), migration => migration.EndsWith("AddAccounts", StringComparison.Ordinal)));
+        }
+        finally
+        {
+            await context.Accounts
+                .Where(account => accountIdentifiers.Contains(account.Id))
                 .ExecuteDeleteAsync(cancellationToken);
         }
     }

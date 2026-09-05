@@ -16,7 +16,7 @@ handoff. Database and system tests have additional gates described below.
 | Client component | `HouseholdLedger.Client.ComponentTests` | 8 | None |
 | Client structural | `HouseholdLedger.Client.ComponentTests` | 2 | None |
 | API integration | `HouseholdLedger.Api.IntegrationTests` | 12 | In-process API host |
-| Infrastructure integration | `HouseholdLedger.Infrastructure.IntegrationTests` | 2 | One in-process; one Podman PostgreSQL |
+| Infrastructure integration | `HouseholdLedger.Infrastructure.IntegrationTests` | 3 | One in-process; two Podman PostgreSQL |
 | HTTP system smoke | `HouseholdLedger.EndToEndTests` | 1 | Separate API process |
 | Browser end to end | `HouseholdLedger.EndToEndTests` | 2 | Published API and Client, Firefox, and geckodriver |
 
@@ -116,7 +116,7 @@ against that same isolated database and a fresh Release publish:
 
 ```powershell
 pwsh tests/HouseholdLedger.Infrastructure.IntegrationTests/Run-PostgreSqlTests.ps1 `
-  -RunTransactionBrowserJourney
+  -RunHostedBrowserJourneys
 ```
 
 This option uses the pinned user-local Firefox and geckodriver runtime, selects

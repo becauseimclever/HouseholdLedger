@@ -2,7 +2,8 @@
 param(
     [string] $PostgresImage = "docker.io/library/postgres:18",
 
-    [switch] $RunTransactionBrowserJourney
+    [Alias("RunTransactionBrowserJourney")]
+    [switch] $RunHostedBrowserJourneys
 )
 
 Set-StrictMode -Version Latest
@@ -65,7 +66,7 @@ try {
         throw "The PostgreSQL integration tests failed."
     }
 
-    if ($RunTransactionBrowserJourney) {
+    if ($RunHostedBrowserJourneys) {
         $publishRoot = Join-Path ([System.IO.Path]::GetTempPath()) "HouseholdLedger-BrowserE2E-$runId"
         $apiOutput = Join-Path $publishRoot "api"
         $profileRoot = Join-Path $publishRoot "profiles"
@@ -100,7 +101,7 @@ try {
             --no-restore `
             --filter "FullyQualifiedName~BrowserCalendarJourneyTests"
         if ($LASTEXITCODE -ne 0) {
-            throw "The hosted transaction browser journey failed."
+            throw "The hosted browser journeys failed."
         }
     }
 }

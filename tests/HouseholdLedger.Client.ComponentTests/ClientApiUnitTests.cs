@@ -141,6 +141,64 @@ public sealed class ClientApiUnitTests
         Assert.False(result);
     }
 
+    /// <summary>Verifies account listing uses the versioned collection URI and consumes JSON.</summary>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async Task AccountsApiClientListsVersionedCollection()
+    {
+        HttpRequestMessage? capturedRequest = null;
+        using var httpClient = CreateHttpClient(new DelegateHandler((request, _) =>
+        {
+            capturedRequest = request;
+            return Task.FromResult(JsonResponse(
+                HttpStatusCode.OK,
+                "[{\"id\":\"10000000-0000-0000-0000-000000000001\",\"name\":\"Household Checking\"}]"));
+        }));
+        var client = new AccountsApiClient(httpClient);
+
+        var accounts = await client.ListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Multiple(
+            () => Assert.Equal(HttpMethod.Get, capturedRequest?.Method),
+            () => Assert.Equal(new Uri("https://api.example.test/root/api/v1/accounts"), capturedRequest?.RequestUri),
+            () => Assert.Equal("Household Checking", Assert.Single(accounts).Name));
+    }
+
+    /// <summary>Verifies account creation serializes the request and maps documented outcomes.</summary>
+    /// <param name="statusCode">The HTTP response status.</param>
+    /// <param name="expected">The expected creation result.</param>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Theory]
+    [InlineData(HttpStatusCode.Created, AccountCreationResult.Success)]
+    [InlineData(HttpStatusCode.BadRequest, AccountCreationResult.Invalid)]
+    public async Task AccountsApiClientCreatesVersionedResource(
+        HttpStatusCode statusCode,
+        AccountCreationResult expected)
+    {
+        HttpMethod? capturedMethod = null;
+        Uri? capturedUri = null;
+        string? capturedContent = null;
+        using var httpClient = CreateHttpClient(new DelegateHandler(async (request, cancellationToken) =>
+        {
+            capturedMethod = request.Method;
+            capturedUri = request.RequestUri;
+            capturedContent = await request.Content!.ReadAsStringAsync(cancellationToken);
+            return JsonResponse(statusCode, "{}");
+        }));
+        var client = new AccountsApiClient(httpClient);
+
+        var result = await client.CreateAsync(
+            new CreateAccountRequest("Household Checking"),
+            TestContext.Current.CancellationToken);
+
+        using var content = JsonDocument.Parse(capturedContent!);
+        Assert.Multiple(
+            () => Assert.Equal(expected, result),
+            () => Assert.Equal(HttpMethod.Post, capturedMethod),
+            () => Assert.Equal(new Uri("https://api.example.test/root/api/v1/accounts"), capturedUri),
+            () => Assert.Equal("Household Checking", content.RootElement.GetProperty("name").GetString()));
+    }
+
     /// <summary>Verifies transaction correction uses the date-scoped resource and maps expected outcomes.</summary>
     /// <param name="statusCode">The HTTP response status.</param>
     /// <param name="expected">The expected mutation result.</param>

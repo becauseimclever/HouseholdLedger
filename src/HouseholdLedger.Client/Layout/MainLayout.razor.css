@@ -86,6 +86,36 @@
     border-right-width: 0.0625rem;
 }
 
+.workspace-navigation-list {
+    display: grid;
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+    gap: 0.25rem;
+}
+
+.workspace-navigation-link {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-left: 0.1875rem solid transparent;
+    border-radius: var(--hl-radius-control);
+    color: var(--hl-text-primary);
+    font-weight: var(--hl-weight-control);
+    text-decoration: none;
+}
+
+.workspace-navigation-link:hover {
+    background: var(--hl-surface-hover);
+    color: var(--hl-text-primary);
+}
+
+.workspace-navigation-link[aria-current="page"] {
+    border-left-color: var(--hl-border-selected);
+    background: var(--hl-surface-selected);
+}
+
 .inspector-pane {
     grid-area: inspector;
     border-left-style: solid;
@@ -101,7 +131,7 @@
     text-transform: uppercase;
 }
 
-.calendar-workspace {
+.workspace-main {
     grid-area: main;
     min-width: 0;
     padding: 1.5rem;
@@ -159,7 +189,7 @@
         border-top: 0.0625rem solid var(--hl-border-default);
     }
 
-    .calendar-workspace {
+    .workspace-main {
         padding: 1rem;
     }
 }

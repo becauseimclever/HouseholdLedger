@@ -8,7 +8,7 @@ decisions and acceptance boundaries; historical audits remain under
 
 | Feature | Status | Outcome |
 | --- | --- | --- |
-| [010](010-calendar-daily-expense-amounts.md) | Proposed | Show backend-calculated all-account daily expense amounts on the month calendar. |
+| [010](010-calendar-daily-expense-amounts.md) | Complete | Show backend-calculated all-account daily expense amounts on the month calendar. |
 | [011](011-add-a-named-account.md) | Proposed | Add Home/Accounts navigation and an account-card gallery with a creation card. |
 | [012](012-require-an-account-for-every-transaction.md) | Proposed | Require a persisted account in every selected-day transaction create and edit workflow. |
 | [013](013-view-an-accounts-transactions.md) | Proposed | Select an account card and view its complete transaction history. |

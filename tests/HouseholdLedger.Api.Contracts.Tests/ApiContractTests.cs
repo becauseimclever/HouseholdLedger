@@ -146,6 +146,46 @@ public sealed class ApiContractTests
             () => Assert.Equal(["amount", "classification"], required));
     }
 
+    /// <summary>Verifies the checked contract describes account listing and creation.</summary>
+    [Fact]
+    public void CheckedOpenApiDescribesAccountCatalogContract()
+    {
+        using var document = LoadOpenApiJsonDocument();
+        var root = document.RootElement;
+        var collection = root.GetProperty("paths").GetProperty("/api/v1/accounts");
+        var listResponses = collection.GetProperty("get").GetProperty("responses");
+        var create = collection.GetProperty("post");
+        var createResponses = create.GetProperty("responses");
+        var requestReference = create.GetProperty("requestBody")
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+        var requestRequired = root.GetProperty("components")
+            .GetProperty("schemas")
+            .GetProperty("CreateAccountRequest")
+            .GetProperty("required")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .ToArray();
+        var responseRequired = root.GetProperty("components")
+            .GetProperty("schemas")
+            .GetProperty("AccountResponse")
+            .GetProperty("required")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .ToArray();
+
+        Assert.Multiple(
+            () => Assert.True(listResponses.TryGetProperty("200", out _)),
+            () => Assert.True(createResponses.TryGetProperty("201", out _)),
+            () => Assert.True(createResponses.TryGetProperty("400", out _)),
+            () => Assert.Equal("#/components/schemas/CreateAccountRequest", requestReference),
+            () => Assert.Equal(["name"], requestRequired),
+            () => Assert.Equal(["id", "name"], responseRequired));
+    }
+
     /// <summary>
     /// Verifies that the .NET convenience contract has no HouseholdLedger implementation dependency.
     /// </summary>

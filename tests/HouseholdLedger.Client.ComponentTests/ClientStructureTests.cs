@@ -137,7 +137,7 @@ public sealed class ClientStructureTests
         var markup = File.ReadAllText(Path.Combine(clientDirectory, "Layout", "MainLayout.razor"));
         var layoutCss = File.ReadAllText(Path.Combine(clientDirectory, "Layout", "MainLayout.razor.css"));
         var navigationIndex = markup.IndexOf("<nav", StringComparison.Ordinal);
-        var mainIndex = markup.IndexOf("<section id=\"calendar-workspace\"", StringComparison.Ordinal);
+        var mainIndex = markup.IndexOf("<section id=\"workspace-main\"", StringComparison.Ordinal);
         var inspectorIndex = markup.IndexOf("<aside", StringComparison.Ordinal);
 
         Assert.Multiple(

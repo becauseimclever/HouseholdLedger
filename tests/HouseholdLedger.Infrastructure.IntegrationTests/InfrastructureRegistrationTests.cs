@@ -6,6 +6,8 @@ namespace HouseholdLedger.Infrastructure.IntegrationTests;
 
 using System.Data;
 
+using HouseholdLedger.Application.Accounts;
+using HouseholdLedger.Domain.Accounts;
 using HouseholdLedger.Domain.Transactions;
 using HouseholdLedger.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -33,12 +35,17 @@ public sealed class InfrastructureRegistrationTests
         using var provider = services.BuildServiceProvider(validateScopes: true);
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<HouseholdLedgerDbContext>();
-        var transactionEntity = Assert.Single(context.Model.GetEntityTypes());
+        var accountEntity = context.Model.FindEntityType(typeof(Account));
+        var transactionEntity = context.Model.FindEntityType(typeof(ExpenseTransaction));
 
         Assert.Multiple(
             () => Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", context.Database.ProviderName),
-            () => Assert.Equal(typeof(ExpenseTransaction), transactionEntity.ClrType),
-            () => Assert.Equal("numeric(18,2)", transactionEntity.FindProperty(nameof(ExpenseTransaction.Amount))?.GetColumnType()),
+            () => Assert.NotNull(scope.ServiceProvider.GetService<IAccountRepository>()),
+            () => Assert.NotNull(accountEntity),
+            () => Assert.Equal("character varying(100)", accountEntity!.FindProperty(nameof(Account.Name))?.GetColumnType()),
+            () => Assert.True(accountEntity!.GetIndexes().Single().IsUnique),
+            () => Assert.NotNull(transactionEntity),
+            () => Assert.Equal("numeric(18,2)", transactionEntity!.FindProperty(nameof(ExpenseTransaction.Amount))?.GetColumnType()),
             () => Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State));
     }
 }

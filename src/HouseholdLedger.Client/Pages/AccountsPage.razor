@@ -1,0 +1,68 @@
+@page "/accounts"
+@using HouseholdLedger.Api.Contracts
+@using Microsoft.AspNetCore.Components.Web
+
+<Microsoft.AspNetCore.Components.Web.PageTitle>Accounts</Microsoft.AspNetCore.Components.Web.PageTitle>
+
+<main class="accounts-page" aria-labelledby="accounts-heading">
+    <h1 id="accounts-heading">Accounts</h1>
+
+    @if (isLoading)
+    {
+        <p class="accounts-load-state" role="status" aria-live="polite">Loading accounts</p>
+    }
+    else if (loadError)
+    {
+        <div class="accounts-load-state error-state" role="alert">
+            <p>Accounts are unavailable.</p>
+            <button type="button" @onclick="LoadAsync">Try again</button>
+        </div>
+    }
+    else
+    {
+        @if (accounts.Count == 0)
+        {
+            <p class="accounts-load-state">No accounts yet.</p>
+        }
+
+        <section class="accounts-gallery" aria-label="Account gallery">
+            @foreach (var account in accounts)
+            {
+                <article class="account-card">
+                    <h2>@account.Name</h2>
+                </article>
+            }
+
+            <section class="account-card new-account-card" aria-labelledby="new-account-heading">
+                <h2 id="new-account-heading">New account</h2>
+                <form class="new-account-form" @onsubmit="CreateAsync" @onsubmit:preventDefault="true">
+                    <label for="account-name">Name</label>
+                    <input id="account-name"
+                           name="name"
+                           maxlength="100"
+                           autocomplete="off"
+                           value="@nameText"
+                           @oninput="UpdateName"
+                           aria-invalid="@(nameError is not null ? "true" : "false")"
+                           aria-describedby="@(nameError is not null ? "account-name-error" : null)" />
+                    @if (nameError is not null)
+                    {
+                        <p id="account-name-error" class="field-error">@nameError</p>
+                    }
+                    <button type="submit" disabled="@IsCreateDisabled()">
+                        @(isSaving ? "Creating" : "Create account")
+                    </button>
+                </form>
+            </section>
+        </section>
+    }
+
+    @if (saveError is not null)
+    {
+        <p class="save-message error-state" role="alert">@saveError</p>
+    }
+    else if (saveStatus is not null)
+    {
+        <p class="save-message success-state" role="status" aria-live="polite">@saveStatus</p>
+    }
+</main>

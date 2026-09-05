@@ -138,10 +138,10 @@ public sealed class OpenSourceNoticesPageTests
     }
 
     /// <summary>
-    /// Verifies that the current notices route has one auxiliary native link after the workspace grid and no navigation destination.
+    /// Verifies that the current notices route has one auxiliary native link after the workspace grid.
     /// </summary>
     [Fact]
-    public void CurrentNoticesRouteUsesOneAuxiliaryLinkOutsideEmptyPrimaryNavigation()
+    public void CurrentNoticesRouteUsesOneAuxiliaryLinkOutsidePrimaryNavigation()
     {
         using var context = new BunitContext();
         context.Services.AddScoped<HouseholdLedger.Client.State.SelectedDateState>();
@@ -156,7 +156,8 @@ public sealed class OpenSourceNoticesPageTests
             () => Assert.Equal("Open-source notices", link.TextContent),
             () => Assert.Equal("/open-source-notices", link.GetAttribute("href")),
             () => Assert.Equal("page", link.GetAttribute("aria-current")),
-            () => Assert.Empty(component.FindAll("#workspace-navigation a, #workspace-navigation button")),
+            () => Assert.Equal(2, component.FindAll("#workspace-navigation a").Count),
+            () => Assert.Empty(component.FindAll("#workspace-navigation a[aria-current='page']")),
             () => Assert.Equal("Following", component.Find(".workspace-grid").CompareDocumentPosition(link).ToString()));
     }
 

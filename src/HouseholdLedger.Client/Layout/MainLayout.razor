@@ -18,35 +18,46 @@
                 </span>
                 <span id="navigation-toggle-tooltip" class="pane-toggle-tooltip" role="tooltip">@NavigationToggleLabel</span>
             </button>
-            <button class="pane-toggle"
-                    type="button"
-                    aria-controls="workspace-inspector"
-                    aria-describedby="inspector-toggle-tooltip"
-                    aria-expanded="@(inspectorExpanded ? "true" : "false")"
-                    aria-label="@InspectorToggleLabel"
-                    @onclick="ToggleInspector">
-                <span aria-hidden="true">
-                    <Blazicons.Blazicon Svg="Blazicons.Lucide.Search" />
-                </span>
-                <span id="inspector-toggle-tooltip" class="pane-toggle-tooltip" role="tooltip">@InspectorToggleLabel</span>
-            </button>
+            @if (InspectorAvailable)
+            {
+                <button class="pane-toggle"
+                        type="button"
+                        aria-controls="workspace-inspector"
+                        aria-describedby="inspector-toggle-tooltip"
+                        aria-expanded="@(inspectorExpanded ? "true" : "false")"
+                        aria-label="@InspectorToggleLabel"
+                        @onclick="ToggleInspector">
+                    <span aria-hidden="true">
+                        <Blazicons.Blazicon Svg="Blazicons.Lucide.Search" />
+                    </span>
+                    <span id="inspector-toggle-tooltip" class="pane-toggle-tooltip" role="tooltip">@InspectorToggleLabel</span>
+                </button>
+            }
         </div>
     </header>
 
     <div class="workspace-grid">
         <nav id="workspace-navigation" class="workspace-pane navigation-pane" aria-labelledby="navigation-heading" hidden="@(!navigationExpanded)">
             <h2 id="navigation-heading">Navigation</h2>
+            <ul class="workspace-navigation-list">
+                <li>
+                    <NavLink href="/" Match="NavLinkMatch.All" class="workspace-navigation-link">Home</NavLink>
+                </li>
+                <li>
+                    <NavLink href="/accounts" class="workspace-navigation-link">Accounts</NavLink>
+                </li>
+            </ul>
         </nav>
-        <section id="calendar-workspace" class="calendar-workspace" aria-label="Calendar workspace">
+        <section id="workspace-main" class="workspace-main" aria-label="Primary workspace">
             @Body
         </section>
-        <aside id="workspace-inspector" class="workspace-pane inspector-pane" aria-labelledby="inspector-heading" hidden="@(!inspectorExpanded)">
+        <aside id="workspace-inspector" class="workspace-pane inspector-pane" aria-labelledby="inspector-heading" hidden="@(!InspectorAvailable || !inspectorExpanded)">
             <h2 id="inspector-heading">Inspector</h2>
-            @if (SelectedDate.Value is null)
+            @if (InspectorAvailable && SelectedDate.Value is null)
             {
                 <p class="inspector-empty-state">No calendar item selected</p>
             }
-            else
+            else if (InspectorAvailable)
             {
                 <HouseholdLedger.Client.Components.TransactionInspector />
             }

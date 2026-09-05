@@ -87,6 +87,7 @@ public sealed class BrowserCalendarJourneyTests
             var screenshot = await browser.TakeScreenshotAsync(timeout.Token);
             await File.WriteAllBytesAsync(screenshotPath, screenshot, timeout.Token);
             var screenshotHash = Convert.ToHexString(SHA256.HashData(screenshot)).ToLowerInvariant();
+            await AssertAccountJourneyAsync(browser, runId, timeout.Token);
             await SetViewportAsync(browser, 500, 844, timeout.Token);
             var mobileState = await GetDesignSystemStateAsync(browser, timeout.Token);
             Assert.Multiple(
@@ -323,7 +324,7 @@ public sealed class BrowserCalendarJourneyTests
             "const rect = element => { const box = element.getBoundingClientRect(); return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height }; };"
             + " const rgb = value => value.match(/[\\d.]+/g).slice(0, 3).map(Number); const luminance = value => { const channels = rgb(value).map(item => { item /= 255; return item <= .04045 ? item / 12.92 : Math.pow((item + .055) / 1.055, 2.4); }); return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2]; }; const contrast = (a, b) => { const first = luminance(a); const second = luminance(b); return (Math.max(first, second) + .05) / (Math.min(first, second) + .05); };"
             + " const root = getComputedStyle(document.documentElement); const toolbar = getComputedStyle(document.querySelector('.workspace-toolbar')); const paneHeading = getComputedStyle(document.querySelector('.workspace-pane h2')); const pane = getComputedStyle(document.querySelector('.workspace-pane')); const input = getComputedStyle(document.querySelector('#transaction-amount')); const action = getComputedStyle(document.querySelector('#workspace-inspector form button')); const toggle = document.querySelector('.pane-toggle'); toggle.focus(); const toggleStyle = getComputedStyle(toggle);"
-            + " return { theme: document.documentElement.dataset.theme, colorScheme: root.colorScheme, chrome: toolbar.backgroundColor, primaryAction: action.backgroundColor, textContrast: contrast(root.color, root.backgroundColor), secondaryContrast: contrast(paneHeading.color, pane.backgroundColor), focusContrast: contrast(toggleStyle.outlineColor, toolbar.backgroundColor), inputBorderContrast: contrast(input.borderColor, input.backgroundColor), scrollWidth: document.documentElement.scrollWidth, grid: rect(document.querySelector('.workspace-grid')), navigation: rect(document.querySelector('#workspace-navigation')), main: rect(document.querySelector('#calendar-workspace')), inspector: rect(document.querySelector('#workspace-inspector')) };",
+            + " return { theme: document.documentElement.dataset.theme, colorScheme: root.colorScheme, chrome: toolbar.backgroundColor, primaryAction: action.backgroundColor, textContrast: contrast(root.color, root.backgroundColor), secondaryContrast: contrast(paneHeading.color, pane.backgroundColor), focusContrast: contrast(toggleStyle.outlineColor, toolbar.backgroundColor), inputBorderContrast: contrast(input.borderColor, input.backgroundColor), scrollWidth: document.documentElement.scrollWidth, grid: rect(document.querySelector('.workspace-grid')), navigation: rect(document.querySelector('#workspace-navigation')), main: rect(document.querySelector('#workspace-main')), inspector: rect(document.querySelector('#workspace-inspector')) };",
             null,
             cancellationToken);
     }
@@ -406,6 +407,114 @@ public sealed class BrowserCalendarJourneyTests
             () => Assert.Contains("Expenses in USD", nextPeriod.GetProperty("inspectorText").GetString(), StringComparison.Ordinal));
     }
 
+    private static async Task AssertAccountJourneyAsync(
+        W3cWebDriver browser,
+        string runId,
+        CancellationToken cancellationToken)
+    {
+        var accountName = $"Browser account {runId}";
+        var accountsLink = await browser.FindElementAsync(
+            "#workspace-navigation a[href='/accounts']",
+            cancellationToken);
+        await browser.ClickAsync(accountsLink, cancellationToken);
+        await WaitForHeadingAsync(browser, "Accounts", cancellationToken);
+
+        var accountsNavigation = await GetNavigationStateAsync(browser, cancellationToken);
+        Assert.Multiple(
+            () => Assert.Equal("/accounts", accountsNavigation.GetProperty("path").GetString()),
+            () => Assert.Equal(1, accountsNavigation.GetProperty("currentCount").GetInt32()),
+            () => Assert.Equal("Accounts", accountsNavigation.GetProperty("currentLabel").GetString()));
+
+        await SetFormValueAsync(browser, "#account-name", accountName, "input", cancellationToken);
+        var createButton = await browser.FindElementAsync(
+            ".new-account-form button[type='submit']",
+            cancellationToken);
+        await browser.ClickAsync(createButton, cancellationToken);
+        await WaitForAccountAsync(browser, accountName, cancellationToken);
+
+        await SetViewportAsync(browser, 500, 844, cancellationToken);
+        var accountLayout = await browser.ExecuteScriptAsync(
+            "const rect = selector => { const box = document.querySelector(selector)?.getBoundingClientRect(); return box ? { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height } : null; }; return { width: window.innerWidth, scrollWidth: document.documentElement.scrollWidth, navigation: rect('#workspace-navigation'), main: rect('#workspace-main'), inspector: rect('#workspace-inspector'), account: rect('article.account-card'), creator: rect('.new-account-card') };",
+            null,
+            cancellationToken);
+        Assert.Multiple(
+            () => Assert.True(accountLayout.GetProperty("scrollWidth").GetInt32()
+                <= accountLayout.GetProperty("width").GetInt32()),
+            () => Assert.True(accountLayout.GetProperty("navigation").GetProperty("bottom").GetDouble()
+                <= accountLayout.GetProperty("main").GetProperty("top").GetDouble()),
+            () => Assert.True(accountLayout.GetProperty("main").GetProperty("bottom").GetDouble()
+                <= accountLayout.GetProperty("inspector").GetProperty("top").GetDouble()),
+            () => Assert.True(accountLayout.GetProperty("account").GetProperty("width").GetDouble() > 0),
+            () => Assert.True(accountLayout.GetProperty("account").GetProperty("height").GetDouble() > 0),
+            () => Assert.True(accountLayout.GetProperty("creator").GetProperty("width").GetDouble() > 0),
+            () => Assert.True(accountLayout.GetProperty("creator").GetProperty("height").GetDouble() > 0));
+
+        var homeLink = await browser.FindElementAsync("#workspace-navigation a[href='/']", cancellationToken);
+        await browser.ClickAsync(homeLink, cancellationToken);
+        await WaitForHeadingAsync(browser, "Calendar", cancellationToken);
+        var homeNavigation = await GetNavigationStateAsync(browser, cancellationToken);
+        Assert.Multiple(
+            () => Assert.Equal("/", homeNavigation.GetProperty("path").GetString()),
+            () => Assert.Equal(1, homeNavigation.GetProperty("currentCount").GetInt32()),
+            () => Assert.Equal("Home", homeNavigation.GetProperty("currentLabel").GetString()));
+    }
+
+    private static async Task<JsonElement> GetNavigationStateAsync(
+        W3cWebDriver browser,
+        CancellationToken cancellationToken)
+    {
+        return await browser.ExecuteScriptAsync(
+            "const current = document.querySelector(\"#workspace-navigation a[aria-current='page']\"); return { path: location.pathname, currentCount: document.querySelectorAll(\"#workspace-navigation a[aria-current='page']\").length, currentLabel: current?.textContent?.trim() ?? '' };",
+            null,
+            cancellationToken);
+    }
+
+    private static async Task WaitForAccountAsync(
+        W3cWebDriver browser,
+        string accountName,
+        CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var state = await browser.ExecuteScriptAsync(
+                "const name = arguments[0]; return { matches: [...document.querySelectorAll('article.account-card h2')].filter(item => item.textContent.trim() === name).length, status: document.querySelector('.success-state')?.textContent?.trim() ?? '', input: document.querySelector('#account-name')?.value ?? '' };",
+                [accountName],
+                cancellationToken);
+            if (state.GetProperty("matches").GetInt32() == 1
+                && state.GetProperty("status").GetString() == "Account created."
+                && state.GetProperty("input").GetString() == string.Empty)
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+        }
+
+        throw new TimeoutException($"Timed out waiting for account '{accountName}'.");
+    }
+
+    private static async Task WaitForHeadingAsync(
+        W3cWebDriver browser,
+        string expectedHeading,
+        CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var heading = await browser.ExecuteScriptAsync(
+                "return document.querySelector('main h1')?.textContent?.trim() ?? '';",
+                null,
+                cancellationToken);
+            if (heading.GetString() == expectedHeading)
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+        }
+
+        throw new TimeoutException($"Timed out waiting for heading '{expectedHeading}'.");
+    }
+
     private static async Task ClickCalendarControlAsync(W3cWebDriver browser, string selector, CancellationToken cancellationToken)
     {
         var element = await browser.FindElementAsync(selector, cancellationToken);
@@ -431,6 +540,7 @@ public sealed class BrowserCalendarJourneyTests
         await ClickButtonByTextAsync(browser, "Save expense", cancellationToken);
         await WaitForInspectorTextAsync(browser, "Necessities", cancellationToken);
         await WaitForInspectorTextAsync(browser, "$12.34", cancellationToken);
+        await WaitForSelectedCalendarSummaryAsync(browser, "$12.34", cancellationToken);
 
         await ClickButtonByTextAsync(browser, "Edit", cancellationToken);
         await SetFormValueAsync(
@@ -448,6 +558,7 @@ public sealed class BrowserCalendarJourneyTests
         await ClickButtonByTextAsync(browser, "Save changes", cancellationToken);
         await WaitForInspectorTextAsync(browser, "Expense updated", cancellationToken);
         await WaitForInspectorTextAsync(browser, "$19.75", cancellationToken);
+        await WaitForSelectedCalendarSummaryAsync(browser, "$19.75", cancellationToken);
 
         await ClickButtonByTextAsync(browser, "Remove", cancellationToken);
         await ClickButtonByTextAsync(browser, "Cancel", cancellationToken);
@@ -456,6 +567,7 @@ public sealed class BrowserCalendarJourneyTests
         await ClickButtonByTextAsync(browser, "Remove permanently", cancellationToken);
         await WaitForInspectorTextAsync(browser, "Expense removed", cancellationToken);
         await WaitForInspectorTextAsync(browser, "No transactions recorded", cancellationToken);
+        await WaitForSelectedCalendarSummaryAsync(browser, null, cancellationToken);
     }
 
     private static async Task SetFormValueAsync(
@@ -504,10 +616,35 @@ public sealed class BrowserCalendarJourneyTests
         throw new TimeoutException($"Timed out waiting for inspector text '{expectedText}'.");
     }
 
+    private static async Task WaitForSelectedCalendarSummaryAsync(
+        W3cWebDriver browser,
+        string? expectedAmount,
+        CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var summary = await browser.ExecuteScriptAsync(
+                "return document.querySelector(\".calendar-day[aria-pressed='true'] .calendar-day-summary\")?.textContent ?? '';",
+                null,
+                cancellationToken);
+            var text = summary.GetString() ?? string.Empty;
+            if (expectedAmount is null ? text.Length == 0 : text.Contains(expectedAmount, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+        }
+
+        throw new TimeoutException(expectedAmount is null
+            ? "Timed out waiting for the selected calendar summary to clear."
+            : $"Timed out waiting for selected calendar summary '{expectedAmount}'.");
+    }
+
     private static async Task<JsonElement> GetCalendarStateAsync(W3cWebDriver browser, CancellationToken cancellationToken)
     {
         return await browser.ExecuteScriptAsync(
-            "const calendar = document.querySelector('#calendar-workspace'); const inspector = document.querySelector('#workspace-inspector'); const selected = calendar?.querySelector(\".calendar-day[aria-pressed='true']\"); const box = calendar?.getBoundingClientRect(); const inspectorBox = inspector?.getBoundingClientRect();"
+            "const calendar = document.querySelector('#workspace-main'); const inspector = document.querySelector('#workspace-inspector'); const selected = calendar?.querySelector(\".calendar-day[aria-pressed='true']\"); const box = calendar?.getBoundingClientRect(); const inspectorBox = inspector?.getBoundingClientRect();"
             + " return { modeCount: calendar?.querySelectorAll(\"input[name='calendar-mode']\").length ?? 0, activeMode: calendar?.querySelector(\"input[name='calendar-mode']:checked\")?.parentElement?.textContent?.trim() ?? '', gridCount: calendar?.querySelectorAll('table.calendar-grid').length ?? 0, weekdayCount: calendar?.querySelectorAll('table.calendar-grid th[scope=col]').length ?? 0, dayCount: calendar?.querySelectorAll('.calendar-grid .calendar-day').length ?? 0, selectedCount: calendar?.querySelectorAll(\".calendar-day[aria-pressed='true']\").length ?? 0, selectedLabel: selected?.getAttribute('aria-label') ?? '', selectedPressed: selected?.getAttribute('aria-pressed') ?? '', selectedCurrent: selected?.getAttribute('aria-current') ?? '', tabStopCount: calendar?.querySelectorAll(\".calendar-day[tabindex='0']\").length ?? 0, focusedLabel: document.activeElement?.getAttribute('aria-label') ?? '', heading: calendar?.querySelector('#calendar-period-heading')?.textContent?.trim() ?? '', periodStatus: calendar?.querySelector('.calendar-period-status')?.textContent?.trim() ?? '', inspectorText: inspector?.textContent?.trim() ?? '', calendarWidth: box?.width ?? 0, calendarRight: box?.right ?? 0, inspectorLeft: inspectorBox?.left ?? 0, scrollWidth: document.documentElement.scrollWidth };",
             null,
             cancellationToken);
@@ -564,9 +701,9 @@ public sealed class BrowserCalendarJourneyTests
     {
         return await browser.ExecuteScriptAsync(
             "const rectangle = element => { const box = element?.getBoundingClientRect(); return box ? { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height } : null; };"
-            + " const navigation = document.querySelector('#workspace-navigation'); const calendar = document.querySelector('#calendar-workspace'); const main = document.querySelector('main.calendar-page'); const inspector = document.querySelector('#workspace-inspector');"
+            + " const navigation = document.querySelector('#workspace-navigation'); const calendar = document.querySelector('#workspace-main'); const main = document.querySelector('main.calendar-page'); const inspector = document.querySelector('#workspace-inspector');"
             + " const navigationToggle = document.querySelector(\"button[aria-controls='workspace-navigation']\"); const inspectorToggle = document.querySelector(\"button[aria-controls='workspace-inspector']\");"
-            + " return { title: document.title, origin: location.origin, width: window.innerWidth, height: window.innerHeight, scrollWidth: document.documentElement.scrollWidth, mainCount: document.querySelectorAll('#calendar-workspace > main.calendar-page').length, headingCount: document.querySelectorAll('main.calendar-page h1').length, heading: main?.querySelector('h1')?.textContent?.trim(), navigationDestinationCount: navigation?.querySelectorAll('a, button').length, inspectorText: inspector?.textContent?.trim(), navigation: { hidden: navigation?.hidden, rectangle: rectangle(navigation) }, calendar: { rectangle: rectangle(calendar) }, main: { rectangle: rectangle(main) }, inspector: { hidden: inspector?.hidden, rectangle: rectangle(inspector) }, navigationToggle: { expanded: navigationToggle?.getAttribute('aria-expanded') === 'true', label: navigationToggle?.getAttribute('aria-label') }, inspectorToggle: { expanded: inspectorToggle?.getAttribute('aria-expanded') === 'true', label: inspectorToggle?.getAttribute('aria-label') }, focusedPane: document.activeElement?.getAttribute('aria-controls') };",
+            + " const currentNavigation = navigation?.querySelector(\"a[aria-current='page']\"); return { title: document.title, origin: location.origin, width: window.innerWidth, height: window.innerHeight, scrollWidth: document.documentElement.scrollWidth, mainCount: document.querySelectorAll('#workspace-main > main.calendar-page').length, headingCount: document.querySelectorAll('main.calendar-page h1').length, heading: main?.querySelector('h1')?.textContent?.trim(), navigationDestinationCount: navigation?.querySelectorAll('a').length, currentNavigationCount: navigation?.querySelectorAll(\"a[aria-current='page']\").length, currentNavigationLabel: currentNavigation?.textContent?.trim() ?? '', inspectorText: inspector?.textContent?.trim(), navigation: { hidden: navigation?.hidden, rectangle: rectangle(navigation) }, calendar: { rectangle: rectangle(calendar) }, main: { rectangle: rectangle(main) }, inspector: { hidden: inspector?.hidden, rectangle: rectangle(inspector) }, navigationToggle: { expanded: navigationToggle?.getAttribute('aria-expanded') === 'true', label: navigationToggle?.getAttribute('aria-label') }, inspectorToggle: { expanded: inspectorToggle?.getAttribute('aria-expanded') === 'true', label: inspectorToggle?.getAttribute('aria-label') }, focusedPane: document.activeElement?.getAttribute('aria-controls') };",
             null,
             cancellationToken);
     }
@@ -622,7 +759,9 @@ public sealed class BrowserCalendarJourneyTests
             () => Assert.Equal(1, state.GetProperty("mainCount").GetInt32()),
             () => Assert.Equal(1, state.GetProperty("headingCount").GetInt32()),
             () => Assert.Equal("Calendar", state.GetProperty("heading").GetString()),
-            () => Assert.Equal(0, state.GetProperty("navigationDestinationCount").GetInt32()),
+            () => Assert.Equal(2, state.GetProperty("navigationDestinationCount").GetInt32()),
+            () => Assert.Equal(1, state.GetProperty("currentNavigationCount").GetInt32()),
+            () => Assert.Equal("Home", state.GetProperty("currentNavigationLabel").GetString()),
             () => Assert.Contains("Expenses in USD", state.GetProperty("inspectorText").GetString(), StringComparison.Ordinal));
     }
 

@@ -4,6 +4,7 @@
 
 namespace HouseholdLedger.Infrastructure.Persistence;
 
+using HouseholdLedger.Domain.Accounts;
 using HouseholdLedger.Domain.Transactions;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,6 +15,9 @@ using Microsoft.EntityFrameworkCore;
 public sealed class HouseholdLedgerDbContext(DbContextOptions<HouseholdLedgerDbContext> options)
     : DbContext(options)
 {
+    /// <summary>Gets the accounts.</summary>
+    public DbSet<Account> Accounts => this.Set<Account>();
+
     /// <summary>Gets the expense transactions.</summary>
     public DbSet<ExpenseTransaction> ExpenseTransactions => this.Set<ExpenseTransaction>();
 
@@ -21,6 +25,14 @@ public sealed class HouseholdLedgerDbContext(DbContextOptions<HouseholdLedgerDbC
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
+
+        var account = modelBuilder.Entity<Account>();
+        account.ToTable("accounts");
+        account.HasKey(item => item.Id);
+        account.Property(item => item.Id).HasColumnName("id").ValueGeneratedNever();
+        account.Property(item => item.Name).HasColumnName("name").HasMaxLength(100);
+        account.Property(item => item.NormalizedName).HasColumnName("normalized_name").HasMaxLength(100);
+        account.HasIndex(item => item.NormalizedName).IsUnique().HasDatabaseName("ux_accounts_normalized_name");
 
         var transaction = modelBuilder.Entity<ExpenseTransaction>();
         transaction.ToTable("expense_transactions");

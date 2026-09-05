@@ -2,9 +2,21 @@
 
 ## Status
 
-Status: Proposed.
+Status: Complete.
 
 - Planned: 2026-09-04.
+- Completed: 2026-09-04.
+- Application aggregation, date-range persistence, API contract and endpoint,
+  Client loading and rendering, mutation refresh, stale-response protection,
+  and zero-day presentation are implemented.
+- Focused Release validation passed 5 Application tests, 4 API integration
+  tests, and 17 calendar component tests. The final combined regression filter
+  passed 26/26 after the last edits.
+- The PostgreSQL harness passed 2/2 and its hosted Firefox journey passed 1/1,
+  including calendar amount refresh after create, correction, and removal; the
+  harness removed its container and temporary resources.
+- Checked OpenAPI semantically matches the Release runtime document, and the
+  full Release solution build succeeds.
 - Feature 005 supplies persisted selected-day expense transactions.
 - This feature summarizes all accounts together. Account-specific filtering and
   per-account calendar breakdowns are deferred.
@@ -107,6 +119,7 @@ solution builds.
 | --- | --- | --- |
 | 2026-09-04 | Show one all-account daily total. | The user chose a calm combined calendar value instead of an account filter or a crowded per-account breakdown. |
 | 2026-09-04 | Keep summary calculation in the Application/backend path. | Financial totals must remain consistent across clients and authoritative after mutations. |
+| 2026-09-04 | Complete the feature after focused and hosted validation. | Backend totals, quiet zero days, mutation refresh, stale-response safety, OpenAPI alignment, PostgreSQL behavior, and browser rendering are verified. |
 
 ## Dependencies
 

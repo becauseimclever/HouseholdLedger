@@ -22,6 +22,8 @@ public partial class CalendarPage : ComponentBase, IDisposable
     private IReadOnlyDictionary<DateOnly, DailyExpenseSummaryResponse> expenseSummaries =
         new Dictionary<DateOnly, DailyExpenseSummaryResponse>();
 
+    private CancellationTokenSource? summaryRequestCancellation;
+
     private DateOnly currentDate;
     private ElementReference activeDateControl;
     private ElementReference monthModeControl;
@@ -102,6 +104,8 @@ public partial class CalendarPage : ComponentBase, IDisposable
     public void Dispose()
     {
         this.SelectedDate.TransactionsChanged -= this.OnTransactionsChanged;
+        this.summaryRequestCancellation?.Cancel();
+        this.summaryRequestCancellation?.Dispose();
         this.lifetimeCancellation.Cancel();
         this.lifetimeCancellation.Dispose();
         GC.SuppressFinalize(this);
@@ -185,13 +189,20 @@ public partial class CalendarPage : ComponentBase, IDisposable
         return weeks;
     }
 
-    private DailyExpenseSummaryResponse? GetExpenseSummary(DateOnly date) =>
-        this.expenseSummaries.GetValueOrDefault(date);
+    private DailyExpenseSummaryResponse? GetExpenseSummary(DateOnly date)
+    {
+        var summary = this.expenseSummaries.GetValueOrDefault(date);
+        return summary?.DailyTotal > 0 ? summary : null;
+    }
 
     private async Task LoadExpenseSummariesAsync()
     {
         var year = this.ActiveDate.Year;
         var month = this.ActiveDate.Month;
+        this.summaryRequestCancellation?.Cancel();
+        this.summaryRequestCancellation?.Dispose();
+        var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(this.lifetimeCancellation.Token);
+        this.summaryRequestCancellation = requestCancellation;
         this.expenseSummaries = new Dictionary<DateOnly, DailyExpenseSummaryResponse>();
 
         try
@@ -199,18 +210,34 @@ public partial class CalendarPage : ComponentBase, IDisposable
             var summaries = await this.MonthlyExpenseSummaryApi.GetAsync(
                 year,
                 month,
-                this.lifetimeCancellation.Token);
-            if (this.ActiveDate.Year == year && this.ActiveDate.Month == month)
+                requestCancellation.Token);
+            if (!requestCancellation.IsCancellationRequested
+                && this.ActiveDate.Year == year
+                && this.ActiveDate.Month == month)
             {
                 this.expenseSummaries = summaries.ToDictionary(summary => summary.Date);
             }
         }
-        catch (OperationCanceledException) when (this.lifetimeCancellation.IsCancellationRequested)
+        catch (OperationCanceledException) when (requestCancellation.IsCancellationRequested)
         {
         }
         catch (HttpRequestException)
         {
-            this.expenseSummaries = new Dictionary<DateOnly, DailyExpenseSummaryResponse>();
+            if (!requestCancellation.IsCancellationRequested
+                && this.ActiveDate.Year == year
+                && this.ActiveDate.Month == month)
+            {
+                this.expenseSummaries = new Dictionary<DateOnly, DailyExpenseSummaryResponse>();
+            }
+        }
+        finally
+        {
+            if (ReferenceEquals(this.summaryRequestCancellation, requestCancellation))
+            {
+                this.summaryRequestCancellation = null;
+            }
+
+            requestCancellation.Dispose();
         }
     }
 

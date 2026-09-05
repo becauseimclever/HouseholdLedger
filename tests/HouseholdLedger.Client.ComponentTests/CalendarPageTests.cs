@@ -119,6 +119,27 @@ public sealed class CalendarPageTests
             () => Assert.Equal(1, api.GetCallCount));
     }
 
+    /// <summary>Verifies a zero-expense date remains visually quiet.</summary>
+    [Fact]
+    public void MonthCellsDoNotPresentZeroExpenseSummaries()
+    {
+        using var context = new BunitContext();
+        var activeDate = new DateOnly(2024, 2, 2);
+        var api = new StubMonthlyExpenseSummaryApiClient();
+        api.Seed(new DailyExpenseSummaryResponse(activeDate, 0m, 19.75m));
+        context.Services.AddSingleton<TimeProvider>(new FixedTimeProvider(activeDate));
+        context.Services.AddSingleton<IMonthlyExpenseSummaryApiClient>(api);
+        context.Services.AddScoped<SelectedDateState>();
+
+        var component = context.Render<CalendarPage>();
+        var dateButton = FindDateButton(component, activeDate);
+
+        Assert.Multiple(
+            () => Assert.Equal("2", dateButton.TextContent.Trim()),
+            () => Assert.False(dateButton.HasAttribute("aria-describedby")),
+            () => Assert.Empty(dateButton.QuerySelectorAll(".calendar-day-summary")));
+    }
+
     /// <summary>Verifies month navigation refreshes the displayed month's expense summaries.</summary>
     [Fact]
     public void MonthNavigationLoadsTheNewMonthsExpenseSummaries()
@@ -139,6 +160,44 @@ public sealed class CalendarPageTests
             () => Assert.Equal("March 2024", component.Find("#calendar-period-heading").TextContent),
             () => Assert.Contains("Daily total$9.00", FindDateButton(component, nextMonthDate).TextContent, StringComparison.Ordinal),
             () => Assert.Equal(2, api.GetCallCount));
+    }
+
+    /// <summary>Verifies a superseded month response cannot replace the currently displayed summary.</summary>
+    /// <returns>A task representing the asynchronous test.</returns>
+    [Fact]
+    public async Task LateMonthResponseDoesNotReplaceTheCurrentMonthsExpenseSummaries()
+    {
+        using var context = new BunitContext();
+        var initialDate = new DateOnly(2024, 2, 29);
+        var api = new ControllableMonthlyExpenseSummaryApiClient();
+        api.CompleteImmediately(
+            2024,
+            2,
+            new DailyExpenseSummaryResponse(initialDate, 1m, 1m));
+        context.Services.AddSingleton<TimeProvider>(new FixedTimeProvider(initialDate));
+        context.Services.AddSingleton<IMonthlyExpenseSummaryApiClient>(api);
+        context.Services.AddScoped<SelectedDateState>();
+        var component = context.Render<CalendarPage>();
+
+        var marchNavigation = component.Find("button[aria-label='Next period']").ClickAsync(new MouseEventArgs());
+        await api.WaitForRequestAsync(2024, 3);
+        var aprilNavigation = component.Find("button[aria-label='Next period']").ClickAsync(new MouseEventArgs());
+        await api.WaitForRequestAsync(2024, 4);
+        api.Complete(
+            2024,
+            4,
+            new DailyExpenseSummaryResponse(new DateOnly(2024, 4, 29), 44m, 44m));
+        await aprilNavigation;
+        api.Complete(
+            2024,
+            3,
+            new DailyExpenseSummaryResponse(new DateOnly(2024, 3, 29), 33m, 33m));
+        await marchNavigation;
+
+        Assert.Multiple(
+            () => Assert.Equal("April 2024", component.Find("#calendar-period-heading").TextContent),
+            () => Assert.Contains("Daily total$44.00", FindDateButton(component, new DateOnly(2024, 4, 29)).TextContent, StringComparison.Ordinal),
+            () => Assert.DoesNotContain("$33.00", component.Markup, StringComparison.Ordinal));
     }
 
     /// <summary>Verifies transaction mutations refresh the visible month's summaries.</summary>
@@ -536,6 +595,50 @@ public sealed class CalendarPageTests
         public void Seed(DailyExpenseSummaryResponse summary)
         {
             this.summaries.Add(summary);
+        }
+    }
+
+    private sealed class ControllableMonthlyExpenseSummaryApiClient : IMonthlyExpenseSummaryApiClient
+    {
+        private readonly Dictionary<(int Year, int Month), TaskCompletionSource<IReadOnlyList<DailyExpenseSummaryResponse>>> responses = [];
+
+        public Task<IReadOnlyList<DailyExpenseSummaryResponse>> GetAsync(
+            int year,
+            int month,
+            CancellationToken cancellationToken)
+        {
+            var response = this.GetResponse(year, month);
+            return response.Task;
+        }
+
+        public void Complete(int year, int month, params DailyExpenseSummaryResponse[] summaries)
+        {
+            this.GetResponse(year, month).TrySetResult(summaries);
+        }
+
+        public void CompleteImmediately(int year, int month, params DailyExpenseSummaryResponse[] summaries)
+        {
+            this.Complete(year, month, summaries);
+        }
+
+        public async Task WaitForRequestAsync(int year, int month)
+        {
+            while (!this.responses.ContainsKey((year, month)))
+            {
+                await Task.Yield();
+            }
+        }
+
+        private TaskCompletionSource<IReadOnlyList<DailyExpenseSummaryResponse>> GetResponse(int year, int month)
+        {
+            if (!this.responses.TryGetValue((year, month), out var response))
+            {
+                response = new TaskCompletionSource<IReadOnlyList<DailyExpenseSummaryResponse>>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+                this.responses.Add((year, month), response);
+            }
+
+            return response;
         }
     }
 

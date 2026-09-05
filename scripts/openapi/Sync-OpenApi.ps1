@@ -18,6 +18,9 @@ Artifact to compare or update. Defaults to src/HouseholdLedger.Api/openapi/v1.js
 .PARAMETER Update
 Atomically replaces the selected artifact when runtime OpenAPI is valid.
 
+.PARAMETER Configuration
+The build configuration used for the isolated API process. Defaults to Debug.
+
 .EXAMPLE
 ./scripts/openapi/Sync-OpenApi.ps1
 
@@ -31,7 +34,10 @@ param(
 
     [string]$ArtifactPath = (Join-Path $PSScriptRoot '..\..\src\HouseholdLedger.Api\openapi\v1.json'),
 
-    [switch]$Update
+    [switch]$Update,
+
+    [ValidateSet('Debug', 'Release')]
+    [string]$Configuration = 'Debug'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -137,7 +143,7 @@ if (-not $Update -and -not (Test-Path -LiteralPath $resolvedArtifactPath -PathTy
 
 Push-Location $repositoryRoot
 try {
-    & dotnet build $projectPath --nologo
+    & dotnet build $projectPath --configuration $Configuration --nologo
     if ($LASTEXITCODE -ne 0) {
         throw "API build failed with exit code $LASTEXITCODE."
     }
@@ -165,7 +171,7 @@ try {
     $startInfo.UseShellExecute = $false
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
-    foreach ($argument in @('run', '--project', $projectPath, '--no-build', '--no-launch-profile', '--', '--urls', $endpoint)) {
+    foreach ($argument in @('run', '--project', $projectPath, '--configuration', $Configuration, '--no-build', '--no-launch-profile', '--', '--urls', $endpoint)) {
         $startInfo.ArgumentList.Add($argument)
     }
 

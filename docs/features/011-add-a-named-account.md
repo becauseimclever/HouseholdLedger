@@ -2,9 +2,10 @@
 
 ## Status
 
-Status: Proposed.
+Status: Complete.
 
 - Planned: 2026-09-04.
+- Completed: 2026-09-05.
 - This feature creates the minimum account catalog needed before transactions
   can require account ownership.
 
@@ -54,9 +55,9 @@ primary destinations:
 - The page heading is `Accounts`. Its primary content is one responsive gallery
   containing one card per persisted account and one visually consistent `New
   account` card.
-- Each persisted account card shows its name and uses a native link to represent
-  selection. Feature 011 may link to the future account-detail route, but it
-  does not load or imply transaction history before Feature 013.
+- Each persisted account card shows its name. Cards remain noninteractive until
+  Feature 013 adds the account-detail route and turns the name into a native
+  selection link; Feature 011 does not expose a dead destination.
 - The `New account` card contains the labeled name field, validation feedback,
   and explicit create command. The card itself is not a clickable container.
 - Account cards and the creation card remain separate peers; cards are not
@@ -115,7 +116,7 @@ startup and EF migrations do not seed accounts.
 | AC-02: Honest account-card gallery | The page distinguishes loading, empty, populated, and unavailable states. Each persisted account is a separate named card, and no locally invented account is presented as persisted. |
 | AC-03: Valid card creation | The separate `New account` card contains the labeled creation form. A valid unique name creates exactly one persisted account and the backend reread displays its card in deterministic order. |
 | AC-04: Validation and concurrency | Blank, over-length, and case-insensitive duplicate names create nothing and produce accessible, recoverable validation feedback, including when another request creates the duplicate first. |
-| AC-05: Accessible operation | The page has a descriptive heading, meaningful card structure, associated field label and error, native account links, keyboard-operable navigation and submission, visible focus, and announced load/save status. |
+| AC-05: Accessible operation | The page has a descriptive heading, meaningful card structure, associated field label and error, keyboard-operable navigation and submission, visible focus, and announced load/save status. |
 | AC-06: Responsive card layout | Persisted cards and the creation card reflow without nested cards, clipped names, overlapping controls, or page-level horizontal scrolling at supported desktop and narrow viewports. |
 | AC-07: Bounded slice | No account rename, deletion, archival, type, opening balance, institution, account number, transaction relationship, transaction listing, transfer, or balance calculation is added. |
 
@@ -129,8 +130,8 @@ startup and EF migrations do not seed accounts.
    PostgreSQL mechanisms; do not rely on a read-before-write race.
 4. Add the `Home` and `Accounts` links to the existing navigation landmark,
    using Blazor's framework-supported route-aware link behavior.
-5. Build the gallery with semantic links, form controls, and CSS Grid rather
-  than JavaScript click handlers on generic card containers.
+5. Build the gallery with semantic articles, form controls, and CSS Grid. Add
+  native account-selection links with Feature 013's implemented detail route.
 
 No new runtime dependency is expected.
 
@@ -149,9 +150,20 @@ No new runtime dependency is expected.
   visible account card -> Home, including keyboard operation, current-link
   presentation, and non-overlapping desktop and narrow gallery layouts.
 
+Completed validation:
+
+- Domain and Application focused tests pass for account invariants, duplicate
+  outcomes, and deterministic ordering.
+- API, checked OpenAPI, typed Client, component, and workspace navigation tests
+  pass.
+- The owned PostgreSQL 18 harness passes all three provider tests and removes
+  its isolated container.
+- The published Firefox journey passes the Home -> Accounts -> create -> Home
+  flow and desktop/narrow layout checks.
+
 ## Definition of Done
 
-The feature is complete when the primary navigation provides working `Home` and
+The feature is complete: the primary navigation provides working `Home` and
 `Accounts` links, the Accounts page presents persisted accounts and the
 creation form as peer cards, a valid account appears after a backend reread,
 invalid or duplicate names are rejected truthfully, focused tests pass, checked
@@ -175,6 +187,7 @@ OpenAPI is current, the explicit migration is present, and the solution builds.
 | 2026-09-04 | Add `Home` and `Accounts` as the first primary navigation destinations. | Both destinations lead to implemented workspaces and provide a direct round trip between calendar and account management. |
 | 2026-09-04 | Present persisted accounts and creation as peer cards. | The user requested a scannable account gallery with a dedicated place to add another account. |
 | 2026-09-04 | Define three deterministic development/test accounts. | Two populated accounts prove isolation and one empty account proves the account and history empty states without inventing production data. |
+| 2026-09-05 | Keep Feature 011 account cards noninteractive. | A native link to `/accounts/{accountId}` would be a dead destination until Feature 013 implements the detail route; the card becomes selectable in that slice. |
 
 ## Dependencies
 

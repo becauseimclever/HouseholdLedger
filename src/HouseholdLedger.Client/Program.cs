@@ -33,6 +33,7 @@ public static class Program
                 builder.Configuration,
                 new Uri(serviceProvider.GetRequiredService<NavigationManager>().BaseUri, UriKind.Absolute)),
         });
+        builder.Services.AddScoped<IAccountsApiClient, AccountsApiClient>();
         builder.Services.AddScoped<IHealthApiClient, HealthApiClient>();
         builder.Services.AddScoped<IMonthlyExpenseSummaryApiClient, MonthlyExpenseSummaryApiClient>();
         builder.Services.AddScoped<ITransactionsApiClient, TransactionsApiClient>();
