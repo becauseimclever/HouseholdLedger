@@ -19,6 +19,16 @@
     font-size: 0.875rem;
 }
 
+.account-load-state {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.account-load-state a {
+    color: var(--hl-action-primary);
+    font-weight: var(--hl-weight-control);
+}
+
 .transaction-inspector form,
 .transaction-field {
     display: grid;
@@ -104,6 +114,15 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
+}
+
+.transaction-summary > span {
+    display: grid;
+    gap: 0.125rem;
+}
+
+.transaction-summary small {
+    color: var(--hl-text-secondary);
 }
 
 .transaction-actions {

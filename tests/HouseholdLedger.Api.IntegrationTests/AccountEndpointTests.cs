@@ -116,6 +116,12 @@ public sealed class AccountEndpointTests
     {
         private readonly List<Account> accounts = [];
 
+        public Task<Account?> FindAsync(Guid accountId, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(this.accounts.SingleOrDefault(account => account.Id == accountId));
+        }
+
         public Task<bool> TryAddAsync(Account account, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();

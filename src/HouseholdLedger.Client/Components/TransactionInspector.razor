@@ -12,33 +12,66 @@ else
         <h3 id="selected-day-heading">@selectedDate.ToString("D", CultureInfo.CurrentCulture)</h3>
         <p class="transaction-currency">Expenses in USD</p>
 
-        <form @onsubmit="SaveAsync" @onsubmit:preventDefault="true" aria-label="Record an expense">
-            <div class="transaction-field">
-                <label for="transaction-amount">Amount (USD)</label>
-                <input id="transaction-amount" name="amount" type="text" inputmode="decimal" autocomplete="off" value="@amountText" @oninput="UpdateAmount" aria-invalid="@HasAmountError" aria-describedby="transaction-amount-error" />
-                @if (amountError is not null)
-                {
-                    <p id="transaction-amount-error" class="transaction-error">@amountError</p>
-                }
+        @if (isLoadingAccounts)
+        {
+            <p class="account-load-state" role="status" aria-live="polite">Loading accounts</p>
+        }
+        else if (accountLoadError)
+        {
+            <div class="account-load-state" role="alert">
+                <p>Accounts are unavailable. Transactions may still be viewed.</p>
+                <button class="secondary-action" type="button" @onclick="RetryAccountsAsync">Try again</button>
             </div>
-
-            <div class="transaction-field">
-                <label for="transaction-classification">Classification</label>
-                <select id="transaction-classification" name="classification" value="@classification" @onchange="UpdateClassification" aria-invalid="@HasClassificationError" aria-describedby="transaction-classification-error">
-                    <option value="">Choose a classification</option>
-                    @foreach (var option in Classifications)
+        }
+        else if (accounts.Count == 0)
+        {
+            <p class="account-load-state">Add an account before recording an expense. <a href="/accounts">Go to Accounts</a>.</p>
+        }
+        else
+        {
+            <form @onsubmit="SaveAsync" @onsubmit:preventDefault="true" aria-label="Record an expense">
+                <div class="transaction-field">
+                    <label for="transaction-account">Account</label>
+                    <select id="transaction-account" name="account" required value="@accountId" @onchange="UpdateAccount" aria-invalid="@HasAccountError" aria-describedby="transaction-account-error">
+                        <option value="">Choose an account</option>
+                        @foreach (var account in accounts)
+                        {
+                            <option value="@account.Id">@account.Name</option>
+                        }
+                    </select>
+                    @if (accountError is not null)
                     {
-                        <option value="@option">@option</option>
+                        <p id="transaction-account-error" class="transaction-error">@accountError</p>
                     }
-                </select>
-                @if (classificationError is not null)
-                {
-                    <p id="transaction-classification-error" class="transaction-error">@classificationError</p>
-                }
-            </div>
+                </div>
 
-            <button type="submit" disabled="@isSaving">@(isSaving ? "Saving" : "Save expense")</button>
-        </form>
+                <div class="transaction-field">
+                    <label for="transaction-amount">Amount (USD)</label>
+                    <input id="transaction-amount" name="amount" type="text" inputmode="decimal" autocomplete="off" value="@amountText" @oninput="UpdateAmount" aria-invalid="@HasAmountError" aria-describedby="transaction-amount-error" />
+                    @if (amountError is not null)
+                    {
+                        <p id="transaction-amount-error" class="transaction-error">@amountError</p>
+                    }
+                </div>
+
+                <div class="transaction-field">
+                    <label for="transaction-classification">Classification</label>
+                    <select id="transaction-classification" name="classification" value="@classification" @onchange="UpdateClassification" aria-invalid="@HasClassificationError" aria-describedby="transaction-classification-error">
+                        <option value="">Choose a classification</option>
+                        @foreach (var option in Classifications)
+                        {
+                            <option value="@option">@option</option>
+                        }
+                    </select>
+                    @if (classificationError is not null)
+                    {
+                        <p id="transaction-classification-error" class="transaction-error">@classificationError</p>
+                    }
+                </div>
+
+                <button type="submit" disabled="@isSaving">@(isSaving ? "Saving" : "Save expense")</button>
+            </form>
+        }
 
         <div class="transaction-status" role="status" aria-live="polite">
             @if (isLoading)
@@ -62,6 +95,20 @@ else
                             @if (editingTransactionId == transaction.Id)
                             {
                                 <form class="transaction-edit-form" @onsubmit="ReviseAsync" @onsubmit:preventDefault="true" aria-label="Edit expense">
+                                    <div class="transaction-field">
+                                        <label for="@GetElementId("edit-account", transaction.Id)">Account</label>
+                                        <select id="@GetElementId("edit-account", transaction.Id)" required value="@editAccountId" @onchange="UpdateEditAccount" aria-invalid="@(editAccountError is null ? "false" : "true")">
+                                            <option value="">Choose an account</option>
+                                            @foreach (var account in accounts)
+                                            {
+                                                <option value="@account.Id">@account.Name</option>
+                                            }
+                                        </select>
+                                        @if (editAccountError is not null)
+                                        {
+                                            <p class="transaction-error">@editAccountError</p>
+                                        }
+                                    </div>
                                     <div class="transaction-field">
                                         <label for="@GetElementId("edit-amount", transaction.Id)">Amount (USD)</label>
                                         <input id="@GetElementId("edit-amount", transaction.Id)" type="text" inputmode="decimal" autocomplete="off" value="@editAmountText" @oninput="UpdateEditAmount" aria-invalid="@(editAmountError is null ? "false" : "true")" />
@@ -102,7 +149,7 @@ else
                             else
                             {
                                 <div class="transaction-summary">
-                                    <span>@transaction.Classification</span>
+                                    <span><span>@transaction.Classification</span><small>@transaction.AccountName</small></span>
                                     <strong>@transaction.Amount.ToString("C", UsdCulture)</strong>
                                 </div>
                                 <div class="transaction-actions">

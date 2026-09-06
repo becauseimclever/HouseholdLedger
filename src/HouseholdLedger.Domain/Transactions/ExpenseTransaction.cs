@@ -13,12 +13,14 @@ public sealed class ExpenseTransaction
     /// Initializes a new instance of the <see cref="ExpenseTransaction"/> class.
     /// </summary>
     /// <param name="id">The backend-generated transaction identifier.</param>
+    /// <param name="accountId">The owning account identifier.</param>
     /// <param name="date">The date on which the expense is recorded.</param>
     /// <param name="amount">The positive USD amount.</param>
     /// <param name="classification">The expense classification.</param>
     /// <param name="sequence">The backend-assigned creation sequence.</param>
     public ExpenseTransaction(
         Guid id,
+        Guid accountId,
         DateOnly date,
         decimal amount,
         ExpenseClassification classification,
@@ -29,6 +31,7 @@ public sealed class ExpenseTransaction
             throw new ArgumentException("A transaction identifier is required.", nameof(id));
         }
 
+        ValidateAccountId(accountId);
         ValidateDetails(amount, classification);
 
         if (sequence < 0)
@@ -37,6 +40,7 @@ public sealed class ExpenseTransaction
         }
 
         this.Id = id;
+        this.AccountId = accountId;
         this.Date = date;
         this.Amount = amount;
         this.Classification = classification;
@@ -45,6 +49,9 @@ public sealed class ExpenseTransaction
 
     /// <summary>Gets the transaction identifier.</summary>
     public Guid Id { get; }
+
+    /// <summary>Gets the owning account identifier.</summary>
+    public Guid AccountId { get; private set; }
 
     /// <summary>Gets the ledger date.</summary>
     public DateOnly Date { get; }
@@ -59,13 +66,24 @@ public sealed class ExpenseTransaction
     public long Sequence { get; private set; }
 
     /// <summary>Replaces the correctable transaction details.</summary>
+    /// <param name="accountId">The replacement owning account identifier.</param>
     /// <param name="amount">The positive USD amount.</param>
     /// <param name="classification">The expense classification.</param>
-    public void Revise(decimal amount, ExpenseClassification classification)
+    public void Revise(Guid accountId, decimal amount, ExpenseClassification classification)
     {
+        ValidateAccountId(accountId);
         ValidateDetails(amount, classification);
+        this.AccountId = accountId;
         this.Amount = amount;
         this.Classification = classification;
+    }
+
+    private static void ValidateAccountId(Guid accountId)
+    {
+        if (accountId == Guid.Empty)
+        {
+            throw new ArgumentException("An account identifier is required.", nameof(accountId));
+        }
     }
 
     private static void ValidateDetails(decimal amount, ExpenseClassification classification)

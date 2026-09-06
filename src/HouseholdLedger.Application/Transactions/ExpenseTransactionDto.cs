@@ -11,6 +11,8 @@ using HouseholdLedger.Domain.Transactions;
 /// </summary>
 public sealed record ExpenseTransactionDto(
     Guid Id,
+    Guid AccountId,
+    string AccountName,
     DateOnly Date,
     decimal Amount,
     ExpenseClassification Classification);

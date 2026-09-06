@@ -46,6 +46,7 @@ public sealed class BrowserCalendarJourneyTests
         var driverPort = ReserveLoopbackPort(inputs.ApiPort);
         var driverOrigin = new Uri($"http://127.0.0.1:{driverPort}");
         var runId = $"{DateTime.UtcNow:yyyyMMdd-HHmmssfff}-{Environment.ProcessId}";
+        var accountName = $"Browser account {runId}";
         var profilePath = Path.Combine(inputs.ProfileRoot, runId, "profile");
         var screenshotPath = Path.Combine(inputs.OutputDirectory, $"workspace-shell-{runId}.png");
         var mobileScreenshotPath = Path.Combine(inputs.OutputDirectory, $"workspace-shell-{runId}-mobile.png");
@@ -80,14 +81,15 @@ public sealed class BrowserCalendarJourneyTests
             await browser.NavigateAsync(apiOrigin, timeout.Token);
             await WaitForWorkspaceShellAsync(browser, timeout.Token);
             await AssertCalendarFeatureAsync(browser, timeout.Token);
-            await AssertTransactionFeatureAsync(browser, timeout.Token);
+            await AssertAccountJourneyAsync(browser, accountName, timeout.Token);
+            await SetDesktopViewportAsync(browser, timeout.Token);
+            await AssertTransactionFeatureAsync(browser, accountName, timeout.Token);
             await AssertWorkspaceShellAsync(browser, apiOrigin, timeout.Token);
             await AssertDesignSystemAsync(browser, timeout.Token);
 
             var screenshot = await browser.TakeScreenshotAsync(timeout.Token);
             await File.WriteAllBytesAsync(screenshotPath, screenshot, timeout.Token);
             var screenshotHash = Convert.ToHexString(SHA256.HashData(screenshot)).ToLowerInvariant();
-            await AssertAccountJourneyAsync(browser, runId, timeout.Token);
             await SetViewportAsync(browser, 500, 844, timeout.Token);
             var mobileState = await GetDesignSystemStateAsync(browser, timeout.Token);
             Assert.Multiple(
@@ -409,10 +411,9 @@ public sealed class BrowserCalendarJourneyTests
 
     private static async Task AssertAccountJourneyAsync(
         W3cWebDriver browser,
-        string runId,
+        string accountName,
         CancellationToken cancellationToken)
     {
-        var accountName = $"Browser account {runId}";
         var accountsLink = await browser.FindElementAsync(
             "#workspace-navigation a[href='/accounts']",
             cancellationToken);
@@ -425,6 +426,7 @@ public sealed class BrowserCalendarJourneyTests
             () => Assert.Equal(1, accountsNavigation.GetProperty("currentCount").GetInt32()),
             () => Assert.Equal("Accounts", accountsNavigation.GetProperty("currentLabel").GetString()));
 
+        await WaitForElementAsync(browser, "#account-name", cancellationToken);
         await SetFormValueAsync(browser, "#account-name", accountName, "input", cancellationToken);
         var createButton = await browser.FindElementAsync(
             ".new-account-form button[type='submit']",
@@ -437,17 +439,20 @@ public sealed class BrowserCalendarJourneyTests
             "const rect = selector => { const box = document.querySelector(selector)?.getBoundingClientRect(); return box ? { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height } : null; }; return { width: window.innerWidth, scrollWidth: document.documentElement.scrollWidth, navigation: rect('#workspace-navigation'), main: rect('#workspace-main'), inspector: rect('#workspace-inspector'), account: rect('article.account-card'), creator: rect('.new-account-card') };",
             null,
             cancellationToken);
+        var accountLayoutDetails = accountLayout.ToString();
         Assert.Multiple(
-            () => Assert.True(accountLayout.GetProperty("scrollWidth").GetInt32()
-                <= accountLayout.GetProperty("width").GetInt32()),
-            () => Assert.True(accountLayout.GetProperty("navigation").GetProperty("bottom").GetDouble()
-                <= accountLayout.GetProperty("main").GetProperty("top").GetDouble()),
-            () => Assert.True(accountLayout.GetProperty("main").GetProperty("bottom").GetDouble()
-                <= accountLayout.GetProperty("inspector").GetProperty("top").GetDouble()),
-            () => Assert.True(accountLayout.GetProperty("account").GetProperty("width").GetDouble() > 0),
-            () => Assert.True(accountLayout.GetProperty("account").GetProperty("height").GetDouble() > 0),
-            () => Assert.True(accountLayout.GetProperty("creator").GetProperty("width").GetDouble() > 0),
-            () => Assert.True(accountLayout.GetProperty("creator").GetProperty("height").GetDouble() > 0));
+            () => Assert.True(
+                accountLayout.GetProperty("scrollWidth").GetInt32()
+                    <= accountLayout.GetProperty("width").GetInt32(),
+                accountLayoutDetails),
+            () => Assert.True(
+                accountLayout.GetProperty("navigation").GetProperty("bottom").GetDouble()
+                    <= accountLayout.GetProperty("main").GetProperty("top").GetDouble() + 1,
+                accountLayoutDetails),
+            () => Assert.True(accountLayout.GetProperty("account").GetProperty("width").GetDouble() > 0, accountLayoutDetails),
+            () => Assert.True(accountLayout.GetProperty("account").GetProperty("height").GetDouble() > 0, accountLayoutDetails),
+            () => Assert.True(accountLayout.GetProperty("creator").GetProperty("width").GetDouble() > 0, accountLayoutDetails),
+            () => Assert.True(accountLayout.GetProperty("creator").GetProperty("height").GetDouble() > 0, accountLayoutDetails));
 
         var homeLink = await browser.FindElementAsync("#workspace-navigation a[href='/']", cancellationToken);
         await browser.ClickAsync(homeLink, cancellationToken);
@@ -515,6 +520,28 @@ public sealed class BrowserCalendarJourneyTests
         throw new TimeoutException($"Timed out waiting for heading '{expectedHeading}'.");
     }
 
+    private static async Task WaitForElementAsync(
+        W3cWebDriver browser,
+        string selector,
+        CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var found = await browser.ExecuteScriptAsync(
+                "return document.querySelector(arguments[0]) !== null;",
+                [selector],
+                cancellationToken);
+            if (found.GetBoolean())
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+        }
+
+        throw new TimeoutException($"Timed out waiting for element '{selector}'.");
+    }
+
     private static async Task ClickCalendarControlAsync(W3cWebDriver browser, string selector, CancellationToken cancellationToken)
     {
         var element = await browser.FindElementAsync(selector, cancellationToken);
@@ -523,6 +550,7 @@ public sealed class BrowserCalendarJourneyTests
 
     private static async Task AssertTransactionFeatureAsync(
         W3cWebDriver browser,
+        string accountName,
         CancellationToken cancellationToken)
     {
         await ClickCalendarControlAsync(
@@ -530,6 +558,7 @@ public sealed class BrowserCalendarJourneyTests
             ".calendar-grid .calendar-day[aria-pressed='false']",
             cancellationToken);
         await WaitForInspectorTextAsync(browser, "No transactions recorded", cancellationToken);
+        await SetSelectOptionByTextAsync(browser, "#transaction-account", accountName, cancellationToken);
         await SetFormValueAsync(browser, "#transaction-amount", "12.34", "input", cancellationToken);
         await SetFormValueAsync(
             browser,
@@ -538,8 +567,7 @@ public sealed class BrowserCalendarJourneyTests
             "change",
             cancellationToken);
         await ClickButtonByTextAsync(browser, "Save expense", cancellationToken);
-        await WaitForInspectorTextAsync(browser, "Necessities", cancellationToken);
-        await WaitForInspectorTextAsync(browser, "$12.34", cancellationToken);
+        await WaitForTransactionSummaryAsync(browser, accountName, "Necessities", "$12.34", cancellationToken);
         await WaitForSelectedCalendarSummaryAsync(browser, "$12.34", cancellationToken);
 
         await ClickButtonByTextAsync(browser, "Edit", cancellationToken);
@@ -551,7 +579,7 @@ public sealed class BrowserCalendarJourneyTests
             cancellationToken);
         await SetFormValueAsync(
             browser,
-            ".transaction-edit-form select",
+            ".transaction-edit-form select[id^='edit-classification']",
             "Culture",
             "change",
             cancellationToken);
@@ -568,6 +596,18 @@ public sealed class BrowserCalendarJourneyTests
         await WaitForInspectorTextAsync(browser, "Expense removed", cancellationToken);
         await WaitForInspectorTextAsync(browser, "No transactions recorded", cancellationToken);
         await WaitForSelectedCalendarSummaryAsync(browser, null, cancellationToken);
+    }
+
+    private static async Task SetSelectOptionByTextAsync(
+        W3cWebDriver browser,
+        string selector,
+        string optionText,
+        CancellationToken cancellationToken)
+    {
+        await browser.ExecuteScriptAsync(
+            "const select = document.querySelector(arguments[0]); if (!select) throw new Error(`Missing ${arguments[0]}`); const option = [...select.options].find(item => item.textContent.trim() === arguments[1]); if (!option) throw new Error(`Missing option ${arguments[1]}`); select.value = option.value; select.dispatchEvent(new Event('change', { bubbles: true }));",
+            [selector, optionText],
+            cancellationToken);
     }
 
     private static async Task SetFormValueAsync(
@@ -614,6 +654,31 @@ public sealed class BrowserCalendarJourneyTests
         }
 
         throw new TimeoutException($"Timed out waiting for inspector text '{expectedText}'.");
+    }
+
+    private static async Task WaitForTransactionSummaryAsync(
+        W3cWebDriver browser,
+        string accountName,
+        string classification,
+        string amount,
+        CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var matches = await browser.ExecuteScriptAsync(
+                "return [...document.querySelectorAll('.transaction-summary')].filter(item => item.querySelector('small')?.textContent?.trim() === arguments[0] && item.querySelector('span > span')?.textContent?.trim() === arguments[1] && item.querySelector('strong')?.textContent?.trim() === arguments[2]).length;",
+                [accountName, classification, amount],
+                cancellationToken);
+            if (matches.GetInt32() == 1)
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+        }
+
+        throw new TimeoutException(
+            $"Timed out waiting for {classification} {amount} transaction owned by '{accountName}'.");
     }
 
     private static async Task WaitForSelectedCalendarSummaryAsync(

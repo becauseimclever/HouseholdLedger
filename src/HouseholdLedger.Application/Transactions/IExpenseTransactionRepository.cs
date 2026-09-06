@@ -31,7 +31,7 @@ public interface IExpenseTransactionRepository
     /// <param name="ledgerDate">The ledger date to query.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transactions recorded on the date.</returns>
-    Task<IReadOnlyList<ExpenseTransaction>> ListByDateAsync(DateOnly ledgerDate, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ExpenseTransactionDto>> ListByDateAsync(DateOnly ledgerDate, CancellationToken cancellationToken);
 
     /// <summary>Returns transactions in a half-open ledger-date range.</summary>
     /// <param name="startDate">The inclusive first ledger date.</param>

@@ -2,7 +2,7 @@
 
 ## Status
 
-Status: Proposed.
+Status: Complete.
 
 - Planned: 2026-09-04.
 - Depends on Feature 011's persisted account catalog.
@@ -148,6 +148,20 @@ No new runtime dependency is expected.
 - Fixture-focused checks prove exact September daily totals, the $180.20 month
   total, account isolation, same-day ordering, the empty savings account, and
   exclusion of October 1 from September.
+
+Completed validation:
+
+- Domain, Application, API contract/integration, and Client component tests pass
+  for required ownership, correction, truthful states, stale responses, and
+  all-account calendar totals.
+- The checked OpenAPI document matches the runtime-generated contract.
+- The owned PostgreSQL 18 harness passes all three provider tests, including the
+  required restrictive foreign key, and removes its isolated container.
+- The published Firefox journey passes the complete Accounts -> add account ->
+  Home -> select day -> save, reread, revise, remove, and calendar-refresh flow.
+- The solution builds in Release configuration, and the exact deterministic
+  seven-transaction fixture produces the documented September totals and month
+  boundary behavior.
 
 ## Definition of Done
 

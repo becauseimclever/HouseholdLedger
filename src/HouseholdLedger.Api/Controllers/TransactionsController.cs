@@ -56,7 +56,12 @@ public sealed class TransactionsController(ExpenseTransactionService service) : 
 
         try
         {
-            var created = await service.CreateAsync(ledgerDate, request.Amount, classification, cancellationToken);
+            var created = await service.CreateAsync(
+                ledgerDate,
+                request.AccountId,
+                request.Amount,
+                classification,
+                cancellationToken);
             var response = Map(created);
             return this.Created($"api/v1/days/{ledgerDate:yyyy-MM-dd}/transactions/{created.Id}", response);
         }
@@ -66,6 +71,14 @@ public sealed class TransactionsController(ExpenseTransactionService service) : 
                 new Dictionary<string, string[]>
                 {
                     [nameof(request.Amount)] = [exception.Message],
+                }));
+        }
+        catch (ArgumentException exception)
+        {
+            return this.ValidationProblem(new ValidationProblemDetails(
+                new Dictionary<string, string[]>
+                {
+                    [nameof(request.AccountId)] = [exception.Message],
                 }));
         }
     }
@@ -101,6 +114,7 @@ public sealed class TransactionsController(ExpenseTransactionService service) : 
             var revised = await service.ReviseAsync(
                 ledgerDate,
                 transactionId,
+                request.AccountId,
                 request.Amount,
                 classification,
                 cancellationToken);
@@ -112,6 +126,14 @@ public sealed class TransactionsController(ExpenseTransactionService service) : 
                 new Dictionary<string, string[]>
                 {
                     [nameof(request.Amount)] = [exception.Message],
+                }));
+        }
+        catch (ArgumentException exception)
+        {
+            return this.ValidationProblem(new ValidationProblemDetails(
+                new Dictionary<string, string[]>
+                {
+                    [nameof(request.AccountId)] = [exception.Message],
                 }));
         }
     }
@@ -142,6 +164,8 @@ public sealed class TransactionsController(ExpenseTransactionService service) : 
 
     private static ExpenseTransactionResponse Map(ExpenseTransactionDto transaction) => new(
         transaction.Id,
+        transaction.AccountId,
+        transaction.AccountName,
         transaction.Date,
         transaction.Amount,
         transaction.Classification.ToString());

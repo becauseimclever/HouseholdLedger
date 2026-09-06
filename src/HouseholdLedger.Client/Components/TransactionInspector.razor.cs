@@ -20,12 +20,17 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     private static readonly CultureInfo UsdCulture = CultureInfo.GetCultureInfo("en-US");
     private readonly CancellationTokenSource lifetimeCancellation = new();
     private CancellationTokenSource? requestCancellation;
+    private IReadOnlyList<AccountResponse> accounts = [];
+    private string accountId = string.Empty;
+    private string? accountError;
     private string amountText = string.Empty;
     private string classification = string.Empty;
     private string? amountError;
     private string? classificationError;
     private string? saveError;
     private Guid? editingTransactionId;
+    private string editAccountId = string.Empty;
+    private string? editAccountError;
     private Guid? removingTransactionId;
     private string editAmountText = string.Empty;
     private string editClassification = string.Empty;
@@ -34,20 +39,28 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     private string? mutationError;
     private string? mutationStatus;
     private bool isLoading;
+    private bool isLoadingAccounts;
     private bool isMutating;
     private bool isSaving;
     private bool loadError;
+    private bool accountLoadError;
     private IReadOnlyList<ExpenseTransactionResponse> transactions = [];
 
     /// <summary>Gets or sets the selected-date state.</summary>
     [Inject]
     private SelectedDateState SelectedDate { get; set; } = null!;
 
+    /// <summary>Gets or sets the account catalog API client.</summary>
+    [Inject]
+    private IAccountsApiClient AccountsApi { get; set; } = null!;
+
     /// <summary>Gets or sets the transaction API client.</summary>
     [Inject]
     private ITransactionsApiClient TransactionsApi { get; set; } = null!;
 
     private string HasAmountError => this.amountError is null ? "false" : "true";
+
+    private string HasAccountError => this.accountError is null ? "false" : "true";
 
     private string HasClassificationError => this.classificationError is null ? "false" : "true";
 
@@ -74,7 +87,7 @@ public partial class TransactionInspector : ComponentBase, IDisposable
         if (firstRender && this.SelectedDate.Value is DateOnly ledgerDate)
         {
             this.requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(this.lifetimeCancellation.Token);
-            await this.LoadAsync(ledgerDate, this.requestCancellation.Token);
+            await this.LoadSelectionAsync(ledgerDate, this.requestCancellation.Token);
         }
     }
 
@@ -85,13 +98,66 @@ public partial class TransactionInspector : ComponentBase, IDisposable
         this.requestCancellation?.Cancel();
         this.requestCancellation?.Dispose();
         this.requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(this.lifetimeCancellation.Token);
+        this.accounts = [];
         this.transactions = [];
+        this.accountId = string.Empty;
+        this.accountError = null;
+        this.accountLoadError = false;
         this.loadError = false;
         this.saveError = null;
         this.isSaving = false;
         this.isMutating = false;
         this.ResetMutationState();
-        _ = this.LoadAsync(ledgerDate, this.requestCancellation.Token);
+        _ = this.LoadSelectionAsync(ledgerDate, this.requestCancellation.Token);
+    }
+
+    private Task LoadSelectionAsync(DateOnly ledgerDate, CancellationToken cancellationToken) =>
+        Task.WhenAll(
+            this.LoadAccountsAsync(ledgerDate, cancellationToken),
+            this.LoadAsync(ledgerDate, cancellationToken));
+
+    private async Task LoadAccountsAsync(DateOnly ledgerDate, CancellationToken cancellationToken)
+    {
+        this.isLoadingAccounts = true;
+        this.accountLoadError = false;
+        await this.InvokeAsync(this.StateHasChanged);
+
+        try
+        {
+            var loaded = await this.AccountsApi.ListAsync(cancellationToken);
+            if (!cancellationToken.IsCancellationRequested && this.SelectedDate.Value == ledgerDate)
+            {
+                this.accounts = loaded;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (HttpRequestException)
+        {
+            if (this.SelectedDate.Value == ledgerDate)
+            {
+                this.accounts = [];
+                this.accountLoadError = true;
+            }
+        }
+        finally
+        {
+            if (!cancellationToken.IsCancellationRequested && this.SelectedDate.Value == ledgerDate)
+            {
+                this.isLoadingAccounts = false;
+                await this.InvokeAsync(this.StateHasChanged);
+            }
+        }
+    }
+
+    private async Task RetryAccountsAsync()
+    {
+        if (this.SelectedDate.Value is DateOnly ledgerDate)
+        {
+            var cancellationToken = this.requestCancellation?.Token ?? this.lifetimeCancellation.Token;
+            await this.LoadAccountsAsync(ledgerDate, cancellationToken);
+        }
     }
 
     private async Task LoadAsync(DateOnly ledgerDate, CancellationToken cancellationToken)
@@ -130,9 +196,16 @@ public partial class TransactionInspector : ComponentBase, IDisposable
 
     private async Task SaveAsync()
     {
+        this.accountError = null;
         this.amountError = null;
         this.classificationError = null;
         this.saveError = null;
+
+        if (!Guid.TryParse(this.accountId, out var selectedAccountId)
+            || !this.accounts.Any(account => account.Id == selectedAccountId))
+        {
+            this.accountError = "Choose an account.";
+        }
 
         if (!decimal.TryParse(this.amountText, NumberStyles.Number, CultureInfo.CurrentCulture, out var amount)
             || amount <= 0
@@ -146,7 +219,10 @@ public partial class TransactionInspector : ComponentBase, IDisposable
             this.classificationError = "Choose a classification.";
         }
 
-        if (this.amountError is not null || this.classificationError is not null || this.SelectedDate.Value is not DateOnly ledgerDate)
+        if (this.accountError is not null
+            || this.amountError is not null
+            || this.classificationError is not null
+            || this.SelectedDate.Value is not DateOnly ledgerDate)
         {
             return;
         }
@@ -157,7 +233,7 @@ public partial class TransactionInspector : ComponentBase, IDisposable
         {
             var saved = await this.TransactionsApi.CreateAsync(
                 ledgerDate,
-                new CreateExpenseTransactionRequest(amount, this.classification),
+                new CreateExpenseTransactionRequest(selectedAccountId, amount, this.classification),
                 cancellationToken);
             if (!saved)
             {
@@ -171,6 +247,7 @@ public partial class TransactionInspector : ComponentBase, IDisposable
             }
 
             this.amountText = string.Empty;
+            this.accountId = string.Empty;
             this.classification = string.Empty;
             await this.LoadAsync(ledgerDate, cancellationToken);
             this.SelectedDate.NotifyTransactionsChanged(ledgerDate);
@@ -195,6 +272,7 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     {
         this.removingTransactionId = null;
         this.editingTransactionId = transaction.Id;
+        this.editAccountId = transaction.AccountId.ToString();
         this.editAmountText = transaction.Amount.ToString("0.00", CultureInfo.CurrentCulture);
         this.editClassification = transaction.Classification;
         this.ClearMutationMessages();
@@ -208,10 +286,17 @@ public partial class TransactionInspector : ComponentBase, IDisposable
 
     private async Task ReviseAsync()
     {
+        this.editAccountError = null;
         this.editAmountError = null;
         this.editClassificationError = null;
         this.mutationError = null;
         this.mutationStatus = null;
+
+        if (!Guid.TryParse(this.editAccountId, out var selectedAccountId)
+            || !this.accounts.Any(account => account.Id == selectedAccountId))
+        {
+            this.editAccountError = "Choose an account.";
+        }
 
         if (!decimal.TryParse(this.editAmountText, NumberStyles.Number, CultureInfo.CurrentCulture, out var amount)
             || amount <= 0
@@ -225,7 +310,8 @@ public partial class TransactionInspector : ComponentBase, IDisposable
             this.editClassificationError = "Choose a classification.";
         }
 
-        if (this.editAmountError is not null
+        if (this.editAccountError is not null
+            || this.editAmountError is not null
             || this.editClassificationError is not null
             || this.editingTransactionId is not Guid transactionId
             || this.SelectedDate.Value is not DateOnly ledgerDate)
@@ -240,7 +326,7 @@ public partial class TransactionInspector : ComponentBase, IDisposable
             var result = await this.TransactionsApi.ReviseAsync(
                 ledgerDate,
                 transactionId,
-                new UpdateExpenseTransactionRequest(amount, this.editClassification),
+                new UpdateExpenseTransactionRequest(selectedAccountId, amount, this.editClassification),
                 cancellationToken);
             if (this.SelectedDate.Value != ledgerDate)
             {
@@ -339,6 +425,7 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     {
         this.editingTransactionId = null;
         this.removingTransactionId = null;
+        this.editAccountId = string.Empty;
         this.editAmountText = string.Empty;
         this.editClassification = string.Empty;
         this.ClearMutationMessages();
@@ -346,6 +433,7 @@ public partial class TransactionInspector : ComponentBase, IDisposable
 
     private void ClearMutationMessages()
     {
+        this.editAccountError = null;
         this.editAmountError = null;
         this.editClassificationError = null;
         this.mutationError = null;
@@ -357,6 +445,11 @@ public partial class TransactionInspector : ComponentBase, IDisposable
         this.amountText = args.Value?.ToString() ?? string.Empty;
     }
 
+    private void UpdateAccount(ChangeEventArgs args)
+    {
+        this.accountId = args.Value?.ToString() ?? string.Empty;
+    }
+
     private void UpdateClassification(ChangeEventArgs args)
     {
         this.classification = args.Value?.ToString() ?? string.Empty;
@@ -365,6 +458,11 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     private void UpdateEditAmount(ChangeEventArgs args)
     {
         this.editAmountText = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void UpdateEditAccount(ChangeEventArgs args)
+    {
+        this.editAccountId = args.Value?.ToString() ?? string.Empty;
     }
 
     private void UpdateEditClassification(ChangeEventArgs args)

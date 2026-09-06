@@ -72,6 +72,12 @@ public sealed class AccountServiceTests
 
         public bool RejectAdd { get; init; }
 
+        public Task<Account?> FindAsync(Guid accountId, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(this.Items.SingleOrDefault(account => account.Id == accountId));
+        }
+
         public Task<bool> TryAddAsync(Account account, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();

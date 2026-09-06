@@ -15,6 +15,14 @@ public sealed class AccountRepository(HouseholdLedgerDbContext dbContext) : IAcc
     private const string NormalizedNameConstraint = "ux_accounts_normalized_name";
 
     /// <inheritdoc/>
+    public async Task<Account?> FindAsync(Guid accountId, CancellationToken cancellationToken)
+    {
+        return await dbContext.Accounts
+            .AsNoTracking()
+            .SingleOrDefaultAsync(account => account.Id == accountId, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<bool> TryAddAsync(Account account, CancellationToken cancellationToken)
     {
         dbContext.Accounts.Add(account);

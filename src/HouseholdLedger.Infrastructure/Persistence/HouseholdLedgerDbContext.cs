@@ -38,10 +38,17 @@ public sealed class HouseholdLedgerDbContext(DbContextOptions<HouseholdLedgerDbC
         transaction.ToTable("expense_transactions");
         transaction.HasKey(item => item.Id);
         transaction.Property(item => item.Id).HasColumnName("id").ValueGeneratedNever();
+        transaction.Property(item => item.AccountId).HasColumnName("account_id");
         transaction.Property(item => item.Date).HasColumnName("ledger_date").HasColumnType("date");
         transaction.Property(item => item.Amount).HasColumnName("amount").HasPrecision(18, 2);
         transaction.Property(item => item.Classification).HasColumnName("classification").HasConversion<string>().HasMaxLength(32);
         transaction.Property(item => item.Sequence).HasColumnName("creation_sequence").ValueGeneratedOnAdd();
+        transaction
+            .HasOne<Account>()
+            .WithMany()
+            .HasForeignKey(item => item.AccountId)
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Restrict);
         transaction.HasIndex(item => item.Sequence).IsUnique();
         transaction.HasIndex(item => new { item.Date, item.Sequence });
     }

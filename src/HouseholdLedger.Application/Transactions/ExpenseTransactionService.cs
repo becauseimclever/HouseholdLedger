@@ -4,28 +4,34 @@
 
 namespace HouseholdLedger.Application.Transactions;
 
+using HouseholdLedger.Application.Accounts;
 using HouseholdLedger.Domain.Transactions;
 
 /// <summary>
 /// Creates and lists date-scoped expense transactions.
 /// </summary>
-public sealed class ExpenseTransactionService(IExpenseTransactionRepository repository)
+public sealed class ExpenseTransactionService(
+    IExpenseTransactionRepository repository,
+    IAccountRepository accountRepository)
 {
     /// <summary>Creates one expense for a selected date.</summary>
     /// <param name="ledgerDate">The selected ledger date.</param>
+    /// <param name="accountId">The owning account identifier.</param>
     /// <param name="amount">The positive USD amount.</param>
     /// <param name="classification">The expense classification.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The created transaction.</returns>
     public async Task<ExpenseTransactionDto> CreateAsync(
         DateOnly ledgerDate,
+        Guid accountId,
         decimal amount,
         ExpenseClassification classification,
         CancellationToken cancellationToken = default)
     {
-        var transaction = new ExpenseTransaction(Guid.NewGuid(), ledgerDate, amount, classification);
+        var account = await this.FindRequiredAccountAsync(accountId, cancellationToken);
+        var transaction = new ExpenseTransaction(Guid.NewGuid(), account.Id, ledgerDate, amount, classification);
         await repository.AddAsync(transaction, cancellationToken);
-        return Map(transaction);
+        return Map(transaction, account.Name);
     }
 
     /// <summary>Lists expenses for one date in backend creation order.</summary>
@@ -36,8 +42,7 @@ public sealed class ExpenseTransactionService(IExpenseTransactionRepository repo
         DateOnly ledgerDate,
         CancellationToken cancellationToken = default)
     {
-        var transactions = await repository.ListByDateAsync(ledgerDate, cancellationToken);
-        return transactions.Select(Map).ToArray();
+        return await repository.ListByDateAsync(ledgerDate, cancellationToken);
     }
 
     /// <summary>Summarizes daily and cumulative expenses for one month.</summary>
@@ -72,6 +77,7 @@ public sealed class ExpenseTransactionService(IExpenseTransactionRepository repo
     /// <summary>Revises the correctable details of one date-scoped expense.</summary>
     /// <param name="ledgerDate">The transaction's ledger date.</param>
     /// <param name="transactionId">The transaction identifier.</param>
+    /// <param name="accountId">The replacement owning account identifier.</param>
     /// <param name="amount">The replacement positive USD amount.</param>
     /// <param name="classification">The replacement expense classification.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
@@ -79,6 +85,7 @@ public sealed class ExpenseTransactionService(IExpenseTransactionRepository repo
     public async Task<ExpenseTransactionDto?> ReviseAsync(
         DateOnly ledgerDate,
         Guid transactionId,
+        Guid accountId,
         decimal amount,
         ExpenseClassification classification,
         CancellationToken cancellationToken = default)
@@ -89,9 +96,10 @@ public sealed class ExpenseTransactionService(IExpenseTransactionRepository repo
             return null;
         }
 
-        transaction.Revise(amount, classification);
+        var account = await this.FindRequiredAccountAsync(accountId, cancellationToken);
+        transaction.Revise(account.Id, amount, classification);
         await repository.UpdateAsync(transaction, cancellationToken);
-        return Map(transaction);
+        return Map(transaction, account.Name);
     }
 
     /// <summary>Removes one date-scoped expense.</summary>
@@ -114,9 +122,24 @@ public sealed class ExpenseTransactionService(IExpenseTransactionRepository repo
         return true;
     }
 
-    private static ExpenseTransactionDto Map(ExpenseTransaction transaction) => new(
+    private static ExpenseTransactionDto Map(ExpenseTransaction transaction, string accountName) => new(
         transaction.Id,
+        transaction.AccountId,
+        accountName,
         transaction.Date,
         transaction.Amount,
         transaction.Classification);
+
+    private async Task<Domain.Accounts.Account> FindRequiredAccountAsync(
+        Guid accountId,
+        CancellationToken cancellationToken)
+    {
+        if (accountId == Guid.Empty)
+        {
+            throw new ArgumentException("An account identifier is required.", nameof(accountId));
+        }
+
+        return await accountRepository.FindAsync(accountId, cancellationToken)
+            ?? throw new ArgumentException("Choose an existing account.", nameof(accountId));
+    }
 }

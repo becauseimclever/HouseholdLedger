@@ -33,7 +33,7 @@ public sealed class ExpenseTransactionRepository(HouseholdLedgerDbContext dbCont
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<ExpenseTransaction>> ListByDateAsync(
+    public async Task<IReadOnlyList<ExpenseTransactionDto>> ListByDateAsync(
         DateOnly ledgerDate,
         CancellationToken cancellationToken)
     {
@@ -41,6 +41,17 @@ public sealed class ExpenseTransactionRepository(HouseholdLedgerDbContext dbCont
             .AsNoTracking()
             .Where(transaction => transaction.Date == ledgerDate)
             .OrderBy(transaction => transaction.Sequence)
+            .Join(
+                dbContext.Accounts,
+                transaction => transaction.AccountId,
+                account => account.Id,
+                (transaction, account) => new ExpenseTransactionDto(
+                    transaction.Id,
+                    transaction.AccountId,
+                    account.Name,
+                    transaction.Date,
+                    transaction.Amount,
+                    transaction.Classification))
             .ToArrayAsync(cancellationToken);
     }
 

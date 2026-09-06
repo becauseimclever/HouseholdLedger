@@ -37,6 +37,7 @@ public sealed class InfrastructureRegistrationTests
         var context = scope.ServiceProvider.GetRequiredService<HouseholdLedgerDbContext>();
         var accountEntity = context.Model.FindEntityType(typeof(Account));
         var transactionEntity = context.Model.FindEntityType(typeof(ExpenseTransaction));
+        var accountForeignKey = transactionEntity?.GetForeignKeys().Single();
 
         Assert.Multiple(
             () => Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", context.Database.ProviderName),
@@ -45,6 +46,10 @@ public sealed class InfrastructureRegistrationTests
             () => Assert.Equal("character varying(100)", accountEntity!.FindProperty(nameof(Account.Name))?.GetColumnType()),
             () => Assert.True(accountEntity!.GetIndexes().Single().IsUnique),
             () => Assert.NotNull(transactionEntity),
+            () => Assert.False(accountForeignKey!.IsRequiredDependent),
+            () => Assert.True(accountForeignKey!.IsRequired),
+            () => Assert.Equal(DeleteBehavior.Restrict, accountForeignKey!.DeleteBehavior),
+            () => Assert.Equal("account_id", transactionEntity!.FindProperty(nameof(ExpenseTransaction.AccountId))?.GetColumnName()),
             () => Assert.Equal("numeric(18,2)", transactionEntity!.FindProperty(nameof(ExpenseTransaction.Amount))?.GetColumnType()),
             () => Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State));
     }

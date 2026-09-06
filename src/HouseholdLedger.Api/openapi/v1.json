@@ -437,11 +437,17 @@
       },
       "CreateExpenseTransactionRequest": {
         "required": [
+          "accountId",
           "amount",
           "classification"
         ],
         "type": "object",
         "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "The owning account identifier.",
+            "format": "uuid"
+          },
           "amount": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
             "type": [
@@ -495,6 +501,8 @@
       "ExpenseTransactionResponse": {
         "required": [
           "id",
+          "accountId",
+          "accountName",
           "date",
           "amount",
           "classification"
@@ -505,6 +513,15 @@
             "type": "string",
             "description": "The opaque transaction identifier.",
             "format": "uuid"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "The owning account identifier.",
+            "format": "uuid"
+          },
+          "accountName": {
+            "type": "string",
+            "description": "The owning account name."
           },
           "date": {
             "type": "string",
@@ -580,11 +597,17 @@
       },
       "UpdateExpenseTransactionRequest": {
         "required": [
+          "accountId",
           "amount",
           "classification"
         ],
         "type": "object",
         "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "The replacement owning account identifier.",
+            "format": "uuid"
+          },
           "amount": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
             "type": [

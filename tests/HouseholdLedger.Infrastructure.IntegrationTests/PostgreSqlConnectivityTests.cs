@@ -11,6 +11,7 @@ using HouseholdLedger.Domain.Transactions;
 using HouseholdLedger.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using Xunit;
 
 /// <summary>
@@ -44,25 +45,43 @@ public sealed class PostgreSqlConnectivityTests
         var cancellationToken = TestContext.Current.CancellationToken;
 
         await context.Database.MigrateAsync(cancellationToken);
+        var accountRepository = scope.ServiceProvider.GetRequiredService<IAccountRepository>();
         var repository = scope.ServiceProvider.GetRequiredService<IExpenseTransactionRepository>();
         var ledgerDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
-        var transaction = new ExpenseTransaction(
+        var primaryAccount = new Account(Guid.NewGuid(), $"Checking {Guid.NewGuid():N}");
+        var revisedAccount = new Account(Guid.NewGuid(), $"Cash {Guid.NewGuid():N}");
+        var firstTransaction = new ExpenseTransaction(
             Guid.NewGuid(),
+            primaryAccount.Id,
             ledgerDate,
             12.34m,
             ExpenseClassification.Culture);
+        var secondTransaction = new ExpenseTransaction(
+            Guid.NewGuid(),
+            primaryAccount.Id,
+            ledgerDate,
+            23.45m,
+            ExpenseClassification.Necessities);
 
-        await repository.AddAsync(transaction, cancellationToken);
+        Assert.True(await accountRepository.TryAddAsync(primaryAccount, cancellationToken));
+        Assert.True(await accountRepository.TryAddAsync(revisedAccount, cancellationToken));
+        await repository.AddAsync(firstTransaction, cancellationToken);
+        await repository.AddAsync(secondTransaction, cancellationToken);
 
         try
         {
-            var persisted = await repository.FindAsync(ledgerDate, transaction.Id, cancellationToken);
+            var ownershipException = await Assert.ThrowsAsync<PostgresException>(
+                () => context.Accounts
+                    .Where(account => account.Id == primaryAccount.Id)
+                    .ExecuteDeleteAsync(cancellationToken));
+            var persisted = await repository.FindAsync(ledgerDate, firstTransaction.Id, cancellationToken);
             Assert.NotNull(persisted);
-            persisted.Revise(45.67m, ExpenseClassification.Unexpected);
+            persisted.Revise(revisedAccount.Id, 45.67m, ExpenseClassification.Unexpected);
             await repository.UpdateAsync(persisted, cancellationToken);
-            var revised = Assert.Single(
-                await repository.ListByDateAsync(ledgerDate, cancellationToken),
-                item => item.Id == transaction.Id);
+            var selectedDay = (await repository.ListByDateAsync(ledgerDate, cancellationToken))
+                .Where(item => item.Id == firstTransaction.Id || item.Id == secondTransaction.Id)
+                .ToArray();
+            var revised = selectedDay[0];
             var dateRange = await repository.ListByDateRangeAsync(
                 ledgerDate,
                 ledgerDate.AddDays(1),
@@ -72,17 +91,24 @@ public sealed class PostgreSqlConnectivityTests
 
             Assert.Multiple(
                 () => Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", context.Database.ProviderName),
+                () => Assert.Equal(PostgresErrorCodes.RestrictViolation, ownershipException.SqlState),
+                () => Assert.Equal(new[] { firstTransaction.Id, secondTransaction.Id }, selectedDay.Select(item => item.Id)),
+                () => Assert.Equal(revisedAccount.Id, revised.AccountId),
+                () => Assert.Equal(revisedAccount.Name, revised.AccountName),
                 () => Assert.Equal(45.67m, revised.Amount),
                 () => Assert.Equal(ExpenseClassification.Unexpected, revised.Classification),
-                () => Assert.True(revised.Sequence > 0),
-                () => Assert.Contains(dateRange, item => item.Id == transaction.Id),
-                () => Assert.DoesNotContain(afterRemoval, item => item.Id == transaction.Id),
-                () => Assert.Contains(context.Database.GetAppliedMigrations(), migration => migration.EndsWith("AddExpenseTransactions", StringComparison.Ordinal)));
+                () => Assert.True(firstTransaction.Sequence > 0),
+                () => Assert.Contains(dateRange, item => item.Id == firstTransaction.Id),
+                () => Assert.DoesNotContain(afterRemoval, item => item.Id == firstTransaction.Id),
+                () => Assert.Contains(context.Database.GetAppliedMigrations(), migration => migration.EndsWith("RequireTransactionAccount", StringComparison.Ordinal)));
         }
         finally
         {
             await context.ExpenseTransactions
-                .Where(item => item.Id == transaction.Id)
+                .Where(item => item.Id == firstTransaction.Id || item.Id == secondTransaction.Id)
+                .ExecuteDeleteAsync(cancellationToken);
+            await context.Accounts
+                .Where(account => account.Id == primaryAccount.Id || account.Id == revisedAccount.Id)
                 .ExecuteDeleteAsync(cancellationToken);
         }
     }
@@ -132,11 +158,15 @@ public sealed class PostgreSqlConnectivityTests
             var duplicateAdded = await repository.TryAddAsync(
                 new Account(Guid.NewGuid(), "cash wallet"),
                 cancellationToken);
+            var found = await repository.FindAsync(accountIdentifiers[1], cancellationToken);
+            var missing = await repository.FindAsync(Guid.NewGuid(), cancellationToken);
             var accounts = await repository.ListAsync(cancellationToken);
             var fixtures = accounts.Where(account => accountIdentifiers.Contains(account.Id)).ToArray();
 
             Assert.Multiple(
                 () => Assert.False(duplicateAdded),
+                () => Assert.Equal("Cash Wallet", found?.Name),
+                () => Assert.Null(missing),
                 () => Assert.Equal(accountIdentifiers[1], fixtures[0].Id),
                 () => Assert.Equal(accountIdentifiers[0], fixtures[1].Id),
                 () => Assert.Equal(accountIdentifiers[2], fixtures[2].Id),

@@ -219,11 +219,12 @@ public sealed class ClientApiUnitTests
         }));
         var client = new TransactionsApiClient(httpClient);
         var transactionId = Guid.Parse("efc8d3df-a67e-45f3-8b5a-a0303b61f0ed");
+        var accountId = Guid.Parse("10000000-0000-0000-0000-000000000001");
 
         var result = await client.ReviseAsync(
             new DateOnly(2026, 9, 1),
             transactionId,
-            new UpdateExpenseTransactionRequest(12.34m, "Culture"),
+            new UpdateExpenseTransactionRequest(accountId, 12.34m, "Culture"),
             TestContext.Current.CancellationToken);
 
         Assert.Multiple(

@@ -133,6 +133,20 @@ public sealed class ApiContractTests
             .EnumerateArray()
             .Select(item => item.GetString())
             .ToArray();
+        var createRequired = root.GetProperty("components")
+            .GetProperty("schemas")
+            .GetProperty("CreateExpenseTransactionRequest")
+            .GetProperty("required")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .ToArray();
+        var responseRequired = root.GetProperty("components")
+            .GetProperty("schemas")
+            .GetProperty("ExpenseTransactionResponse")
+            .GetProperty("required")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .ToArray();
 
         Assert.Multiple(
             () => Assert.Equal(
@@ -143,7 +157,11 @@ public sealed class ApiContractTests
             () => Assert.True(reviseResponses.TryGetProperty("404", out _)),
             () => Assert.True(removeResponses.TryGetProperty("204", out _)),
             () => Assert.True(removeResponses.TryGetProperty("404", out _)),
-            () => Assert.Equal(["amount", "classification"], required));
+            () => Assert.Equal(["accountId", "amount", "classification"], createRequired),
+            () => Assert.Equal(["accountId", "amount", "classification"], required),
+            () => Assert.Equal(
+                ["id", "accountId", "accountName", "date", "amount", "classification"],
+                responseRequired));
     }
 
     /// <summary>Verifies the checked contract describes account listing and creation.</summary>
