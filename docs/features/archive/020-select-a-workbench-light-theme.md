@@ -179,7 +179,7 @@ typography/layout selectors, and theme import/export remain separate outcomes.
 
 ## Dependencies
 
-- [Feature 009](archive/009-themeable-design-system-and-workbench-dark-theme.md)
+- [Feature 009](009-themeable-design-system-and-workbench-dark-theme.md)
   supplies Workbench Dark and the semantic theme-token boundary.
 - [Feature 016](016-configure-global-display-currency.md) supplies the global
   Settings route, persistence model, and read/update lifecycle.

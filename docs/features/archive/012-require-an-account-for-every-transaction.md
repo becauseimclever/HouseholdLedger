@@ -196,6 +196,6 @@ is present, and the solution builds.
   calendar summary and mutation-refresh contract.
 - [Feature 011](011-add-a-named-account.md) supplies the authoritative account
   catalog and account identifiers.
-- [Feature 005](archive/005-record-a-transaction-for-selected-day.md) and
-  [Feature 007](archive/007-correct-or-remove-selected-day-transaction.md)
+- [Feature 005](005-record-a-transaction-for-selected-day.md) and
+  [Feature 007](007-correct-or-remove-selected-day-transaction.md)
   supply the selected-day create/list/edit workflows extended here.

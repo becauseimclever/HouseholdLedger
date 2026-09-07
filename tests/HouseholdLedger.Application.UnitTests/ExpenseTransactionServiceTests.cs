@@ -32,6 +32,8 @@ public sealed class ExpenseTransactionServiceTests
             () => Assert.Throws<ArgumentException>(() => AccountTransactionCriteria.Create(
                 fromDate: new DateOnly(2026, 9, 2),
                 toDate: new DateOnly(2026, 9, 1))),
+            () => Assert.Throws<ArgumentOutOfRangeException>(() => AccountTransactionCriteria.Create(
+                classification: (ExpenseClassification)int.MaxValue)),
             () => Assert.Throws<ArgumentOutOfRangeException>(() => AccountTransactionCriteria.Create(minimumAmount: -1m)),
             () => Assert.Throws<ArgumentException>(() => AccountTransactionCriteria.Create(minimumAmount: 10m, maximumAmount: 5m)),
             () => Assert.Throws<ArgumentException>(() => AccountTransactionCriteria.Create(search: new string('x', 101))));
@@ -216,6 +218,28 @@ public sealed class ExpenseTransactionServiceTests
             () => Assert.Equal(new DailyExpenseSummaryDto(new DateOnly(2026, 9, 2), 0m, 13m), results[1]),
             () => Assert.Equal(new DailyExpenseSummaryDto(new DateOnly(2026, 9, 3), 2.50m, 15.50m), results[2]),
             () => Assert.Equal(new DailyExpenseSummaryDto(new DateOnly(2026, 9, 30), 0m, 15.50m), results[^1]));
+    }
+
+    /// <summary>Verifies the final representable calendar month does not require an exclusive upper bound.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task SummarizeMonthSupportsDecemberOfMaximumYear()
+    {
+        var accountId = Guid.NewGuid();
+        var repository = new StubRepository();
+        repository.Items.Add(new ExpenseTransaction(
+            Guid.NewGuid(),
+            accountId,
+            DateOnly.MaxValue,
+            12.34m,
+            ExpenseClassification.Necessities));
+        var service = new ExpenseTransactionService(repository, new StubAccountRepository());
+
+        var results = await service.SummarizeMonthAsync(9999, 12, TestContext.Current.CancellationToken);
+
+        Assert.Multiple(
+            () => Assert.Equal(31, results.Count),
+            () => Assert.Equal(new DailyExpenseSummaryDto(DateOnly.MaxValue, 12.34m, 12.34m), results[^1]));
     }
 
     /// <summary>Verifies the documented account-owned fixture and all-account September totals.</summary>
@@ -436,7 +460,7 @@ public sealed class ExpenseTransactionServiceTests
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult<IReadOnlyList<ExpenseTransaction>>(
                 this.Items
-                    .Where(transaction => transaction.Date >= startDate && transaction.Date < endDate)
+                    .Where(transaction => transaction.Date >= startDate && transaction.Date <= endDate)
                     .OrderBy(transaction => transaction.Date)
                     .ThenBy(transaction => transaction.Sequence)
                     .ToArray());

@@ -50,7 +50,7 @@ public sealed class InfrastructureRegistrationTests
             () => Assert.True(accountForeignKey!.IsRequired),
             () => Assert.Equal(DeleteBehavior.Restrict, accountForeignKey!.DeleteBehavior),
             () => Assert.Equal("account_id", transactionEntity!.FindProperty(nameof(ExpenseTransaction.AccountId))?.GetColumnName()),
-            () => Assert.Equal("numeric(18,2)", transactionEntity!.FindProperty(nameof(ExpenseTransaction.Amount))?.GetColumnType()),
+            () => Assert.Equal("numeric", transactionEntity!.FindProperty(nameof(ExpenseTransaction.Amount))?.GetColumnType()),
             () => Assert.Equal(ConnectionState.Closed, context.Database.GetDbConnection().State));
     }
 }

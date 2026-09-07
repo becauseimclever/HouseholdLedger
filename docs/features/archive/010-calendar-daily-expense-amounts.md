@@ -123,7 +123,7 @@ solution builds.
 
 ## Dependencies
 
-- [Feature 005](archive/005-record-a-transaction-for-selected-day.md) supplies
+- [Feature 005](005-record-a-transaction-for-selected-day.md) supplies
   persisted selected-day transaction creation and reads.
-- [Feature 007](archive/007-correct-or-remove-selected-day-transaction.md)
+- [Feature 007](007-correct-or-remove-selected-day-transaction.md)
   supplies correction and removal events that invalidate a summary.

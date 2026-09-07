@@ -2,11 +2,13 @@
 
 ## Status
 
-Status: Complete.
+Status: Reopened - financial semantics correction required.
 
 - Planned: 2026-09-05.
 - Implemented: 2026-09-06.
 - Validated: 2026-09-06.
+- Reopened: 2026-09-07 because changing a currency symbol without converting
+  USD-denominated amounts misstates their denomination.
 - Depends on existing USD-denominated transaction amounts and all current money
   presentation surfaces.
 
@@ -150,9 +152,9 @@ outcomes.
 
 ## Dependencies
 
-- [Feature 010](010-calendar-daily-expense-amounts.md) supplies calendar money
+- [Feature 010](archive/010-calendar-daily-expense-amounts.md) supplies calendar money
   totals.
-- [Feature 012](012-require-an-account-for-every-transaction.md) supplies
+- [Feature 012](archive/012-require-an-account-for-every-transaction.md) supplies
   inspector transaction amounts.
-- [Feature 013](013-view-an-accounts-transactions.md) supplies account-history
+- [Feature 013](archive/013-view-an-accounts-transactions.md) supplies account-history
   amounts.

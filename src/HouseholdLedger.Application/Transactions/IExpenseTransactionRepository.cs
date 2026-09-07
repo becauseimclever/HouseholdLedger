@@ -51,9 +51,9 @@ public interface IExpenseTransactionRepository
         AccountTransactionCriteria criteria,
         CancellationToken cancellationToken) => this.ListByAccountAsync(accountId, cancellationToken);
 
-    /// <summary>Returns transactions in a half-open ledger-date range.</summary>
+    /// <summary>Returns transactions in an inclusive ledger-date range.</summary>
     /// <param name="startDate">The inclusive first ledger date.</param>
-    /// <param name="endDate">The exclusive final ledger date.</param>
+    /// <param name="endDate">The inclusive final ledger date.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The transactions in date and creation order.</returns>
     Task<IReadOnlyList<ExpenseTransaction>> ListByDateRangeAsync(

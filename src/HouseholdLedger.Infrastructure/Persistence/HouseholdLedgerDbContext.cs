@@ -39,12 +39,26 @@ public sealed class HouseholdLedgerDbContext(DbContextOptions<HouseholdLedgerDbC
         account.HasIndex(item => item.NormalizedName).IsUnique().HasDatabaseName("ux_accounts_normalized_name");
 
         var transaction = modelBuilder.Entity<ExpenseTransaction>();
-        transaction.ToTable("expense_transactions");
+        transaction.ToTable(
+            "expense_transactions",
+            tableBuilder =>
+            {
+                tableBuilder.HasCheckConstraint("ck_expense_transactions_amount_positive", "amount > 0");
+                tableBuilder.HasCheckConstraint(
+                    "ck_expense_transactions_amount_maximum",
+                    $"amount <= {ExpenseTransaction.MaximumAmount}");
+                tableBuilder.HasCheckConstraint(
+                    "ck_expense_transactions_amount_scale",
+                    "amount = round(amount, 2)");
+                tableBuilder.HasCheckConstraint(
+                    "ck_expense_transactions_classification",
+                    "classification IN ('Necessities', 'Optional', 'Culture', 'Unexpected')");
+            });
         transaction.HasKey(item => item.Id);
         transaction.Property(item => item.Id).HasColumnName("id").ValueGeneratedNever();
         transaction.Property(item => item.AccountId).HasColumnName("account_id");
         transaction.Property(item => item.Date).HasColumnName("ledger_date").HasColumnType("date");
-        transaction.Property(item => item.Amount).HasColumnName("amount").HasPrecision(18, 2);
+        transaction.Property(item => item.Amount).HasColumnName("amount").HasColumnType("numeric");
         transaction.Property(item => item.Classification).HasColumnName("classification").HasConversion<string>().HasMaxLength(32);
         transaction.Property(item => item.Sequence).HasColumnName("creation_sequence").ValueGeneratedOnAdd();
         transaction

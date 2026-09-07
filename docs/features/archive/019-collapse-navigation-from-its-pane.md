@@ -135,7 +135,7 @@ activity bars, and docking commands remain separate outcomes.
 
 ## Dependencies
 
-- [Feature 003](archive/003-workspace-navigation-and-ui-foundation.md) supplies
+- [Feature 003](003-workspace-navigation-and-ui-foundation.md) supplies
   independently controlled, normal-flow workspace panes.
 - [Feature 014](014-expand-accounts-in-workspace-navigation.md) supplies the
   transient Accounts branch state preserved through pane collapse.

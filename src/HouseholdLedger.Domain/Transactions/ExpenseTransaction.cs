@@ -9,6 +9,9 @@ namespace HouseholdLedger.Domain.Transactions;
 /// </summary>
 public sealed class ExpenseTransaction
 {
+    /// <summary>The largest amount representable by the persistence contract.</summary>
+    public const decimal MaximumAmount = 9999999999999999.99m;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="ExpenseTransaction"/> class.
     /// </summary>
@@ -96,6 +99,11 @@ public sealed class ExpenseTransaction
         if (decimal.Round(amount, 2) != amount)
         {
             throw new ArgumentOutOfRangeException(nameof(amount), "The amount cannot have more than two decimal places.");
+        }
+
+        if (amount > MaximumAmount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(amount), $"The amount cannot exceed {MaximumAmount}.");
         }
 
         if (!Enum.IsDefined(classification))

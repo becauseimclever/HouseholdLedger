@@ -55,7 +55,7 @@ public sealed record AccountTransactionCriteria
     /// <param name="search">The text to match against visible transaction fields.</param>
     /// <returns>The validated, normalized criteria.</returns>
     /// <exception cref="ArgumentException">A range is invalid or search text is too long.</exception>
-    /// <exception cref="ArgumentOutOfRangeException">An amount is negative.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">An amount is negative or the classification is undefined.</exception>
     public static AccountTransactionCriteria Create(
         DateOnly? fromDate = null,
         DateOnly? toDate = null,
@@ -67,6 +67,11 @@ public sealed record AccountTransactionCriteria
         if (fromDate > toDate)
         {
             throw new ArgumentException("From date must be on or before To date.", nameof(fromDate));
+        }
+
+        if (classification is not null && !Enum.IsDefined(classification.Value))
+        {
+            throw new ArgumentOutOfRangeException(nameof(classification), "Classification must be supported.");
         }
 
         if (minimumAmount < 0)

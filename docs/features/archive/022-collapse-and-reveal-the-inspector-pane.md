@@ -164,7 +164,7 @@ transaction content remain separate outcomes.
 
 ## Dependencies
 
-- [Feature 004](archive/004-calendar-item-selection-and-inspector-detail-contract.md)
+- [Feature 004](004-calendar-item-selection-and-inspector-detail-contract.md)
   supplies supported calendar selection and keyboard paths.
 - [Feature 005](005-record-a-transaction-for-selected-day.md) supplies the
   selected-day inspector content and request lifecycle.

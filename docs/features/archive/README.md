@@ -14,6 +14,18 @@ as historical product, acceptance, and decision records.
 | [007](007-correct-or-remove-selected-day-transaction.md) | Complete | Added selected-day transaction correction and confirmed permanent removal. |
 | [008](008-open-source-notices-page.md) | Complete | Added published open-source attribution in the application. |
 | [009](009-themeable-design-system-and-workbench-dark-theme.md) | Complete | Added the custom semantic-token design system and themeable three-pane `Workbench Dark` workspace. |
+| [010](010-calendar-daily-expense-amounts.md) | Complete | Added exact backend-calculated daily and month-to-date expense totals to the calendar. |
+| [011](011-add-a-named-account.md) | Complete | Added durable named accounts and account creation. |
+| [012](012-require-an-account-for-every-transaction.md) | Complete | Required every transaction to belong to a persisted account. |
+| [013](013-view-an-accounts-transactions.md) | Complete | Added complete per-account transaction history. |
+| [014](014-expand-accounts-in-workspace-navigation.md) | Complete | Added persisted account destinations to workspace navigation. |
+| [015](015-filter-and-search-account-transactions.md) | Complete | Added backend-owned account transaction filters and search. |
+| [018](018-present-navigation-as-workspace-tiles.md) | Complete | Presented application destinations as workspace navigation tiles. |
+| [019](019-collapse-navigation-from-its-pane.md) | Complete | Added pane-owned navigation collapse and a reachable rail. |
+| [020](020-select-a-workbench-light-theme.md) | Complete | Added a durable Workbench Light theme choice. |
+| [021](021-present-a-themed-application-footer-and-links.md) | Complete | Added the themed application footer and intentional link roles. |
+| [022](022-collapse-and-reveal-the-inspector-pane.md) | Complete | Added inspector collapse and selected-date automatic reveal. |
+| [023](023-navigate-from-the-collapsed-icon-rail.md) | Complete | Preserved complete destination navigation in the collapsed rail. |
 
 Historical audits remain in [`docs/audit`](../../audit/). Archived documents are
 not active implementation gates and should not be edited to rewrite historical

@@ -163,7 +163,7 @@ maps, and user-configurable footer content remain separate outcomes.
 
 ## Dependencies
 
-- [Feature 008](archive/008-open-source-notices-page.md) supplies the existing
+- [Feature 008](008-open-source-notices-page.md) supplies the existing
   notices route, content, and external reference links.
 - [Feature 018](018-present-navigation-as-workspace-tiles.md) supplies brand,
   primary navigation, and nested navigation link roles.

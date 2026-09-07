@@ -43,7 +43,6 @@ public sealed class PostgreSqlConnectivityTests
         await using var scope = provider.CreateAsyncScope();
         await using var context = scope.ServiceProvider.GetRequiredService<HouseholdLedgerDbContext>();
         var cancellationToken = TestContext.Current.CancellationToken;
-
         await context.Database.MigrateAsync(cancellationToken);
         await context.GlobalSettings.ExecuteDeleteAsync(cancellationToken);
         var repository = scope.ServiceProvider.GetRequiredService<IGlobalSettingsRepository>();
@@ -118,6 +117,8 @@ public sealed class PostgreSqlConnectivityTests
         var accountRepository = scope.ServiceProvider.GetRequiredService<IAccountRepository>();
         var repository = scope.ServiceProvider.GetRequiredService<IExpenseTransactionRepository>();
         var ledgerDate = DateOnly.FromDateTime(DateTime.UtcNow.Date);
+        const string cultureClassification = "Culture";
+        const string unsupportedClassification = "Unsupported";
         var primaryAccount = new Account(Guid.NewGuid(), $"Checking {Guid.NewGuid():N}");
         var revisedAccount = new Account(Guid.NewGuid(), $"Cash {Guid.NewGuid():N}");
         var firstTransaction = new ExpenseTransaction(
@@ -144,6 +145,22 @@ public sealed class PostgreSqlConnectivityTests
                 () => context.Accounts
                     .Where(account => account.Id == primaryAccount.Id)
                     .ExecuteDeleteAsync(cancellationToken));
+            var zeroAmountException = await Assert.ThrowsAsync<PostgresException>(
+                () => context.Database.ExecuteSqlInterpolatedAsync(
+                    $"INSERT INTO expense_transactions (id, account_id, ledger_date, amount, classification) VALUES ({Guid.NewGuid()}, {primaryAccount.Id}, {ledgerDate}, {0m}, {cultureClassification})",
+                    cancellationToken));
+            var excessPrecisionException = await Assert.ThrowsAsync<PostgresException>(
+                () => context.Database.ExecuteSqlInterpolatedAsync(
+                    $"INSERT INTO expense_transactions (id, account_id, ledger_date, amount, classification) VALUES ({Guid.NewGuid()}, {primaryAccount.Id}, {ledgerDate}, {1.001m}, {cultureClassification})",
+                    cancellationToken));
+            var excessAmountException = await Assert.ThrowsAsync<PostgresException>(
+                () => context.Database.ExecuteSqlInterpolatedAsync(
+                    $"INSERT INTO expense_transactions (id, account_id, ledger_date, amount, classification) VALUES ({Guid.NewGuid()}, {primaryAccount.Id}, {ledgerDate}, {10000000000000000m}, {cultureClassification})",
+                    cancellationToken));
+            var classificationException = await Assert.ThrowsAsync<PostgresException>(
+                () => context.Database.ExecuteSqlInterpolatedAsync(
+                    $"INSERT INTO expense_transactions (id, account_id, ledger_date, amount, classification) VALUES ({Guid.NewGuid()}, {primaryAccount.Id}, {ledgerDate}, {1m}, {unsupportedClassification})",
+                    cancellationToken));
             var initialAccountHistory = await repository.ListByAccountAsync(
                 primaryAccount.Id,
                 cancellationToken);
@@ -181,7 +198,7 @@ public sealed class PostgreSqlConnectivityTests
             var revised = selectedDay[0];
             var dateRange = await repository.ListByDateRangeAsync(
                 ledgerDate,
-                ledgerDate.AddDays(1),
+                ledgerDate,
                 cancellationToken);
             await repository.RemoveAsync(persisted, cancellationToken);
             var afterRemoval = await repository.ListByDateAsync(ledgerDate, cancellationToken);
@@ -189,6 +206,10 @@ public sealed class PostgreSqlConnectivityTests
             Assert.Multiple(
                 () => Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", context.Database.ProviderName),
                 () => Assert.Equal(PostgresErrorCodes.RestrictViolation, ownershipException.SqlState),
+                () => Assert.Equal("ck_expense_transactions_amount_positive", zeroAmountException.ConstraintName),
+                () => Assert.Equal("ck_expense_transactions_amount_scale", excessPrecisionException.ConstraintName),
+                () => Assert.Equal("ck_expense_transactions_amount_maximum", excessAmountException.ConstraintName),
+                () => Assert.Equal("ck_expense_transactions_classification", classificationException.ConstraintName),
                 () => Assert.Equal(new[] { secondTransaction.Id, firstTransaction.Id }, initialAccountHistory.Select(item => item.Id)),
                 () => Assert.Equal(firstTransaction.Id, Assert.Single(combinedFilteredHistory).Id),
                 () => Assert.Equal(firstTransaction.Id, Assert.Single(classificationSearchHistory).Id),
@@ -205,7 +226,7 @@ public sealed class PostgreSqlConnectivityTests
                 () => Assert.True(firstTransaction.Sequence > 0),
                 () => Assert.Contains(dateRange, item => item.Id == firstTransaction.Id),
                 () => Assert.DoesNotContain(afterRemoval, item => item.Id == firstTransaction.Id),
-                () => Assert.Contains(context.Database.GetAppliedMigrations(), migration => migration.EndsWith("RequireTransactionAccount", StringComparison.Ordinal)));
+                () => Assert.Contains(context.Database.GetAppliedMigrations(), migration => migration.EndsWith("EnforceExpenseTransactionIntegrity", StringComparison.Ordinal)));
         }
         finally
         {

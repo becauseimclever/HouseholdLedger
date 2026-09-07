@@ -91,16 +91,17 @@ public sealed class ExpenseTransactionService(
         CancellationToken cancellationToken = default)
     {
         var firstDate = new DateOnly(year, month, 1);
-        var endDate = firstDate.AddMonths(1);
-        var transactions = await repository.ListByDateRangeAsync(firstDate, endDate, cancellationToken);
+        var lastDate = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
+        var transactions = await repository.ListByDateRangeAsync(firstDate, lastDate, cancellationToken);
         var totalsByDate = transactions
             .GroupBy(transaction => transaction.Date)
             .ToDictionary(group => group.Key, group => group.Sum(transaction => transaction.Amount));
         var summaries = new List<DailyExpenseSummaryDto>(DateTime.DaysInMonth(year, month));
         var monthToDateTotal = 0m;
 
-        for (var date = firstDate; date < endDate; date = date.AddDays(1))
+        for (var day = 1; day <= lastDate.Day; day++)
         {
+            var date = new DateOnly(year, month, day);
             var dailyTotal = totalsByDate.GetValueOrDefault(date);
             monthToDateTotal += dailyTotal;
             summaries.Add(new DailyExpenseSummaryDto(date, dailyTotal, monthToDateTotal));

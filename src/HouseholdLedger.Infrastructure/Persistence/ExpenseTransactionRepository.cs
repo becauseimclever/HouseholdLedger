@@ -148,7 +148,7 @@ public sealed class ExpenseTransactionRepository(HouseholdLedgerDbContext dbCont
     {
         return await dbContext.ExpenseTransactions
             .AsNoTracking()
-            .Where(transaction => transaction.Date >= startDate && transaction.Date < endDate)
+            .Where(transaction => transaction.Date >= startDate && transaction.Date <= endDate)
             .OrderBy(transaction => transaction.Date)
             .ThenBy(transaction => transaction.Sequence)
             .ToArrayAsync(cancellationToken);

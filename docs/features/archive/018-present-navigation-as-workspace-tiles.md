@@ -135,5 +135,5 @@ separate outcomes.
   Accounts disclosure and nested account links.
 - [Feature 016](016-configure-global-display-currency.md) supplies the Settings
   destination consumed by the final primary stack.
-- [Feature 009](archive/009-themeable-design-system-and-workbench-dark-theme.md)
+- [Feature 009](009-themeable-design-system-and-workbench-dark-theme.md)
   supplies the semantic token and Workbench Dark contracts.

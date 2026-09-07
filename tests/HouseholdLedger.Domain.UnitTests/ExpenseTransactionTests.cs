@@ -30,12 +30,27 @@ public sealed class ExpenseTransactionTests
             () => Assert.Equal(ExpenseClassification.Necessities, transaction.Classification));
     }
 
+    /// <summary>Verifies the persistence amount boundary is accepted exactly.</summary>
+    [Fact]
+    public void ConstructorAcceptsMaximumPersistableAmount()
+    {
+        var transaction = new ExpenseTransaction(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            new DateOnly(2026, 9, 1),
+            ExpenseTransaction.MaximumAmount,
+            ExpenseClassification.Necessities);
+
+        Assert.Equal(ExpenseTransaction.MaximumAmount, transaction.Amount);
+    }
+
     /// <summary>Verifies invalid amounts are rejected.</summary>
     /// <param name="value">The invariant-culture amount text.</param>
     [Theory]
     [InlineData("0")]
     [InlineData("-1")]
     [InlineData("1.001")]
+    [InlineData("10000000000000000.00")]
     public void ConstructorRejectsInvalidAmounts(string value)
     {
         var amount = decimal.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
