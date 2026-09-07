@@ -4,20 +4,8 @@
 
 <div class="workspace-shell">
     <header class="workspace-toolbar">
-        <p class="workspace-name">HouseholdLedger</p>
+        <NavLink href="/" Match="NavLinkMatch.All" class="workspace-name" aria-label="HouseholdLedger home">HouseholdLedger</NavLink>
         <div class="workspace-tools" aria-label="Workspace panes">
-            <button class="pane-toggle"
-                    type="button"
-                    aria-controls="workspace-navigation"
-                    aria-describedby="navigation-toggle-tooltip"
-                    aria-expanded="@(navigationExpanded ? "true" : "false")"
-                    aria-label="@NavigationToggleLabel"
-                    @onclick="ToggleNavigation">
-                <span aria-hidden="true">
-                    <Blazicons.Blazicon Svg="Blazicons.Lucide.Menu" />
-                </span>
-                <span id="navigation-toggle-tooltip" class="pane-toggle-tooltip" role="tooltip">@NavigationToggleLabel</span>
-            </button>
             @if (InspectorAvailable)
             {
                 <button class="pane-toggle"
@@ -37,16 +25,86 @@
     </header>
 
     <div class="workspace-grid">
-        <nav id="workspace-navigation" class="workspace-pane navigation-pane" aria-labelledby="navigation-heading" hidden="@(!navigationExpanded)">
-            <h2 id="navigation-heading">Navigation</h2>
-            <ul class="workspace-navigation-list">
+        <nav id="workspace-navigation"
+             class="workspace-pane navigation-pane @(navigationExpanded ? null : "navigation-pane-collapsed")"
+             aria-labelledby="@(navigationExpanded ? "navigation-heading" : null)"
+             aria-label="@(navigationExpanded ? null : "Navigation")">
+            <div class="navigation-pane-header">
+                @if (navigationExpanded)
+                {
+                    <h2 id="navigation-heading">Navigation</h2>
+                }
+                <button class="pane-toggle navigation-toggle"
+                        type="button"
+                        aria-controls="workspace-navigation"
+                        aria-describedby="navigation-toggle-tooltip"
+                        aria-expanded="@(navigationExpanded ? "true" : "false")"
+                        aria-label="@NavigationToggleLabel"
+                        @onclick="ToggleNavigation">
+                    <span aria-hidden="true">
+                        <Blazicons.Blazicon Svg="@(navigationExpanded ? Blazicons.Lucide.ChevronLeft : Blazicons.Lucide.ChevronRight)" />
+                    </span>
+                    <span id="navigation-toggle-tooltip" class="pane-toggle-tooltip" role="tooltip">@NavigationToggleLabel</span>
+                </button>
+            </div>
+            @if (navigationExpanded)
+            {
+                <ul class="workspace-navigation-list">
                 <li>
                     <NavLink href="/" Match="NavLinkMatch.All" class="workspace-navigation-link">Home</NavLink>
                 </li>
-                <li>
-                    <NavLink href="/accounts" class="workspace-navigation-link">Accounts</NavLink>
+                <li class="accounts-navigation-branch @(AccountRouteSelected ? "current-navigation-branch" : null)">
+                    <div class="accounts-navigation-heading">
+                        <NavLink href="/accounts" class="workspace-navigation-link">Accounts</NavLink>
+                        <button class="accounts-disclosure"
+                                type="button"
+                                aria-expanded="@(accountsBranchExpanded ? "true" : "false")"
+                                aria-controls="accounts-navigation-list"
+                                aria-label="@AccountsToggleLabel"
+                                @onclick="ToggleAccounts">
+                            <span aria-hidden="true">
+                                <Blazicons.Blazicon Svg="@(accountsBranchExpanded ? Blazicons.Lucide.ChevronDown : Blazicons.Lucide.ChevronRight)" />
+                            </span>
+                        </button>
+                    </div>
+                    @if (accountsBranchExpanded)
+                    {
+                        <ul id="accounts-navigation-list" class="account-navigation-list">
+                            @if (accountsLoading)
+                            {
+                                <li class="account-navigation-state" role="status" aria-live="polite">Loading accounts</li>
+                            }
+                            else if (accountsLoadError)
+                            {
+                                <li class="account-navigation-state account-navigation-error" role="alert">
+                                    <span>Accounts are unavailable.</span>
+                                    <button type="button" @onclick="LoadAccountsAsync">Try again</button>
+                                </li>
+                            }
+                            else if (accounts.Count == 0)
+                            {
+                                <li class="account-navigation-state">No accounts yet.</li>
+                            }
+                            else
+                            {
+                                @foreach (var account in accounts)
+                                {
+                                    <li>
+                                        <NavLink href="@($"/accounts/{account.Id}")" Match="NavLinkMatch.All" class="account-navigation-link">
+                                            <span class="account-navigation-name" title="@account.Name">@account.Name</span>
+                                            <span class="current-account-marker">Current</span>
+                                        </NavLink>
+                                    </li>
+                                }
+                            }
+                        </ul>
+                    }
                 </li>
-            </ul>
+                <li>
+                    <NavLink href="/settings" Match="NavLinkMatch.All" class="workspace-navigation-link">Settings</NavLink>
+                </li>
+                </ul>
+            }
         </nav>
         <section id="workspace-main" class="workspace-main" aria-label="Primary workspace">
             @Body

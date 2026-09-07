@@ -7,6 +7,7 @@ namespace HouseholdLedger.Api.IntegrationTests;
 using System.Net;
 
 using HouseholdLedger.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,7 +36,7 @@ public sealed class InfrastructureCompositionTests
 
         try
         {
-            await using var factory = new WebApplicationFactory<Program>();
+            await using var factory = CreateFactory();
             using var client = ApiTestClient.Create(factory);
 
             using var response = await client.GetAsync(
@@ -77,7 +78,7 @@ public sealed class InfrastructureCompositionTests
 
         try
         {
-            await using var factory = new WebApplicationFactory<Program>();
+            await using var factory = CreateFactory();
             using var client = ApiTestClient.Create(factory);
 
             using var response = await client.GetAsync(
@@ -94,6 +95,9 @@ public sealed class InfrastructureCompositionTests
             Environment.SetEnvironmentVariable(ConfigurationKey, previousConnectionString);
         }
     }
+
+    private static WebApplicationFactory<Program> CreateFactory() =>
+        new WebApplicationFactory<Program>().WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
 
     /// <summary>
     /// Prevents tests that mutate process environment variables from overlapping other collections.

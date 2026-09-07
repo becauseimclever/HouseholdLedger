@@ -87,6 +87,258 @@
         }
       }
     },
+    "/api/v1/accounts/{accountId}/transactions": {
+      "get": {
+        "tags": [
+          "AccountTransactions"
+        ],
+        "summary": "Gets one account and its matching transactions newest first.",
+        "parameters": [
+          {
+            "name": "accountId",
+            "in": "path",
+            "description": "The route-selected account identifier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "From",
+            "in": "query",
+            "description": "Gets or initializes the inclusive first ledger date.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "To",
+            "in": "query",
+            "description": "Gets or initializes the inclusive final ledger date.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "Classification",
+            "in": "query",
+            "description": "Gets or initializes the required expense classification.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "MinimumAmount",
+            "in": "query",
+            "description": "Gets or initializes the inclusive minimum stored amount.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+              "type": [
+                "number",
+                "string"
+              ],
+              "format": "double"
+            }
+          },
+          {
+            "name": "MaximumAmount",
+            "in": "query",
+            "description": "Gets or initializes the inclusive maximum stored amount.",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+              "type": [
+                "number",
+                "string"
+              ],
+              "format": "double"
+            }
+          },
+          {
+            "name": "Search",
+            "in": "query",
+            "description": "Gets or initializes text matched against visible transaction fields.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountTransactionHistoryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings": {
+      "get": {
+        "tags": [
+          "GlobalSettings"
+        ],
+        "summary": "Gets the effective global settings.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalSettingsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "GlobalSettings"
+        ],
+        "summary": "Persists the global display currency.",
+        "requestBody": {
+          "description": "The request cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGlobalSettingsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGlobalSettingsRequest"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGlobalSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalSettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/theme": {
+      "put": {
+        "tags": [
+          "GlobalSettings"
+        ],
+        "summary": "Persists the global workbench theme without changing currency.",
+        "requestBody": {
+          "description": "The request cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateThemeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateThemeRequest"
+              }
+            },
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateThemeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalSettingsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "tags": [
@@ -422,6 +674,27 @@
         },
         "description": "Represents one persisted account."
       },
+      "AccountTransactionHistoryResponse": {
+        "required": [
+          "account",
+          "transactions"
+        ],
+        "type": "object",
+        "properties": {
+          "account": {
+            "description": "The selected account.",
+            "$ref": "#/components/schemas/AccountResponse"
+          },
+          "transactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpenseTransactionResponse"
+            },
+            "description": "Every transaction owned by the account in newest-first order."
+          }
+        },
+        "description": "Represents one account and its complete transaction history."
+      },
       "CreateAccountRequest": {
         "required": [
           "name"
@@ -544,6 +817,24 @@
         },
         "description": "Describes one persisted USD expense."
       },
+      "GlobalSettingsResponse": {
+        "required": [
+          "displayCurrency",
+          "theme"
+        ],
+        "type": "object",
+        "properties": {
+          "displayCurrency": {
+            "type": "string",
+            "description": "The supported ISO 4217 display-currency code."
+          },
+          "theme": {
+            "type": "string",
+            "description": "The supported workbench theme identifier."
+          }
+        },
+        "description": "Represents the authoritative global application settings."
+      },
       "HealthResponse": {
         "required": [
           "status"
@@ -624,6 +915,38 @@
         },
         "description": "Requests correction of one expense without changing its ledger date."
       },
+      "UpdateGlobalSettingsRequest": {
+        "required": [
+          "displayCurrency"
+        ],
+        "type": "object",
+        "properties": {
+          "displayCurrency": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The supported ISO 4217 display-currency code."
+          }
+        },
+        "description": "Supplies an update to the global application settings."
+      },
+      "UpdateThemeRequest": {
+        "required": [
+          "theme"
+        ],
+        "type": "object",
+        "properties": {
+          "theme": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The supported workbench theme identifier."
+          }
+        },
+        "description": "Supplies an update to the global workbench theme."
+      },
       "ValidationProblemDetails": {
         "type": "object",
         "properties": {
@@ -676,6 +999,12 @@
   "tags": [
     {
       "name": "Accounts"
+    },
+    {
+      "name": "AccountTransactions"
+    },
+    {
+      "name": "GlobalSettings"
     },
     {
       "name": "Health"

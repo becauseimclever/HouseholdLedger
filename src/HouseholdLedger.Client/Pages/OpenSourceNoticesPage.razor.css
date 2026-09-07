@@ -73,9 +73,18 @@
 
 .open-source-notice-entry-header {
     display: flex;
+    flex-wrap: wrap;
     align-items: start;
     justify-content: space-between;
     gap: 1rem;
+}
+
+.open-source-notice-entry-header > div {
+    min-width: 0;
+}
+
+.open-source-notice-entry-header h3 {
+    overflow-wrap: anywhere;
 }
 
 .open-source-notice-entry-header a,

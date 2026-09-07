@@ -312,6 +312,26 @@ public sealed class TransactionEndpointTests
                     .ToArray());
         }
 
+        public Task<IReadOnlyList<ExpenseTransactionDto>> ListByAccountAsync(
+            Guid accountId,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<IReadOnlyList<ExpenseTransactionDto>>(
+                this.transactions
+                    .Where(transaction => transaction.AccountId == accountId)
+                    .OrderByDescending(transaction => transaction.Date)
+                    .ThenByDescending(transaction => transaction.Sequence)
+                    .Select(transaction => new ExpenseTransactionDto(
+                        transaction.Id,
+                        transaction.AccountId,
+                        transaction.AccountId == PrimaryAccount.Id ? PrimaryAccount.Name : SecondaryAccount.Name,
+                        transaction.Date,
+                        transaction.Amount,
+                        transaction.Classification))
+                    .ToArray());
+        }
+
         public Task<IReadOnlyList<ExpenseTransaction>> ListByDateRangeAsync(
             DateOnly startDate,
             DateOnly endDate,

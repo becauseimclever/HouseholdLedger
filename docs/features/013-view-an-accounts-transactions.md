@@ -2,9 +2,11 @@
 
 ## Status
 
-Status: Proposed.
+Status: Complete.
 
 - Planned: 2026-09-04.
+- Implemented: 2026-09-05.
+- Validated: 2026-09-05.
 - Depends on Feature 011's account-card gallery and Feature 012's mandatory
   transaction ownership.
 

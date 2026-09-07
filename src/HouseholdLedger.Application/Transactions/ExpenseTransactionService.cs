@@ -45,6 +45,41 @@ public sealed class ExpenseTransactionService(
         return await repository.ListByDateAsync(ledgerDate, cancellationToken);
     }
 
+    /// <summary>Gets an account and its complete newest-first transaction history.</summary>
+    /// <param name="accountId">The account identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The account history, or <see langword="null"/> when the account does not exist.</returns>
+    public async Task<AccountTransactionHistoryDto?> GetAccountHistoryAsync(
+        Guid accountId,
+        CancellationToken cancellationToken = default)
+    {
+        return await this.GetAccountHistoryAsync(
+            accountId,
+            AccountTransactionCriteria.Create(),
+            cancellationToken);
+    }
+
+    /// <summary>Gets an account and its matching newest-first transaction history.</summary>
+    /// <param name="accountId">The account identifier.</param>
+    /// <param name="criteria">The validated account-history criteria.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The account history, or <see langword="null"/> when the account does not exist.</returns>
+    public async Task<AccountTransactionHistoryDto?> GetAccountHistoryAsync(
+        Guid accountId,
+        AccountTransactionCriteria criteria,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(criteria);
+        var account = await accountRepository.FindAsync(accountId, cancellationToken);
+        if (account is null)
+        {
+            return null;
+        }
+
+        var transactions = await repository.ListByAccountAsync(accountId, criteria, cancellationToken);
+        return new AccountTransactionHistoryDto(account.Id, account.Name, transactions);
+    }
+
     /// <summary>Summarizes daily and cumulative expenses for one month.</summary>
     /// <param name="year">The calendar year.</param>
     /// <param name="month">The calendar month.</param>

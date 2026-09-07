@@ -33,6 +33,24 @@ public interface IExpenseTransactionRepository
     /// <returns>The transactions recorded on the date.</returns>
     Task<IReadOnlyList<ExpenseTransactionDto>> ListByDateAsync(DateOnly ledgerDate, CancellationToken cancellationToken);
 
+    /// <summary>Returns one account's transactions in newest ledger and creation order.</summary>
+    /// <param name="accountId">The owning account identifier.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>Every transaction owned by the account.</returns>
+    Task<IReadOnlyList<ExpenseTransactionDto>> ListByAccountAsync(
+        Guid accountId,
+        CancellationToken cancellationToken);
+
+    /// <summary>Returns one account's matching transactions in newest ledger and creation order.</summary>
+    /// <param name="accountId">The owning account identifier.</param>
+    /// <param name="criteria">The validated account-history criteria.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>Every matching transaction owned by the account.</returns>
+    Task<IReadOnlyList<ExpenseTransactionDto>> ListByAccountAsync(
+        Guid accountId,
+        AccountTransactionCriteria criteria,
+        CancellationToken cancellationToken) => this.ListByAccountAsync(accountId, cancellationToken);
+
     /// <summary>Returns transactions in a half-open ledger-date range.</summary>
     /// <param name="startDate">The inclusive first ledger date.</param>
     /// <param name="endDate">The exclusive final ledger date.</param>

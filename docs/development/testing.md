@@ -81,24 +81,17 @@ PostgreSQL behavior must be tested against PostgreSQL, not EF InMemory, SQLite,
 Testcontainers, or Docker Desktop. Start the repository's existing Podman
 machine before invoking the owned harness:
 
-### Local Development/Test Database Setup
+### Manual Development and Automated Test Databases
 
-For the provided local test database, set this value as an environment variable
-outside source control:
+The persistent `PiDB` / `BudgetV2` database is for manual development and keeps
+its data between runs. Configure it through API user secrets and initialize it
+once as described in [Development Setup](setup.md). Do not point automated tests
+at that database because integration and browser tests create, mutate, and remove
+records as part of their assertions.
 
-```powershell
-$env:DB_CONNECTION_STRING_2 = 'Host=PiDB;Port=5432;Database=BudgetV2;Username=BudgetApp;Password=BudgetApp;SSL Mode=Disable'
-```
-
-This is a local test-only credential. Do not commit it to `appsettings` files,
-`.env` files, source-controlled files, or browser-delivered configuration. Use
-a non-shared secret in every non-local environment.
-
-`DB_CONNECTION_STRING_2` is not the connection variable consumed by the
-repository's owned PostgreSQL harness. Continue to use the harness below for
-the supported isolated PostgreSQL integration test; it creates and removes its
-own database and supplies `HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING` to
-the test process.
+Continue to use the harness below for automated PostgreSQL tests. It creates and
+removes an isolated database and supplies
+`HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING` only to the test process.
 
 ```powershell
 podman version
@@ -130,11 +123,11 @@ pwsh tests/HouseholdLedger.Infrastructure.IntegrationTests/Run-PostgreSqlTests.p
   -PostgresImage "docker.io/library/postgres:18"
 ```
 
-The resource-free infrastructure registration test passes. The real PostgreSQL
-connectivity test skips when
+The resource-free infrastructure registration test passes. Real PostgreSQL
+tests skip when
 `HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING` is absent. The required WSL
-and Podman environment is now available; the owned harness passed both
-real-provider tests and cleaned its PostgreSQL 18 container on 2026-09-01.
+real-provider and development-initialization tests, ran the hosted browser
+journey, and cleaned its PostgreSQL 18 container on 2026-09-05.
 
 ## Browser End-to-End Tests
 

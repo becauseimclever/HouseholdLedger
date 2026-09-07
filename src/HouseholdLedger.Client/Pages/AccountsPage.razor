@@ -1,4 +1,5 @@
 @page "/accounts"
+@page "/accounts/{AccountId:guid}"
 @using HouseholdLedger.Api.Contracts
 @using Microsoft.AspNetCore.Components.Web
 
@@ -28,8 +29,15 @@
         <section class="accounts-gallery" aria-label="Account gallery">
             @foreach (var account in accounts)
             {
-                <article class="account-card">
-                    <h2>@account.Name</h2>
+                var isSelected = account.Id == AccountId;
+                <article class="account-card @(isSelected ? "selected-account-card" : null)">
+                    <h2>
+                        <a href="@($"/accounts/{account.Id}")" aria-current="@(isSelected ? "page" : null)">@account.Name</a>
+                    </h2>
+                    @if (isSelected)
+                    {
+                        <p class="selected-account-marker" aria-hidden="true">Selected</p>
+                    }
                 </article>
             }
 
@@ -54,6 +62,105 @@
                     </button>
                 </form>
             </section>
+        </section>
+    }
+
+    @if (AccountId is not null)
+    {
+        <section class="account-history" aria-labelledby="account-history-heading">
+            <h2 id="account-history-heading">@(historyNotFound ? "Account not found" : historyLoadError ? "Transaction history unavailable" : history?.Account.Name ?? "Account transactions")</h2>
+            @if (!historyNotFound)
+            {
+                <form class="transaction-filters" @onsubmit="ApplyFiltersAsync" @onsubmit:preventDefault="true" aria-describedby="@(filterError is not null ? "transaction-filter-error" : null)">
+                    <div class="filter-field">
+                        <label for="filter-from">From</label>
+                        <input id="filter-from" name="from" type="date" value="@fromText" @onchange="UpdateFrom" />
+                    </div>
+                    <div class="filter-field">
+                        <label for="filter-to">To</label>
+                        <input id="filter-to" name="to" type="date" value="@toText" @onchange="UpdateTo" />
+                    </div>
+                    <div class="filter-field">
+                        <label for="filter-classification">Classification</label>
+                        <select id="filter-classification" name="classification" value="@classificationText" @onchange="UpdateClassification">
+                            <option value="">All classifications</option>
+                            <option value="Necessities">Necessities</option>
+                            <option value="Optional">Optional</option>
+                            <option value="Culture">Culture</option>
+                            <option value="Unexpected">Unexpected</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label for="filter-minimum-amount">Minimum amount (@CurrentCurrencyLabel)</label>
+                        <input id="filter-minimum-amount" name="minimumAmount" type="number" min="0" step="0.01" inputmode="decimal" value="@minimumAmountText" @onchange="UpdateMinimumAmount" />
+                    </div>
+                    <div class="filter-field">
+                        <label for="filter-maximum-amount">Maximum amount (@CurrentCurrencyLabel)</label>
+                        <input id="filter-maximum-amount" name="maximumAmount" type="number" min="0" step="0.01" inputmode="decimal" value="@maximumAmountText" @onchange="UpdateMaximumAmount" />
+                    </div>
+                    <div class="filter-field search-field">
+                        <label for="filter-search">Search transactions</label>
+                        <input id="filter-search" name="search" type="search" maxlength="100" autocomplete="off" value="@searchText" @oninput="UpdateSearch" />
+                    </div>
+                    <div class="filter-actions">
+                        <button type="submit">Apply</button>
+                        <button type="button" class="secondary-action" @onclick="ClearFiltersAsync">Clear</button>
+                    </div>
+                </form>
+                @if (filterError is not null)
+                {
+                    <p id="transaction-filter-error" class="field-error filter-error" role="alert">@filterError</p>
+                }
+            }
+
+            @if (isLoadingHistory)
+            {
+                <p class="history-state" role="status" aria-live="polite">Loading account transactions</p>
+            }
+            else if (historyNotFound)
+            {
+                <p class="history-state" role="status">The selected account does not exist.</p>
+            }
+            else if (historyLoadError)
+            {
+                <div class="history-state error-state" role="alert">
+                    <p>Transactions for this account could not be loaded.</p>
+                    <button type="button" @onclick="LoadHistoryAsync">Try again</button>
+                </div>
+            }
+            else if (history is not null)
+            {
+                <p class="result-count" role="status" aria-live="polite">@history.Transactions.Count @(history.Transactions.Count == 1 ? "transaction" : "transactions")</p>
+                @if (history.Transactions.Count == 0)
+                {
+                    <p class="history-state" role="status">@(HasActiveFilters() ? "No transactions match these filters." : "No transactions recorded for this account.")</p>
+                }
+                else
+                {
+                    <div class="history-table-region" tabindex="0">
+                        <table>
+                            <caption>Transactions for @history.Account.Name</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Amount</th>
+                                    <th scope="col">Classification</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var transaction in history.Transactions)
+                                {
+                                    <tr>
+                                        <td>@transaction.Date.ToString("MMM d, yyyy", DateCulture)</td>
+                                        <td>@FormatCurrency(transaction.Amount)</td>
+                                        <td>@transaction.Classification</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
         </section>
     }
 

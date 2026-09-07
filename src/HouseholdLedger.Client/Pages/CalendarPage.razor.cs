@@ -8,6 +8,7 @@ using System.Globalization;
 
 using HouseholdLedger.Api.Contracts;
 using HouseholdLedger.Client.Api;
+using HouseholdLedger.Client.Formatting;
 using HouseholdLedger.Client.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -17,7 +18,6 @@ using Microsoft.AspNetCore.Components.Web;
 /// </summary>
 public partial class CalendarPage : ComponentBase, IDisposable
 {
-    private static readonly CultureInfo UsdCulture = CultureInfo.GetCultureInfo("en-US");
     private readonly CancellationTokenSource lifetimeCancellation = new();
     private IReadOnlyDictionary<DateOnly, DailyExpenseSummaryResponse> expenseSummaries =
         new Dictionary<DateOnly, DailyExpenseSummaryResponse>();
@@ -66,6 +66,10 @@ public partial class CalendarPage : ComponentBase, IDisposable
     [Inject]
     private IMonthlyExpenseSummaryApiClient MonthlyExpenseSummaryApi { get; set; } = null!;
 
+    /// <summary>Gets or sets the global display-currency state.</summary>
+    [CascadingParameter]
+    private GlobalSettingsState? DisplayCurrency { get; set; }
+
     /// <summary>
     /// Gets or sets the shared selected-date state.
     /// </summary>
@@ -104,6 +108,11 @@ public partial class CalendarPage : ComponentBase, IDisposable
     public void Dispose()
     {
         this.SelectedDate.TransactionsChanged -= this.OnTransactionsChanged;
+        if (this.DisplayCurrency is not null)
+        {
+            this.DisplayCurrency.Changed -= this.RefreshCurrency;
+        }
+
         this.summaryRequestCancellation?.Cancel();
         this.summaryRequestCancellation?.Dispose();
         this.lifetimeCancellation.Cancel();
@@ -116,6 +125,12 @@ public partial class CalendarPage : ComponentBase, IDisposable
     {
         this.currentDate = DateOnly.FromDateTime(this.Clock.GetLocalNow().DateTime);
         this.ActiveDate = this.currentDate;
+        if (this.DisplayCurrency is not null)
+        {
+            this.DisplayCurrency.Changed += this.RefreshCurrency;
+            _ = this.DisplayCurrency.EnsureLoadedAsync(this.lifetimeCancellation.Token);
+        }
+
         this.SelectedDate.TransactionsChanged += this.OnTransactionsChanged;
         this.SelectedDate.Select(this.currentDate);
         await this.LoadExpenseSummariesAsync();
@@ -151,9 +166,13 @@ public partial class CalendarPage : ComponentBase, IDisposable
 
     private static string AccessibleDateName(DateOnly date) => date.ToString("D", CultureInfo.CurrentCulture);
 
-    private static string FormatCurrency(decimal amount) => amount.ToString("C", UsdCulture);
-
     private static string GetSummaryId(DateOnly date) => $"expense-summary-{date:yyyyMMdd}";
+
+    private string FormatCurrency(decimal amount) => MoneyFormatter.Format(
+        amount,
+        this.DisplayCurrency?.CurrentCode ?? MoneyFormatter.DefaultCurrencyCode);
+
+    private void RefreshCurrency() => _ = this.InvokeAsync(this.StateHasChanged);
 
     private string? CurrentDateState(DateOnly date) => date == this.currentDate ? "date" : null;
 

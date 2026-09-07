@@ -49,6 +49,36 @@ namespace HouseholdLedger.Infrastructure.Migrations
                     b.ToTable("accounts", (string)null);
                 });
 
+            modelBuilder.Entity("HouseholdLedger.Domain.Settings.GlobalSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("DisplayCurrency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("display_currency");
+
+                    b.Property<string>("Theme")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("theme");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("global_settings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_global_settings_display_currency", "display_currency IN ('USD', 'CAD', 'EUR', 'GBP', 'AUD', 'XXX')");
+
+                            t.HasCheckConstraint("ck_global_settings_singleton", "id = 1");
+
+                            t.HasCheckConstraint("ck_global_settings_theme", "theme IN ('workbench-dark', 'workbench-light')");
+                        });
+                });
+
             modelBuilder.Entity("HouseholdLedger.Domain.Transactions.ExpenseTransaction", b =>
                 {
                     b.Property<Guid>("Id")

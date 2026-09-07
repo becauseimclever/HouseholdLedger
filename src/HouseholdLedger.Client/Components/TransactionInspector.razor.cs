@@ -7,6 +7,7 @@ namespace HouseholdLedger.Client.Components;
 using System.Globalization;
 using HouseholdLedger.Api.Contracts;
 using HouseholdLedger.Client.Api;
+using HouseholdLedger.Client.Formatting;
 using HouseholdLedger.Client.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -17,7 +18,6 @@ using Microsoft.AspNetCore.Components.Web;
 public partial class TransactionInspector : ComponentBase, IDisposable
 {
     private static readonly string[] Classifications = ["Necessities", "Optional", "Culture", "Unexpected"];
-    private static readonly CultureInfo UsdCulture = CultureInfo.GetCultureInfo("en-US");
     private readonly CancellationTokenSource lifetimeCancellation = new();
     private CancellationTokenSource? requestCancellation;
     private IReadOnlyList<AccountResponse> accounts = [];
@@ -58,6 +58,15 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     [Inject]
     private ITransactionsApiClient TransactionsApi { get; set; } = null!;
 
+    /// <summary>Gets or sets the global display-currency state.</summary>
+    [CascadingParameter]
+    private GlobalSettingsState? DisplayCurrency { get; set; }
+
+    private string CurrentCurrencyCode =>
+        this.DisplayCurrency?.CurrentCode ?? MoneyFormatter.DefaultCurrencyCode;
+
+    private string CurrentCurrencyLabel => MoneyFormatter.GetDisplayLabel(this.CurrentCurrencyCode);
+
     private string HasAmountError => this.amountError is null ? "false" : "true";
 
     private string HasAccountError => this.accountError is null ? "false" : "true";
@@ -68,6 +77,11 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     public void Dispose()
     {
         this.SelectedDate.Changed -= this.OnSelectedDateChanged;
+        if (this.DisplayCurrency is not null)
+        {
+            this.DisplayCurrency.Changed -= this.RefreshCurrency;
+        }
+
         this.requestCancellation?.Cancel();
         this.requestCancellation?.Dispose();
         this.lifetimeCancellation.Cancel();
@@ -79,6 +93,11 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     protected override void OnInitialized()
     {
         this.SelectedDate.Changed += this.OnSelectedDateChanged;
+        if (this.DisplayCurrency is not null)
+        {
+            this.DisplayCurrency.Changed += this.RefreshCurrency;
+            _ = this.DisplayCurrency.EnsureLoadedAsync(this.lifetimeCancellation.Token);
+        }
     }
 
     /// <inheritdoc/>
@@ -92,6 +111,8 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     }
 
     private static string GetElementId(string prefix, Guid transactionId) => $"{prefix}-{transactionId:N}";
+
+    private void RefreshCurrency() => _ = this.InvokeAsync(this.StateHasChanged);
 
     private void OnSelectedDateChanged(DateOnly ledgerDate)
     {

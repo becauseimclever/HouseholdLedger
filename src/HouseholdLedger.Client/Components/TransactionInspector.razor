@@ -1,5 +1,6 @@
 @using System.Globalization
 @using HouseholdLedger.Api.Contracts
+@using HouseholdLedger.Client.Formatting
 @using Microsoft.AspNetCore.Components.Web
 
 @if (SelectedDate.Value is not DateOnly selectedDate)
@@ -10,7 +11,7 @@ else
 {
     <section class="transaction-inspector" aria-labelledby="selected-day-heading">
         <h3 id="selected-day-heading">@selectedDate.ToString("D", CultureInfo.CurrentCulture)</h3>
-        <p class="transaction-currency">Expenses in USD</p>
+        <p class="transaction-currency">Expenses in @CurrentCurrencyLabel</p>
 
         @if (isLoadingAccounts)
         {
@@ -46,7 +47,7 @@ else
                 </div>
 
                 <div class="transaction-field">
-                    <label for="transaction-amount">Amount (USD)</label>
+                    <label for="transaction-amount">Amount (@CurrentCurrencyLabel)</label>
                     <input id="transaction-amount" name="amount" type="text" inputmode="decimal" autocomplete="off" value="@amountText" @oninput="UpdateAmount" aria-invalid="@HasAmountError" aria-describedby="transaction-amount-error" />
                     @if (amountError is not null)
                     {
@@ -110,7 +111,7 @@ else
                                         }
                                     </div>
                                     <div class="transaction-field">
-                                        <label for="@GetElementId("edit-amount", transaction.Id)">Amount (USD)</label>
+                                        <label for="@GetElementId("edit-amount", transaction.Id)">Amount (@CurrentCurrencyLabel)</label>
                                         <input id="@GetElementId("edit-amount", transaction.Id)" type="text" inputmode="decimal" autocomplete="off" value="@editAmountText" @oninput="UpdateEditAmount" aria-invalid="@(editAmountError is null ? "false" : "true")" />
                                         @if (editAmountError is not null)
                                         {
@@ -139,7 +140,7 @@ else
                             else if (removingTransactionId == transaction.Id)
                             {
                                 <div class="transaction-confirmation" role="group" aria-labelledby="@GetElementId("remove-heading", transaction.Id)">
-                                    <p id="@GetElementId("remove-heading", transaction.Id)">Permanently remove @transaction.Classification @transaction.Amount.ToString("C", UsdCulture)?</p>
+                                    <p id="@GetElementId("remove-heading", transaction.Id)">Permanently remove @transaction.Classification @MoneyFormatter.Format(transaction.Amount, CurrentCurrencyCode)?</p>
                                     <div class="transaction-actions">
                                         <button class="danger-action" type="button" disabled="@isMutating" @onclick="ConfirmRemoveAsync">@(isMutating ? "Removing" : "Remove permanently")</button>
                                         <button class="secondary-action" type="button" disabled="@isMutating" @onclick="CancelRemove">Cancel</button>
@@ -150,7 +151,7 @@ else
                             {
                                 <div class="transaction-summary">
                                     <span><span>@transaction.Classification</span><small>@transaction.AccountName</small></span>
-                                    <strong>@transaction.Amount.ToString("C", UsdCulture)</strong>
+                                    <strong>@MoneyFormatter.Format(transaction.Amount, CurrentCurrencyCode)</strong>
                                 </div>
                                 <div class="transaction-actions">
                                     <button class="secondary-action" type="button" @onclick="() => BeginEdit(transaction)">Edit</button>

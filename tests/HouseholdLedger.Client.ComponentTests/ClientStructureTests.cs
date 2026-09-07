@@ -129,6 +129,46 @@ public sealed class ClientStructureTests
         Assert.Multiple(assertions.ToArray());
     }
 
+    /// <summary>Verifies both production themes define the complete semantic color contract.</summary>
+    [Fact]
+    public void ProductionThemesHaveMatchingSemanticColorTokens()
+    {
+        var clientDirectory = FindClientDirectory();
+        var appCss = File.ReadAllText(Path.Combine(clientDirectory, "wwwroot", "css", "app.css"));
+        var darkBlock = Regex.Match(
+            appCss,
+            @":root,\s*:root\[data-theme=""workbench-dark""\]\s*\{(?<body>.*?)\n\}",
+            RegexOptions.Singleline).Groups["body"].Value;
+        var lightBlock = Regex.Match(
+            appCss,
+            @":root\[data-theme=""workbench-light""\]\s*\{(?<body>.*?)\n\}",
+            RegexOptions.Singleline).Groups["body"].Value;
+        var colorTokenPattern = new Regex(@"(?<token>--hl-(?:surface|text|border|action|control|status)-[a-z-]+):");
+        var darkTokens = colorTokenPattern.Matches(darkBlock).Select(match => match.Groups["token"].Value);
+        var lightTokens = colorTokenPattern.Matches(lightBlock).Select(match => match.Groups["token"].Value);
+
+        Assert.Multiple(
+            () => Assert.NotEmpty(darkBlock),
+            () => Assert.NotEmpty(lightBlock),
+            () => Assert.Equivalent(darkTokens, lightTokens),
+            () => Assert.Contains("color-scheme: light", lightBlock, StringComparison.Ordinal));
+    }
+
+    /// <summary>Verifies the static host defaults dark and exposes the supported runtime theme bridge.</summary>
+    [Fact]
+    public void StaticHostLoadsThemeBridgeAfterDeclaringDarkDefault()
+    {
+        var clientDirectory = FindClientDirectory();
+        var index = File.ReadAllText(Path.Combine(clientDirectory, "wwwroot", "index.html"));
+        var themeScript = File.ReadAllText(Path.Combine(clientDirectory, "wwwroot", "js", "theme.js"));
+
+        Assert.Multiple(
+            () => Assert.Contains("data-theme=\"workbench-dark\"", index, StringComparison.Ordinal),
+            () => Assert.Contains("js/theme.js", index, StringComparison.Ordinal),
+            () => Assert.Contains("document.documentElement.dataset.theme = theme", themeScript, StringComparison.Ordinal),
+            () => Assert.Contains("meta[name=\"theme-color\"]", themeScript, StringComparison.Ordinal));
+    }
+
     /// <summary>Verifies theme placement does not depend on markup order or side-specific controls.</summary>
     [Fact]
     public void WorkspaceUsesStableSemanticOrderAndThemeOwnedNamedAreas()

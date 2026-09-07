@@ -1,1 +1,10 @@
-<HouseholdLedger.Client.Routes />
+@if (!GlobalSettings.IsLoaded && !GlobalSettings.LoadFailed)
+{
+	<div class="boot-status" role="status" aria-live="polite">Loading Household Ledger...</div>
+}
+else
+{
+	<CascadingValue Value="GlobalSettings">
+		<HouseholdLedger.Client.Routes />
+	</CascadingValue>
+}

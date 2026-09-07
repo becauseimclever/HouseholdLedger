@@ -1,0 +1,59 @@
+.settings-page {
+    width: min(100%, 44rem);
+    color: var(--hl-text-primary);
+}
+
+.settings-page h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: var(--hl-weight-heading);
+}
+
+.settings-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 0.0625rem solid var(--hl-border-strong);
+}
+
+.settings-section h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: var(--hl-weight-heading);
+}
+
+.settings-section form,
+.settings-field {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.settings-section form {
+    max-width: 26rem;
+    margin-top: 1.25rem;
+}
+
+.settings-field label {
+    font-weight: var(--hl-weight-control);
+}
+
+.settings-field select {
+    width: 100%;
+    min-height: 2.75rem;
+}
+
+.settings-section button {
+    justify-self: start;
+}
+
+.settings-message {
+    margin: 1rem 0 0;
+    color: var(--hl-text-secondary);
+}
+
+.settings-message p {
+    margin: 0;
+}
+
+.settings-error {
+    color: var(--hl-text-danger);
+}

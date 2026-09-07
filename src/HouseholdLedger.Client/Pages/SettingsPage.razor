@@ -1,0 +1,99 @@
+@page "/settings"
+@using HouseholdLedger.Client.Formatting
+@using HouseholdLedger.Client.State
+@using Microsoft.AspNetCore.Components.Web
+
+<Microsoft.AspNetCore.Components.Web.PageTitle>Settings</Microsoft.AspNetCore.Components.Web.PageTitle>
+
+<main class="settings-page">
+    <header>
+        <h1>Settings</h1>
+    </header>
+
+    <section class="settings-section" aria-labelledby="money-display-heading">
+        <h2 id="money-display-heading">Global money display</h2>
+
+        @if (CurrencyState.IsLoading && !CurrencyState.IsLoaded)
+        {
+            <p role="status" aria-live="polite">Loading currency setting</p>
+        }
+        else if (CurrencyState.LoadFailed && !CurrencyState.IsLoaded)
+        {
+            <div class="settings-message settings-error" role="alert">
+                <p>Currency settings are unavailable.</p>
+                <button type="button" @onclick="RetryAsync">Try again</button>
+            </div>
+        }
+        else
+        {
+            <form class="currency-settings-form" @onsubmit="SaveAsync" @onsubmit:preventDefault="true">
+                <div class="settings-field">
+                    <label for="display-currency">Display currency</label>
+                    <select id="display-currency" value="@selectedCurrency" @onchange="ChangeCurrency">
+                        @foreach (var option in MoneyFormatter.SupportedCurrencies)
+                        {
+                            <option value="@option.Code">@option.DisplayName (@option.Code)</option>
+                        }
+                    </select>
+                </div>
+
+                <button type="submit" disabled="@(!IsDirty || isSaving)">@(isSaving ? "Saving" : "Save")</button>
+            </form>
+
+            @if (saveError is not null)
+            {
+                <p class="settings-message settings-error" role="alert">@saveError</p>
+            }
+            else if (saveStatus is not null)
+            {
+                <p class="settings-message" role="status" aria-live="polite">@saveStatus</p>
+            }
+            else if (!IsDirty)
+            {
+                <p class="settings-message" role="status">No unsaved changes.</p>
+            }
+        }
+    </section>
+
+    <section class="settings-section" aria-labelledby="appearance-heading">
+        <h2 id="appearance-heading">Appearance</h2>
+
+        @if (CurrencyState.IsLoading && !CurrencyState.IsLoaded)
+        {
+            <p role="status" aria-live="polite">Loading theme setting</p>
+        }
+        else if (CurrencyState.LoadFailed && !CurrencyState.IsLoaded)
+        {
+            <p class="settings-message settings-error" role="alert">Theme settings are unavailable.</p>
+        }
+        else
+        {
+            <form class="theme-settings-form" @onsubmit="SaveThemeAsync" @onsubmit:preventDefault="true">
+                <div class="settings-field">
+                    <label for="workbench-theme">Theme</label>
+                    <select id="workbench-theme" value="@selectedTheme" @onchange="ChangeTheme">
+                        @foreach (var option in ThemeCatalog.SupportedThemes)
+                        {
+                            <option value="@option.Identifier">@option.DisplayName</option>
+                        }
+                    </select>
+                </div>
+
+                <button type="submit" disabled="@(!IsThemeDirty || isSavingTheme)">@(isSavingTheme ? "Saving" : "Save theme")</button>
+            </form>
+
+            @if (themeSaveError is not null)
+            {
+                <p class="settings-message settings-error" role="alert">@themeSaveError</p>
+            }
+            else if (themeSaveStatus is not null)
+            {
+                <p class="settings-message" role="status" aria-live="polite">@themeSaveStatus</p>
+            }
+            else if (!IsThemeDirty)
+            {
+                <p class="settings-message" role="status">No unsaved theme changes.</p>
+            }
+        }
+    </section>
+</main>

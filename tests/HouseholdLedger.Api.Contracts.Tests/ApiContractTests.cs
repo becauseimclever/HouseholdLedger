@@ -204,6 +204,100 @@ public sealed class ApiContractTests
             () => Assert.Equal(["id", "name"], responseRequired));
     }
 
+    /// <summary>Verifies the checked contract describes optional account-history filters and validation.</summary>
+    [Fact]
+    public void CheckedOpenApiDescribesAccountTransactionFilterContract()
+    {
+        using var document = LoadOpenApiJsonDocument();
+        var operation = document.RootElement.GetProperty("paths")
+            .GetProperty("/api/v1/accounts/{accountId}/transactions")
+            .GetProperty("get");
+        var parameters = operation.GetProperty("parameters")
+            .EnumerateArray()
+            .Select(parameter => parameter.GetProperty("name").GetString())
+            .ToArray();
+        var responses = operation.GetProperty("responses");
+        var validationReference = responses.GetProperty("400")
+            .GetProperty("content")
+            .GetProperty("application/problem+json")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+
+        Assert.Multiple(
+            () => Assert.Equal(
+                ["accountId", "From", "To", "Classification", "MinimumAmount", "MaximumAmount", "Search"],
+                parameters),
+            () => Assert.Equal("#/components/schemas/ValidationProblemDetails", validationReference),
+            () => Assert.All(
+                operation.GetProperty("parameters").EnumerateArray().Skip(1),
+                parameter => Assert.False(parameter.TryGetProperty("required", out _))));
+    }
+
+    /// <summary>Verifies the checked contract describes global settings read and update operations.</summary>
+    [Fact]
+    public void CheckedOpenApiDescribesGlobalSettingsContract()
+    {
+        using var document = LoadOpenApiJsonDocument();
+        var root = document.RootElement;
+        var settings = root.GetProperty("paths").GetProperty("/api/v1/settings");
+        var themeUpdate = root.GetProperty("paths").GetProperty("/api/v1/settings/theme").GetProperty("put");
+        var getResponses = settings.GetProperty("get").GetProperty("responses");
+        var update = settings.GetProperty("put");
+        var updateResponses = update.GetProperty("responses");
+        var requestReference = update.GetProperty("requestBody")
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+        var responseReference = getResponses.GetProperty("200")
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+        var requestRequired = root.GetProperty("components")
+            .GetProperty("schemas")
+            .GetProperty("UpdateGlobalSettingsRequest")
+            .GetProperty("required")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .ToArray();
+        var themeRequestReference = themeUpdate.GetProperty("requestBody")
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+        var responseRequired = root.GetProperty("components")
+            .GetProperty("schemas")
+            .GetProperty("GlobalSettingsResponse")
+            .GetProperty("required")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .ToArray();
+        var themeRequestRequired = root.GetProperty("components")
+            .GetProperty("schemas")
+            .GetProperty("UpdateThemeRequest")
+            .GetProperty("required")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .ToArray();
+
+        Assert.Multiple(
+            () => Assert.Equal("#/components/schemas/GlobalSettingsResponse", responseReference),
+            () => Assert.Equal("#/components/schemas/UpdateGlobalSettingsRequest", requestReference),
+            () => Assert.Equal("#/components/schemas/UpdateThemeRequest", themeRequestReference),
+            () => Assert.Equal(["displayCurrency", "theme"], responseRequired),
+            () => Assert.Equal(["displayCurrency"], requestRequired),
+            () => Assert.Equal(["theme"], themeRequestRequired),
+            () => Assert.True(updateResponses.TryGetProperty("200", out _)),
+            () => Assert.True(updateResponses.TryGetProperty("400", out _)),
+            () => Assert.True(themeUpdate.GetProperty("responses").TryGetProperty("200", out _)),
+            () => Assert.True(themeUpdate.GetProperty("responses").TryGetProperty("400", out _)));
+    }
+
     /// <summary>
     /// Verifies that the .NET convenience contract has no HouseholdLedger implementation dependency.
     /// </summary>

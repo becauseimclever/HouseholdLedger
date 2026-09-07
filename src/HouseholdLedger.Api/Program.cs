@@ -9,6 +9,7 @@ var connectionString = builder.Configuration.GetConnectionString("HouseholdLedge
 if (!string.IsNullOrWhiteSpace(connectionString) && HasUsableConnectionStringSyntax(connectionString))
 {
     builder.Services.AddScoped<HouseholdLedger.Application.Accounts.AccountService>();
+    builder.Services.AddScoped<HouseholdLedger.Application.Settings.GlobalSettingsService>();
     builder.Services.AddScoped<HouseholdLedger.Application.Transactions.ExpenseTransactionService>();
     builder.Services.AddHouseholdLedgerInfrastructure(connectionString);
 }
@@ -40,6 +41,24 @@ builder.Services.AddCors(options =>
     }));
 
 var app = builder.Build();
+
+if (args.Contains("--initialize-development-database", StringComparer.Ordinal))
+{
+    if (!app.Environment.IsDevelopment())
+    {
+        throw new InvalidOperationException(
+            "Development database initialization requires the Development environment.");
+    }
+
+    await using var scope = app.Services.CreateAsyncScope();
+    var initializer = scope.ServiceProvider.GetService<
+        HouseholdLedger.Infrastructure.Persistence.DevelopmentDatabaseInitializer>()
+        ?? throw new InvalidOperationException(
+            "Configure ConnectionStrings:HouseholdLedger before initializing the development database.");
+    await initializer.InitializeAsync();
+    Console.WriteLine("The development database is migrated and contains the canonical fixture.");
+    return;
+}
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();

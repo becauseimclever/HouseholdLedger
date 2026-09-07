@@ -5,9 +5,12 @@
 namespace HouseholdLedger.Client.ComponentTests;
 
 using Bunit;
+using HouseholdLedger.Api.Contracts;
+using HouseholdLedger.Client.Api;
 using HouseholdLedger.Client.Layout;
 using HouseholdLedger.Client.OpenSourceNotices;
 using HouseholdLedger.Client.Pages;
+using HouseholdLedger.Client.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -144,7 +147,9 @@ public sealed class OpenSourceNoticesPageTests
     public void CurrentNoticesRouteUsesOneAuxiliaryLinkOutsidePrimaryNavigation()
     {
         using var context = new BunitContext();
-        context.Services.AddScoped<HouseholdLedger.Client.State.SelectedDateState>();
+        context.Services.AddScoped<AccountCatalogState>();
+        context.Services.AddScoped<SelectedDateState>();
+        context.Services.AddSingleton<IAccountsApiClient>(new EmptyAccountsApiClient());
         context.Services.GetRequiredService<NavigationManager>().NavigateTo("/open-source-notices");
 
         var component = context.Render<MainLayout>();
@@ -156,10 +161,19 @@ public sealed class OpenSourceNoticesPageTests
             () => Assert.Equal("Open-source notices", link.TextContent),
             () => Assert.Equal("/open-source-notices", link.GetAttribute("href")),
             () => Assert.Equal("page", link.GetAttribute("aria-current")),
-            () => Assert.Equal(2, component.FindAll("#workspace-navigation a").Count),
+            () => Assert.Equal(3, component.FindAll("#workspace-navigation a").Count),
             () => Assert.Empty(component.FindAll("#workspace-navigation a[aria-current='page']")),
             () => Assert.Equal("Following", component.Find(".workspace-grid").CompareDocumentPosition(link).ToString()));
     }
 
     private static string NormalizeLineEndings(string? text) => text?.Replace("\r\n", "\n", StringComparison.Ordinal) ?? string.Empty;
+
+    private sealed class EmptyAccountsApiClient : IAccountsApiClient
+    {
+        public Task<AccountCreationResult> CreateAsync(CreateAccountRequest request, CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyList<AccountResponse>> ListAsync(CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<AccountResponse>>([]);
+    }
 }

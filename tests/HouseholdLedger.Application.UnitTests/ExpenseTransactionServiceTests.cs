@@ -15,6 +15,28 @@ using Xunit;
 /// </summary>
 public sealed class ExpenseTransactionServiceTests
 {
+    /// <summary>Verifies account-history criteria normalize search and reject unsafe ranges.</summary>
+    [Fact]
+    public void AccountTransactionCriteriaNormalizeAndValidateValues()
+    {
+        var criteria = AccountTransactionCriteria.Create(
+            new DateOnly(2026, 9, 1),
+            new DateOnly(2026, 9, 30),
+            ExpenseClassification.Culture,
+            5m,
+            25m,
+            "  culture  ");
+
+        Assert.Multiple(
+            () => Assert.Equal("culture", criteria.Search),
+            () => Assert.Throws<ArgumentException>(() => AccountTransactionCriteria.Create(
+                fromDate: new DateOnly(2026, 9, 2),
+                toDate: new DateOnly(2026, 9, 1))),
+            () => Assert.Throws<ArgumentOutOfRangeException>(() => AccountTransactionCriteria.Create(minimumAmount: -1m)),
+            () => Assert.Throws<ArgumentException>(() => AccountTransactionCriteria.Create(minimumAmount: 10m, maximumAmount: 5m)),
+            () => Assert.Throws<ArgumentException>(() => AccountTransactionCriteria.Create(search: new string('x', 101))));
+    }
+
     /// <summary>Verifies creation delegates durable storage to the repository.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
@@ -105,6 +127,74 @@ public sealed class ExpenseTransactionServiceTests
             () => Assert.Equal(8m, results[1].Amount));
     }
 
+    /// <summary>Verifies account history is isolated, newest first, and includes account identity.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task GetAccountHistoryReturnsOnlyTheSelectedAccountNewestFirst()
+    {
+        var selectedAccount = new Account(Guid.NewGuid(), "Household Checking");
+        var otherAccount = new Account(Guid.NewGuid(), "Cash Wallet");
+        var repository = new StubRepository();
+        repository.Items.Add(new ExpenseTransaction(Guid.NewGuid(), selectedAccount.Id, new DateOnly(2026, 9, 3), 14m, ExpenseClassification.Culture, 3));
+        repository.Items.Add(new ExpenseTransaction(Guid.NewGuid(), otherAccount.Id, new DateOnly(2026, 10, 1), 9.75m, ExpenseClassification.Culture, 7));
+        repository.Items.Add(new ExpenseTransaction(Guid.NewGuid(), selectedAccount.Id, new DateOnly(2026, 9, 3), 6.50m, ExpenseClassification.Optional, 4));
+        repository.Items.Add(new ExpenseTransaction(Guid.NewGuid(), selectedAccount.Id, new DateOnly(2026, 9, 30), 40m, ExpenseClassification.Unexpected, 6));
+        var service = new ExpenseTransactionService(repository, new StubAccountRepository(selectedAccount, otherAccount));
+
+        var result = await service.GetAccountHistoryAsync(
+            selectedAccount.Id,
+            TestContext.Current.CancellationToken);
+
+        Assert.Multiple(
+            () => Assert.NotNull(result),
+            () => Assert.Equal(selectedAccount.Id, result!.AccountId),
+            () => Assert.Equal(selectedAccount.Name, result!.AccountName),
+            () => Assert.Equal(3, result!.Transactions.Count),
+            () => Assert.Equal([new DateOnly(2026, 9, 30), new DateOnly(2026, 9, 3), new DateOnly(2026, 9, 3)], result!.Transactions.Select(transaction => transaction.Date)),
+            () => Assert.Equal([6L, 4L, 3L], result!.Transactions.Select(transaction => repository.Items.Single(item => item.Id == transaction.Id).Sequence)),
+            () => Assert.All(result!.Transactions, transaction => Assert.Equal(selectedAccount.Id, transaction.AccountId)));
+    }
+
+    /// <summary>Verifies account history passes validated criteria to the account-scoped repository query.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task GetAccountHistoryPassesCriteriaToRepository()
+    {
+        var account = new Account(Guid.NewGuid(), "Household Checking");
+        var repository = new StubRepository();
+        var service = new ExpenseTransactionService(repository, new StubAccountRepository(account));
+        var criteria = AccountTransactionCriteria.Create(
+            new DateOnly(2026, 9, 1),
+            new DateOnly(2026, 9, 30),
+            ExpenseClassification.Culture,
+            5m,
+            25m,
+            "culture");
+
+        await service.GetAccountHistoryAsync(account.Id, criteria, TestContext.Current.CancellationToken);
+
+        Assert.Same(criteria, repository.LastAccountCriteria);
+    }
+
+    /// <summary>Verifies empty and missing accounts remain distinct.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task GetAccountHistoryDistinguishesEmptyFromMissingAccount()
+    {
+        var emptyAccount = new Account(Guid.NewGuid(), "Rainy Day Savings");
+        var repository = new StubRepository();
+        var service = new ExpenseTransactionService(repository, new StubAccountRepository(emptyAccount));
+
+        var empty = await service.GetAccountHistoryAsync(emptyAccount.Id, TestContext.Current.CancellationToken);
+        var missing = await service.GetAccountHistoryAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        Assert.Multiple(
+            () => Assert.NotNull(empty),
+            () => Assert.Empty(empty!.Transactions),
+            () => Assert.Null(missing),
+            () => Assert.Equal(1, repository.AccountListCalls));
+    }
+
     /// <summary>Verifies monthly summaries include zero days and cumulative spending.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
@@ -150,6 +240,15 @@ public sealed class ExpenseTransactionServiceTests
             new Account(savingsId, "Rainy Day Savings")));
 
         var results = await service.SummarizeMonthAsync(2026, 9, TestContext.Current.CancellationToken);
+        var checkingHistory = await service.GetAccountHistoryAsync(
+            checkingId,
+            TestContext.Current.CancellationToken);
+        var cashHistory = await service.GetAccountHistoryAsync(
+            cashId,
+            TestContext.Current.CancellationToken);
+        var savingsHistory = await service.GetAccountHistoryAsync(
+            savingsId,
+            TestContext.Current.CancellationToken);
 
         Assert.Multiple(
             () => Assert.Equal(94.45m, results[0].DailyTotal),
@@ -158,7 +257,12 @@ public sealed class ExpenseTransactionServiceTests
             () => Assert.Equal(40m, results[29].DailyTotal),
             () => Assert.Equal(180.20m, results[29].MonthToDateTotal),
             () => Assert.Equal(Enumerable.Range(1, 7), repository.Items.Select(transaction => (int)transaction.Sequence)),
-            () => Assert.DoesNotContain(repository.Items, transaction => transaction.AccountId == savingsId));
+            () => Assert.DoesNotContain(repository.Items, transaction => transaction.AccountId == savingsId),
+            () => Assert.Equal([6L, 4L, 3L, 1L], checkingHistory!.Transactions.Select(transaction => repository.Items.Single(item => item.Id == transaction.Id).Sequence)),
+            () => Assert.All(checkingHistory!.Transactions, transaction => Assert.Equal(checkingId, transaction.AccountId)),
+            () => Assert.Equal([7L, 5L, 2L], cashHistory!.Transactions.Select(transaction => repository.Items.Single(item => item.Id == transaction.Id).Sequence)),
+            () => Assert.All(cashHistory!.Transactions, transaction => Assert.Equal(cashId, transaction.AccountId)),
+            () => Assert.Empty(savingsHistory!.Transactions));
     }
 
     /// <summary>Verifies correction persists a date-scoped transaction.</summary>
@@ -260,6 +364,10 @@ public sealed class ExpenseTransactionServiceTests
 
         public ExpenseTransaction? Updated { get; private set; }
 
+        public int AccountListCalls { get; private set; }
+
+        public AccountTransactionCriteria? LastAccountCriteria { get; private set; }
+
         public Task AddAsync(ExpenseTransaction transaction, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -285,6 +393,39 @@ public sealed class ExpenseTransactionServiceTests
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult<IReadOnlyList<ExpenseTransactionDto>>(
                 this.ListResults.Where(transaction => transaction.Date == ledgerDate).ToArray());
+        }
+
+        public Task<IReadOnlyList<ExpenseTransactionDto>> ListByAccountAsync(
+            Guid accountId,
+            CancellationToken cancellationToken)
+        {
+            return this.ListByAccountAsync(
+                accountId,
+                AccountTransactionCriteria.Create(),
+                cancellationToken);
+        }
+
+        public Task<IReadOnlyList<ExpenseTransactionDto>> ListByAccountAsync(
+            Guid accountId,
+            AccountTransactionCriteria criteria,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            this.AccountListCalls++;
+            this.LastAccountCriteria = criteria;
+            return Task.FromResult<IReadOnlyList<ExpenseTransactionDto>>(
+                this.Items
+                    .Where(transaction => transaction.AccountId == accountId)
+                    .OrderByDescending(transaction => transaction.Date)
+                    .ThenByDescending(transaction => transaction.Sequence)
+                    .Select(transaction => new ExpenseTransactionDto(
+                        transaction.Id,
+                        transaction.AccountId,
+                        string.Empty,
+                        transaction.Date,
+                        transaction.Amount,
+                        transaction.Classification))
+                    .ToArray());
         }
 
         public Task<IReadOnlyList<ExpenseTransaction>> ListByDateRangeAsync(

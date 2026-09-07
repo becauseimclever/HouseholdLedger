@@ -1,7 +1,6 @@
 # Development Setup
 
-This guide prepares a contributor to build and run the current application
-scaffold. The scaffold has no ledger-entry workflow or database-backed API yet.
+This guide prepares a contributor to build and run HouseholdLedger locally.
 
 ## Prerequisites
 
@@ -22,7 +21,6 @@ dotnet dev-certs https --check --trust
 
 The repository does not currently have a local .NET tool manifest. Do not run
 `dotnet tool restore` or install a global `dotnet-ef` tool as part of setup.
-There are no migrations to manage until a feature introduces a real data model.
 
 ## Restore and Build
 
@@ -61,8 +59,33 @@ tests do not update the artifact.
 ## Run the Application
 
 The API hosts the Blazor WebAssembly client and serves the API from the same
-origin. No launch profiles are committed, so select the development environment
-and listening address explicitly:
+origin. Configure the permanent manual-development PostgreSQL connection through
+ASP.NET Core user secrets. Enter the complete connection string at the masked
+prompt; for the shared local database its non-secret fields are `Host=PiDB`,
+`Port=5432`, `Database=BudgetV2`, and `Username=BudgetApp`.
+
+```powershell
+$connectionString = Read-Host "PostgreSQL connection string" -MaskInput
+dotnet user-secrets set "ConnectionStrings:HouseholdLedger" `
+  $connectionString --project src/HouseholdLedger.Api
+Remove-Variable connectionString
+```
+
+Do not commit the password or connection string to an appsettings file, script,
+`.env` file, or browser-delivered configuration.
+
+For a new empty database, explicitly apply migrations and add the canonical
+three-account, seven-transaction development fixture once:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+dotnet run --project src/HouseholdLedger.Api -- `
+  --initialize-development-database
+```
+
+The initializer exits after completion. It refuses to add data when either
+accounts or transactions already exist, and normal API startup never migrates,
+resets, or seeds the database. After the one-time initialization, run the API:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = "Development"
@@ -71,7 +94,7 @@ dotnet run --project src/HouseholdLedger.Api --no-build
 ```
 
 Open `https://localhost:7241`. The shell should show the current calendar period
-and API health. Verify the API independently at
+and persisted fixture data. Verify the API independently at
 `https://localhost:7241/api/v1/health`. Its generated OpenAPI document is at
 `https://localhost:7241/openapi/v1.json`.
 

@@ -5,6 +5,7 @@
 namespace HouseholdLedger.Client;
 
 using HouseholdLedger.Client.Api;
+using HouseholdLedger.Client.Formatting;
 using HouseholdLedger.Client.State;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -33,10 +34,14 @@ public static class Program
                 builder.Configuration,
                 new Uri(serviceProvider.GetRequiredService<NavigationManager>().BaseUri, UriKind.Absolute)),
         });
+        builder.Services.AddScoped<IAccountTransactionsApiClient, AccountTransactionsApiClient>();
         builder.Services.AddScoped<IAccountsApiClient, AccountsApiClient>();
+        builder.Services.AddScoped<IGlobalSettingsApiClient, GlobalSettingsApiClient>();
         builder.Services.AddScoped<IHealthApiClient, HealthApiClient>();
         builder.Services.AddScoped<IMonthlyExpenseSummaryApiClient, MonthlyExpenseSummaryApiClient>();
         builder.Services.AddScoped<ITransactionsApiClient, TransactionsApiClient>();
+        builder.Services.AddScoped<AccountCatalogState>();
+        builder.Services.AddScoped<GlobalSettingsState>();
         builder.Services.AddScoped<SelectedDateState>();
         builder.Services.AddSingleton(TimeProvider.System);
 

@@ -5,6 +5,7 @@
 namespace HouseholdLedger.Infrastructure.Persistence;
 
 using HouseholdLedger.Domain.Accounts;
+using HouseholdLedger.Domain.Settings;
 using HouseholdLedger.Domain.Transactions;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,6 +21,9 @@ public sealed class HouseholdLedgerDbContext(DbContextOptions<HouseholdLedgerDbC
 
     /// <summary>Gets the expense transactions.</summary>
     public DbSet<ExpenseTransaction> ExpenseTransactions => this.Set<ExpenseTransaction>();
+
+    /// <summary>Gets the singleton global settings.</summary>
+    public DbSet<GlobalSettings> GlobalSettings => this.Set<GlobalSettings>();
 
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -51,5 +55,31 @@ public sealed class HouseholdLedgerDbContext(DbContextOptions<HouseholdLedgerDbC
             .OnDelete(DeleteBehavior.Restrict);
         transaction.HasIndex(item => item.Sequence).IsUnique();
         transaction.HasIndex(item => new { item.Date, item.Sequence });
+
+        var settings = modelBuilder.Entity<GlobalSettings>();
+        settings.ToTable(
+            "global_settings",
+            tableBuilder =>
+            {
+                tableBuilder.HasCheckConstraint("ck_global_settings_singleton", "id = 1");
+                tableBuilder.HasCheckConstraint(
+                    "ck_global_settings_display_currency",
+                    "display_currency IN ('USD', 'CAD', 'EUR', 'GBP', 'AUD', 'XXX')");
+                tableBuilder.HasCheckConstraint(
+                    "ck_global_settings_theme",
+                    "theme IN ('workbench-dark', 'workbench-light')");
+            });
+        settings.HasKey(item => item.Id);
+        settings.Property(item => item.Id).HasColumnName("id").ValueGeneratedNever();
+        settings.Property(item => item.DisplayCurrency)
+            .HasColumnName("display_currency")
+            .HasConversion<string>()
+            .HasMaxLength(3);
+        settings.Property(item => item.Theme)
+            .HasColumnName("theme")
+            .HasConversion(
+                theme => WorkbenchThemeCode.ToCode(theme),
+                value => WorkbenchThemeCode.Parse(value))
+            .HasMaxLength(32);
     }
 }
