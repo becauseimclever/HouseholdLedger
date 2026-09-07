@@ -37,15 +37,17 @@ public sealed class WorkspaceShellTests
             () => Assert.Single(component.FindAll("nav#workspace-navigation")),
             () => Assert.Single(component.FindAll("section#workspace-main")),
             () => Assert.Single(component.FindAll("aside#workspace-inspector")),
+            () => Assert.Equal("© 2026 HouseholdLedger", component.Find(".workspace-copyright").TextContent),
+            () => Assert.Equal("/open-source-notices", component.Find("footer .workspace-auxiliary-link").GetAttribute("href")),
             () => Assert.Equal("Navigation", component.Find("#navigation-heading").TextContent),
             () => Assert.Equal("Inspector", component.Find("#inspector-heading").TextContent),
             () => Assert.Equal("No calendar item selected", component.Find(".inspector-empty-state").TextContent),
             () => Assert.Equal(3, component.FindAll("#workspace-navigation a").Count),
-            () => Assert.Equal("Home", component.FindAll("#workspace-navigation a")[0].TextContent),
+            () => Assert.Equal("Home", component.FindAll("#workspace-navigation .navigation-label")[0].TextContent),
             () => Assert.Equal("/", component.FindAll("#workspace-navigation a")[0].GetAttribute("href")),
-            () => Assert.Equal("Accounts", component.FindAll("#workspace-navigation a")[1].TextContent),
+            () => Assert.Equal("Accounts", component.FindAll("#workspace-navigation .navigation-label")[1].TextContent),
             () => Assert.Equal("/accounts", component.FindAll("#workspace-navigation a")[1].GetAttribute("href")),
-            () => Assert.Equal("Settings", component.FindAll("#workspace-navigation a")[2].TextContent),
+            () => Assert.Equal("Settings", component.FindAll("#workspace-navigation .navigation-label")[2].TextContent),
             () => Assert.Equal("/settings", component.FindAll("#workspace-navigation a")[2].GetAttribute("href")),
             () => Assert.Empty(component.FindAll(".workspace-toolbar button[aria-controls='workspace-navigation']")),
             () => Assert.Single(component.FindAll("#workspace-navigation button[aria-controls='workspace-navigation']")),
@@ -65,7 +67,9 @@ public sealed class WorkspaceShellTests
             () => Assert.Contains("navigation-pane-collapsed", component.Find("#workspace-navigation").ClassList),
             () => Assert.Equal("Navigation", component.Find("#workspace-navigation").GetAttribute("aria-label")),
             () => Assert.Empty(component.FindAll("#navigation-heading")),
-            () => Assert.Empty(component.FindAll("#workspace-navigation a")),
+            () => Assert.Equal(3, component.FindAll("#workspace-navigation a").Count),
+            () => Assert.All(component.FindAll("#workspace-navigation a"), link => Assert.NotNull(link.GetAttribute("aria-label"))),
+            () => Assert.All(component.FindAll("#workspace-navigation .navigation-label"), label => Assert.Contains("navigation-label", label.ClassList)),
             () => Assert.Equal("false", navigationToggle.GetAttribute("aria-expanded")),
             () => Assert.Equal("Expand navigation", navigationToggle.GetAttribute("aria-label")),
             () => Assert.False(component.Find("#workspace-inspector").HasAttribute("hidden")),
@@ -84,7 +88,10 @@ public sealed class WorkspaceShellTests
 
         Assert.Multiple(
             () => Assert.False(component.Find("#workspace-navigation").HasAttribute("hidden")),
-            () => Assert.True(component.Find("#workspace-inspector").HasAttribute("hidden")),
+            () => Assert.False(component.Find("#workspace-inspector").HasAttribute("hidden")),
+            () => Assert.Contains("inspector-pane-collapsed", component.Find("#workspace-inspector").ClassList),
+            () => Assert.Empty(component.FindAll("#inspector-heading")),
+            () => Assert.Empty(component.FindAll(".inspector-empty-state")),
             () => Assert.Equal("false", inspectorToggle.GetAttribute("aria-expanded")),
             () => Assert.Equal("Expand inspector", inspectorToggle.GetAttribute("aria-label")));
     }
@@ -115,7 +122,7 @@ public sealed class WorkspaceShellTests
     [Theory]
     [InlineData("/", "Home")]
     [InlineData("/accounts", "Accounts")]
-    [InlineData("/accounts/10000000-0000-0000-0000-000000000001", "Accounts")]
+    [InlineData("/accounts/10000000-0000-0000-0000-000000000001", "Household Checking")]
     public void NavigationExposesExactlyOneCurrentDestination(string route, string expectedLabel)
     {
         using var context = new BunitContext();
@@ -125,9 +132,11 @@ public sealed class WorkspaceShellTests
         context.Services.GetRequiredService<NavigationManager>().NavigateTo(route);
 
         var component = context.Render<MainLayout>();
-        var current = Assert.Single(component.FindAll(".workspace-navigation-link[aria-current='page']"));
-
-        Assert.Equal(expectedLabel, current.TextContent);
+        component.WaitForAssertion(() =>
+        {
+            var current = Assert.Single(component.FindAll("#workspace-navigation a[aria-current='page']"));
+            Assert.Equal(expectedLabel, current.GetAttribute("aria-label"));
+        });
     }
 
     /// <summary>Verifies that only pages with inspector content expose the shared pane and its control.</summary>
@@ -147,7 +156,7 @@ public sealed class WorkspaceShellTests
 
         component.WaitForAssertion(() => Assert.Multiple(
             () => Assert.Empty(component.FindAll("button[aria-controls='workspace-inspector']")),
-            () => Assert.True(component.Find("#workspace-inspector").HasAttribute("hidden"))));
+            () => Assert.Empty(component.FindAll("#workspace-inspector"))));
 
         navigation.NavigateTo("/");
 
@@ -174,7 +183,7 @@ public sealed class WorkspaceShellTests
         var disclosure = component.Find("button[aria-controls='accounts-navigation-list']");
         Assert.Multiple(
             () => Assert.Equal("/accounts", accountsLink.GetAttribute("href")),
-            () => Assert.Equal("Accounts", accountsLink.TextContent),
+            () => Assert.Equal("Accounts", accountsLink.GetAttribute("aria-label")),
             () => Assert.Equal("button", disclosure.GetAttribute("type")),
             () => Assert.Equal("Expand accounts", disclosure.GetAttribute("aria-label")),
             () => Assert.Equal("false", disclosure.GetAttribute("aria-expanded")),
@@ -239,7 +248,14 @@ public sealed class WorkspaceShellTests
 
         apiClient.Requests[0].Completion.SetException(new HttpRequestException("Unavailable"));
         await component.InvokeAsync(() => Task.CompletedTask);
-        component.WaitForElement(".account-navigation-error button").Click();
+        component.WaitForElement(".account-navigation-error button");
+        component.Find("button[aria-controls='workspace-navigation']").Click();
+        var retry = component.Find(".account-navigation-error button");
+        Assert.Multiple(
+            () => Assert.Equal("Try loading accounts again", retry.GetAttribute("aria-label")),
+            () => Assert.Equal("Try loading accounts again", retry.GetAttribute("title")),
+            () => Assert.Equal(3, component.FindAll("#workspace-navigation a").Count));
+        retry.Click();
         component.WaitForAssertion(() => Assert.Equal(2, apiClient.Requests.Count));
 
         var latest = new AccountResponse(Guid.NewGuid(), "Latest account");
@@ -270,6 +286,57 @@ public sealed class WorkspaceShellTests
         Assert.Multiple(
             () => Assert.Equal("true", component.Find("button[aria-controls='accounts-navigation-list']").GetAttribute("aria-expanded")),
             () => Assert.Equal("No accounts yet.", component.Find(".account-navigation-state").TextContent));
+    }
+
+    /// <summary>Verifies collapsed navigation retains named icon links and exact current state.</summary>
+    [Fact]
+    public void CollapsedNavigationRetainsIconLinksForExpandedAccountHierarchy()
+    {
+        using var context = new BunitContext();
+        var account = new AccountResponse(Guid.Parse("10000000-0000-0000-0000-000000000001"), "Household Checking");
+        RegisterShellServices(context, new StubAccountsApiClient([account]));
+        context.Services.GetRequiredService<NavigationManager>().NavigateTo($"/accounts/{account.Id}");
+        var component = context.Render<MainLayout>();
+
+        component.WaitForElement(".account-navigation-link");
+        component.Find("button[aria-controls='workspace-navigation']").Click();
+        var disclosure = component.Find("button[aria-controls='accounts-navigation-list']");
+
+        Assert.Multiple(
+            () => Assert.Equal(4, component.FindAll("#workspace-navigation a").Count),
+            () => Assert.Equal(4, component.FindAll("#workspace-navigation .navigation-icon").Count),
+            () => Assert.Equal("true", disclosure.GetAttribute("aria-expanded")),
+            () => Assert.Equal("Collapse accounts", disclosure.GetAttribute("aria-label")),
+            () => Assert.Equal("Collapse accounts", disclosure.GetAttribute("title")),
+            () => Assert.Equal("page", component.Find(".account-navigation-link").GetAttribute("aria-current")),
+            () => Assert.Equal("Household Checking", component.Find(".account-navigation-link").GetAttribute("aria-label")),
+            () => Assert.Equal("Household Checking", component.Find(".account-navigation-link").GetAttribute("title")));
+
+        disclosure.Click();
+
+        Assert.Multiple(
+            () => Assert.Empty(component.FindAll(".account-navigation-link")),
+            () => Assert.Equal("false", disclosure.GetAttribute("aria-expanded")),
+            () => Assert.Equal("Expand accounts", disclosure.GetAttribute("aria-label")));
+    }
+
+    /// <summary>Verifies selecting a date reveals a collapsed inspector without changing navigation.</summary>
+    [Fact]
+    public void SelectedDateAutomaticallyRevealsCollapsedInspector()
+    {
+        using var context = new BunitContext();
+        RegisterShellServices(context, new StubAccountsApiClient([]));
+        context.Services.AddSingleton<ITransactionsApiClient>(new StubTransactionsApiClient());
+        var component = context.Render<MainLayout>();
+        component.Find("button[aria-controls='workspace-navigation']").Click();
+        component.Find("button[aria-controls='workspace-inspector']").Click();
+
+        context.Services.GetRequiredService<SelectedDateState>().Select(new DateOnly(2026, 9, 6));
+
+        component.WaitForAssertion(() => Assert.Multiple(
+            () => Assert.DoesNotContain("inspector-pane-collapsed", component.Find("#workspace-inspector").ClassList),
+            () => Assert.Equal("true", component.Find("button[aria-controls='workspace-inspector']").GetAttribute("aria-expanded")),
+            () => Assert.Contains("navigation-pane-collapsed", component.Find("#workspace-navigation").ClassList)));
     }
 
     private static void RegisterShellServices(BunitContext context, IAccountsApiClient accountsApiClient)
@@ -311,6 +378,29 @@ public sealed class WorkspaceShellTests
             this.Requests.Add(request);
             return request.Completion.Task;
         }
+    }
+
+    private sealed class StubTransactionsApiClient : ITransactionsApiClient
+    {
+        public Task<bool> CreateAsync(
+            DateOnly ledgerDate,
+            CreateExpenseTransactionRequest request,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<ExpenseTransactionResponse>> ListAsync(
+            DateOnly ledgerDate,
+            CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<ExpenseTransactionResponse>>([]);
+
+        public Task<TransactionMutationResult> RemoveAsync(
+            DateOnly ledgerDate,
+            Guid transactionId,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<TransactionMutationResult> ReviseAsync(
+            DateOnly ledgerDate,
+            Guid transactionId,
+            UpdateExpenseTransactionRequest request,
+            CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
     private sealed record AccountRequest

@@ -5,26 +5,9 @@
 <div class="workspace-shell">
     <header class="workspace-toolbar">
         <NavLink href="/" Match="NavLinkMatch.All" class="workspace-name" aria-label="HouseholdLedger home">HouseholdLedger</NavLink>
-        <div class="workspace-tools" aria-label="Workspace panes">
-            @if (InspectorAvailable)
-            {
-                <button class="pane-toggle"
-                        type="button"
-                        aria-controls="workspace-inspector"
-                        aria-describedby="inspector-toggle-tooltip"
-                        aria-expanded="@(inspectorExpanded ? "true" : "false")"
-                        aria-label="@InspectorToggleLabel"
-                        @onclick="ToggleInspector">
-                    <span aria-hidden="true">
-                        <Blazicons.Blazicon Svg="Blazicons.Lucide.Search" />
-                    </span>
-                    <span id="inspector-toggle-tooltip" class="pane-toggle-tooltip" role="tooltip">@InspectorToggleLabel</span>
-                </button>
-            }
-        </div>
     </header>
 
-    <div class="workspace-grid">
+    <div class="workspace-grid @(!InspectorAvailable ? "workspace-grid-no-inspector" : null)">
         <nav id="workspace-navigation"
              class="workspace-pane navigation-pane @(navigationExpanded ? null : "navigation-pane-collapsed")"
              aria-labelledby="@(navigationExpanded ? "navigation-heading" : null)"
@@ -47,20 +30,25 @@
                     <span id="navigation-toggle-tooltip" class="pane-toggle-tooltip" role="tooltip">@NavigationToggleLabel</span>
                 </button>
             </div>
-            @if (navigationExpanded)
-            {
-                <ul class="workspace-navigation-list">
+            <ul class="workspace-navigation-list @(navigationExpanded ? null : "workspace-navigation-rail-list")">
                 <li>
-                    <NavLink href="/" Match="NavLinkMatch.All" class="workspace-navigation-link">Home</NavLink>
+                    <NavLink href="/" Match="NavLinkMatch.All" class="workspace-navigation-link" aria-label="Home" title="Home">
+                        <span class="navigation-icon" aria-hidden="true"><Blazicons.Blazicon Svg="Blazicons.Lucide.CalendarDays" /></span>
+                        <span class="navigation-label">Home</span>
+                    </NavLink>
                 </li>
                 <li class="accounts-navigation-branch @(AccountRouteSelected ? "current-navigation-branch" : null)">
                     <div class="accounts-navigation-heading">
-                        <NavLink href="/accounts" class="workspace-navigation-link">Accounts</NavLink>
+                        <NavLink href="/accounts" Match="NavLinkMatch.All" class="workspace-navigation-link" aria-label="Accounts" title="Accounts">
+                            <span class="navigation-icon" aria-hidden="true"><Blazicons.Blazicon Svg="Blazicons.Lucide.WalletCards" /></span>
+                            <span class="navigation-label">Accounts</span>
+                        </NavLink>
                         <button class="accounts-disclosure"
                                 type="button"
                                 aria-expanded="@(accountsBranchExpanded ? "true" : "false")"
                                 aria-controls="accounts-navigation-list"
                                 aria-label="@AccountsToggleLabel"
+                                title="@AccountsToggleLabel"
                                 @onclick="ToggleAccounts">
                             <span aria-hidden="true">
                                 <Blazicons.Blazicon Svg="@(accountsBranchExpanded ? Blazicons.Lucide.ChevronDown : Blazicons.Lucide.ChevronRight)" />
@@ -78,7 +66,10 @@
                             {
                                 <li class="account-navigation-state account-navigation-error" role="alert">
                                     <span>Accounts are unavailable.</span>
-                                    <button type="button" @onclick="LoadAccountsAsync">Try again</button>
+                                    <button class="account-navigation-retry" type="button" aria-label="Try loading accounts again" title="Try loading accounts again" @onclick="LoadAccountsAsync">
+                                        <span class="navigation-icon" aria-hidden="true"><Blazicons.Blazicon Svg="Blazicons.Lucide.RefreshCw" /></span>
+                                        <span class="retry-label">Try again</span>
+                                    </button>
                                 </li>
                             }
                             else if (accounts.Count == 0)
@@ -90,7 +81,8 @@
                                 @foreach (var account in accounts)
                                 {
                                     <li>
-                                        <NavLink href="@($"/accounts/{account.Id}")" Match="NavLinkMatch.All" class="account-navigation-link">
+                                        <NavLink href="@($"/accounts/{account.Id}")" Match="NavLinkMatch.All" class="account-navigation-link" aria-label="@account.Name" title="@account.Name">
+                                            <span class="navigation-icon" aria-hidden="true"><Blazicons.Blazicon Svg="Blazicons.Lucide.Landmark" /></span>
                                             <span class="account-navigation-name" title="@account.Name">@account.Name</span>
                                             <span class="current-account-marker">Current</span>
                                         </NavLink>
@@ -101,28 +93,54 @@
                     }
                 </li>
                 <li>
-                    <NavLink href="/settings" Match="NavLinkMatch.All" class="workspace-navigation-link">Settings</NavLink>
+                    <NavLink href="/settings" Match="NavLinkMatch.All" class="workspace-navigation-link" aria-label="Settings" title="Settings">
+                        <span class="navigation-icon" aria-hidden="true"><Blazicons.Blazicon Svg="Blazicons.Lucide.Settings" /></span>
+                        <span class="navigation-label">Settings</span>
+                    </NavLink>
                 </li>
-                </ul>
-            }
+            </ul>
         </nav>
         <section id="workspace-main" class="workspace-main" aria-label="Primary workspace">
             @Body
         </section>
-        <aside id="workspace-inspector" class="workspace-pane inspector-pane" aria-labelledby="inspector-heading" hidden="@(!InspectorAvailable || !inspectorExpanded)">
-            <h2 id="inspector-heading">Inspector</h2>
-            @if (InspectorAvailable && SelectedDate.Value is null)
+        @if (InspectorAvailable)
+        {
+        <aside id="workspace-inspector"
+               class="workspace-pane inspector-pane @(inspectorExpanded ? null : "inspector-pane-collapsed")"
+               aria-labelledby="@(inspectorExpanded ? "inspector-heading" : null)"
+               aria-label="@(inspectorExpanded ? null : "Inspector")">
+            <div class="inspector-pane-header">
+                <button class="pane-toggle inspector-toggle"
+                        type="button"
+                        aria-controls="workspace-inspector"
+                        aria-describedby="inspector-toggle-tooltip"
+                        aria-expanded="@(inspectorExpanded ? "true" : "false")"
+                        aria-label="@InspectorToggleLabel"
+                        @onclick="ToggleInspector">
+                    <span aria-hidden="true">
+                        <Blazicons.Blazicon Svg="@(inspectorExpanded ? Blazicons.Lucide.ChevronRight : Blazicons.Lucide.ChevronLeft)" />
+                    </span>
+                    <span id="inspector-toggle-tooltip" class="pane-toggle-tooltip" role="tooltip">@InspectorToggleLabel</span>
+                </button>
+                @if (inspectorExpanded)
+                {
+                    <h2 id="inspector-heading">Inspector</h2>
+                }
+            </div>
+            @if (inspectorExpanded && SelectedDate.Value is null)
             {
                 <p class="inspector-empty-state">No calendar item selected</p>
             }
-            else if (InspectorAvailable)
+            else if (inspectorExpanded)
             {
                 <HouseholdLedger.Client.Components.TransactionInspector />
             }
         </aside>
+        }
     </div>
 
     <footer class="workspace-auxiliary">
+        <span class="workspace-copyright">© 2026 HouseholdLedger</span>
         <NavLink href="/open-source-notices" Match="NavLinkMatch.All" class="workspace-auxiliary-link">Open-source notices</NavLink>
     </footer>
 </div>

@@ -25,7 +25,8 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     private bool inspectorExpanded = true;
     private bool navigationExpanded = true;
 
-    private bool AccountRouteSelected => this.CurrentPath.StartsWith("accounts/", StringComparison.OrdinalIgnoreCase);
+    private bool AccountRouteSelected => this.CurrentPath.Equals("accounts", StringComparison.OrdinalIgnoreCase)
+        || this.CurrentPath.StartsWith("accounts/", StringComparison.OrdinalIgnoreCase);
 
     private string AccountsToggleLabel => this.accountsBranchExpanded ? "Collapse accounts" : "Expand accounts";
 

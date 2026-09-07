@@ -19,9 +19,9 @@ decisions and acceptance boundaries; historical audits remain under
 | [018](018-present-navigation-as-workspace-tiles.md) | Complete | Present native destinations as themed navigation tiles and make the HouseholdLedger name a Home link. |
 | [019](019-collapse-navigation-from-its-pane.md) | Complete | Replace the toolbar hamburger with a pane-owned arrow and a reachable collapsed navigation rail. |
 | [020](020-select-a-workbench-light-theme.md) | Complete | Persistently switch the application between Workbench Dark and a VS Code-inspired Workbench Light theme. |
-| [021](021-present-a-themed-application-footer-and-links.md) | Proposed | Add copyright and a styled notices destination to the footer and give every shipped link an intentional themed role. |
-| [022](022-collapse-and-reveal-the-inspector-pane.md) | Proposed | Give the inspector a pane-owned collapse arrow and automatically reveal it when a calendar date is selected. |
-| [023](023-navigate-from-the-collapsed-icon-rail.md) | Proposed | Give every navigation destination an icon and preserve usable current-location navigation in the collapsed rail. |
+| [021](021-present-a-themed-application-footer-and-links.md) | Complete | Add copyright and a styled notices destination to the footer and give every shipped link an intentional themed role. |
+| [022](022-collapse-and-reveal-the-inspector-pane.md) | Complete | Give the inspector a pane-owned collapse arrow and automatically reveal it when a calendar date is selected. |
+| [023](023-navigate-from-the-collapsed-icon-rail.md) | Complete | Give every navigation destination an icon and preserve usable current-location navigation in the collapsed rail. |
 
 The features are ordered so each delivers one observable result. Feature 014
 reuses the account catalog and account-detail route; Feature 015 enhances that

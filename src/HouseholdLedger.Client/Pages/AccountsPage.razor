@@ -32,7 +32,7 @@
                 var isSelected = account.Id == AccountId;
                 <article class="account-card @(isSelected ? "selected-account-card" : null)">
                     <h2>
-                        <a href="@($"/accounts/{account.Id}")" aria-current="@(isSelected ? "page" : null)">@account.Name</a>
+                        <a class="account-card-link" href="@($"/accounts/{account.Id}")" aria-current="@(isSelected ? "page" : null)">@account.Name</a>
                     </h2>
                     @if (isSelected)
                     {

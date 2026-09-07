@@ -2,9 +2,11 @@
 
 ## Status
 
-Status: Proposed.
+Status: Complete.
 
 - Planned: 2026-09-05.
+- Implemented: 2026-09-06.
+- Validated: 2026-09-06.
 - Depends on the existing selected-date state and Feature 019's pane-owned
   collapse pattern.
 

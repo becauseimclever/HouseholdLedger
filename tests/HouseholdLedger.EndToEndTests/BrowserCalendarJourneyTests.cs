@@ -241,9 +241,9 @@ public sealed class BrowserCalendarJourneyTests
         await ClickAndWaitForToggleStateAsync(browser, "workspace-navigation", false, cancellationToken);
         await AssertVerticalLayoutAsync(browser, includeNavigation: true, includeInspector: true, cancellationToken);
         await ClickAndWaitForToggleStateAsync(browser, "workspace-inspector", false, cancellationToken);
-        await AssertVerticalLayoutAsync(browser, includeNavigation: true, includeInspector: false, cancellationToken);
+        await AssertVerticalLayoutAsync(browser, includeNavigation: true, includeInspector: true, cancellationToken);
         await ClickAndWaitForToggleStateAsync(browser, "workspace-navigation", true, cancellationToken);
-        await AssertVerticalLayoutAsync(browser, includeNavigation: true, includeInspector: false, cancellationToken);
+        await AssertVerticalLayoutAsync(browser, includeNavigation: true, includeInspector: true, cancellationToken);
         await ClickAndWaitForToggleStateAsync(browser, "workspace-inspector", true, cancellationToken);
         await AssertVerticalLayoutAsync(browser, includeNavigation: true, includeInspector: true, cancellationToken);
 
@@ -272,6 +272,12 @@ public sealed class BrowserCalendarJourneyTests
             ["--hl-workspace-collapsed-navigation-no-inspector-areas"] = "\"navigation\" \"main\"",
             ["--hl-workspace-collapsed-navigation-no-inspector-columns"] = "minmax(0, 1fr)",
             ["--hl-workspace-collapsed-navigation-no-inspector-rows"] = "auto minmax(20rem, 1fr)",
+            ["--hl-workspace-collapsed-inspector-areas"] = "\"navigation\" \"main\" \"inspector\"",
+            ["--hl-workspace-collapsed-inspector-columns"] = "minmax(0, 1fr)",
+            ["--hl-workspace-collapsed-inspector-rows"] = "auto minmax(20rem, 1fr) auto",
+            ["--hl-workspace-collapsed-navigation-and-inspector-areas"] = "\"navigation\" \"main\" \"inspector\"",
+            ["--hl-workspace-collapsed-navigation-and-inspector-columns"] = "minmax(0, 1fr)",
+            ["--hl-workspace-collapsed-navigation-and-inspector-rows"] = "auto minmax(20rem, 1fr) auto",
             ["--hl-workspace-no-inspector-areas"] = "\"navigation\" \"main\"",
             ["--hl-workspace-no-inspector-columns"] = "minmax(0, 1fr)",
             ["--hl-workspace-no-inspector-rows"] = "auto minmax(20rem, 1fr)",
@@ -340,7 +346,7 @@ public sealed class BrowserCalendarJourneyTests
         return await browser.ExecuteScriptAsync(
             "const rect = element => { const box = element.getBoundingClientRect(); return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height }; };"
             + " const rgb = value => value.match(/[\\d.]+/g).slice(0, 3).map(Number); const luminance = value => { const channels = rgb(value).map(item => { item /= 255; return item <= .04045 ? item / 12.92 : Math.pow((item + .055) / 1.055, 2.4); }); return .2126 * channels[0] + .7152 * channels[1] + .0722 * channels[2]; }; const contrast = (a, b) => { const first = luminance(a); const second = luminance(b); return (Math.max(first, second) + .05) / (Math.min(first, second) + .05); };"
-            + " const root = getComputedStyle(document.documentElement); const toolbar = getComputedStyle(document.querySelector('.workspace-toolbar')); const paneHeading = getComputedStyle(document.querySelector('.workspace-pane h2')); const pane = getComputedStyle(document.querySelector('.workspace-pane')); const input = getComputedStyle(document.querySelector('#transaction-amount')); const action = getComputedStyle(document.querySelector('#workspace-inspector form button')); const toggle = document.querySelector('.pane-toggle'); toggle.focus(); const toggleStyle = getComputedStyle(toggle);"
+            + " const paneElement = document.querySelector('.workspace-pane'); const toggle = document.querySelector('.pane-toggle'); const root = getComputedStyle(document.documentElement); const toolbar = getComputedStyle(document.querySelector('.workspace-toolbar')); const paneHeading = getComputedStyle(document.querySelector('.workspace-pane h2') ?? paneElement); const pane = getComputedStyle(paneElement); const input = getComputedStyle(document.querySelector('#transaction-amount') ?? toggle); const action = getComputedStyle(document.querySelector('#workspace-inspector form button') ?? toggle); toggle.focus(); const toggleStyle = getComputedStyle(toggle);"
             + " return { theme: document.documentElement.dataset.theme, colorScheme: root.colorScheme, chrome: toolbar.backgroundColor, primaryAction: action.backgroundColor, textContrast: contrast(root.color, root.backgroundColor), secondaryContrast: contrast(paneHeading.color, pane.backgroundColor), focusContrast: contrast(toggleStyle.outlineColor, toolbar.backgroundColor), inputBorderContrast: contrast(input.borderColor, input.backgroundColor), scrollWidth: document.documentElement.scrollWidth, grid: rect(document.querySelector('.workspace-grid')), navigation: rect(document.querySelector('#workspace-navigation')), main: rect(document.querySelector('#workspace-main')), inspector: rect(document.querySelector('#workspace-inspector')) };",
             null,
             cancellationToken);
@@ -534,7 +540,7 @@ public sealed class BrowserCalendarJourneyTests
             accountName,
             cancellationToken);
         var accountPath = (await browser.ExecuteScriptAsync(
-            "const name = arguments[0]; const link = [...document.querySelectorAll('.account-navigation-link')].find(item => item.childNodes[0]?.textContent.trim() === name); if (!link) throw new Error(`Missing navigation account ${name}`); const path = link.getAttribute('href'); link.click(); return path;",
+            "const name = arguments[0]; const link = [...document.querySelectorAll('.account-navigation-link')].find(item => item.getAttribute('aria-label') === name); if (!link) throw new Error(`Missing navigation account ${name}`); const path = link.getAttribute('href'); link.click(); return path;",
             [accountName],
             cancellationToken)).GetString();
         await WaitForTextAsync(browser, "#account-history-heading", accountName, cancellationToken);
@@ -1005,7 +1011,7 @@ public sealed class BrowserCalendarJourneyTests
             "const rectangle = element => { const box = element?.getBoundingClientRect(); return box ? { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height } : null; };"
             + " const navigation = document.querySelector('#workspace-navigation'); const calendar = document.querySelector('#workspace-main'); const main = document.querySelector('main.calendar-page'); const inspector = document.querySelector('#workspace-inspector');"
             + " const navigationToggle = document.querySelector(\"button[aria-controls='workspace-navigation']\"); const inspectorToggle = document.querySelector(\"button[aria-controls='workspace-inspector']\");"
-            + " const currentNavigation = navigation?.querySelector(\"a[aria-current='page']\"); return { title: document.title, origin: location.origin, width: window.innerWidth, height: window.innerHeight, scrollWidth: document.documentElement.scrollWidth, mainCount: document.querySelectorAll('#workspace-main > main.calendar-page').length, headingCount: document.querySelectorAll('main.calendar-page h1').length, heading: main?.querySelector('h1')?.textContent?.trim(), primaryNavigationDestinationCount: navigation?.querySelectorAll('a.workspace-navigation-link').length, currentNavigationCount: navigation?.querySelectorAll(\"a[aria-current='page']\").length, currentNavigationLabel: currentNavigation?.textContent?.trim() ?? '', inspectorText: inspector?.textContent?.trim(), navigation: { hidden: navigation?.hidden, collapsed: navigation?.classList.contains('navigation-pane-collapsed'), rectangle: rectangle(navigation) }, calendar: { rectangle: rectangle(calendar) }, main: { rectangle: rectangle(main) }, inspector: { hidden: inspector?.hidden, rectangle: rectangle(inspector) }, navigationToggle: { expanded: navigationToggle?.getAttribute('aria-expanded') === 'true', label: navigationToggle?.getAttribute('aria-label') }, inspectorToggle: { expanded: inspectorToggle?.getAttribute('aria-expanded') === 'true', label: inspectorToggle?.getAttribute('aria-label') }, focusedPane: document.activeElement?.getAttribute('aria-controls') };",
+            + " const currentNavigation = navigation?.querySelector(\"a[aria-current='page']\"); return { title: document.title, origin: location.origin, width: window.innerWidth, height: window.innerHeight, scrollWidth: document.documentElement.scrollWidth, mainCount: document.querySelectorAll('#workspace-main > main.calendar-page').length, headingCount: document.querySelectorAll('main.calendar-page h1').length, heading: main?.querySelector('h1')?.textContent?.trim(), primaryNavigationDestinationCount: navigation?.querySelectorAll('a.workspace-navigation-link').length, currentNavigationCount: navigation?.querySelectorAll(\"a[aria-current='page']\").length, currentNavigationLabel: currentNavigation?.getAttribute('aria-label') ?? '', inspectorText: inspector?.textContent?.trim(), navigation: { hidden: navigation?.hidden, collapsed: navigation?.classList.contains('navigation-pane-collapsed'), rectangle: rectangle(navigation) }, calendar: { rectangle: rectangle(calendar) }, main: { rectangle: rectangle(main) }, inspector: { hidden: inspector?.hidden, collapsed: inspector?.classList.contains('inspector-pane-collapsed'), rectangle: rectangle(inspector) }, navigationToggle: { expanded: navigationToggle?.getAttribute('aria-expanded') === 'true', label: navigationToggle?.getAttribute('aria-label') }, inspectorToggle: { expanded: inspectorToggle?.getAttribute('aria-expanded') === 'true', label: inspectorToggle?.getAttribute('aria-label') }, focusedPane: document.activeElement?.getAttribute('aria-controls') };",
             null,
             cancellationToken);
     }
@@ -1017,6 +1023,7 @@ public sealed class BrowserCalendarJourneyTests
             () => Assert.False(state.GetProperty("navigation").GetProperty("hidden").GetBoolean()),
             () => Assert.False(state.GetProperty("navigation").GetProperty("collapsed").GetBoolean()),
             () => Assert.False(state.GetProperty("inspector").GetProperty("hidden").GetBoolean()),
+            () => Assert.False(state.GetProperty("inspector").GetProperty("collapsed").GetBoolean()),
             () => Assert.True(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean()),
             () => Assert.Equal("Collapse navigation", state.GetProperty("navigationToggle").GetProperty("label").GetString()),
             () => Assert.True(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean()),
@@ -1028,7 +1035,7 @@ public sealed class BrowserCalendarJourneyTests
     {
         Assert.False(state.GetProperty("navigation").GetProperty("hidden").GetBoolean());
         Assert.True(state.GetProperty("navigation").GetProperty("collapsed").GetBoolean());
-        Assert.Equal(0, state.GetProperty("primaryNavigationDestinationCount").GetInt32());
+        Assert.Equal(3, state.GetProperty("primaryNavigationDestinationCount").GetInt32());
         Assert.False(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean());
         Assert.Equal("Expand navigation", state.GetProperty("navigationToggle").GetProperty("label").GetString());
         Assert.False(state.GetProperty("inspector").GetProperty("hidden").GetBoolean());
@@ -1040,21 +1047,23 @@ public sealed class BrowserCalendarJourneyTests
     {
         Assert.False(state.GetProperty("navigation").GetProperty("hidden").GetBoolean());
         Assert.True(state.GetProperty("navigation").GetProperty("collapsed").GetBoolean());
-        Assert.Equal(0, state.GetProperty("primaryNavigationDestinationCount").GetInt32());
-        Assert.True(state.GetProperty("inspector").GetProperty("hidden").GetBoolean());
+        Assert.Equal(3, state.GetProperty("primaryNavigationDestinationCount").GetInt32());
+        Assert.False(state.GetProperty("inspector").GetProperty("hidden").GetBoolean());
+        Assert.True(state.GetProperty("inspector").GetProperty("collapsed").GetBoolean());
         Assert.False(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean());
         Assert.False(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean());
-        AssertNormalFlow(state, includeNavigation: true, includeInspector: false);
+        AssertNormalFlow(state, includeNavigation: true, includeInspector: true);
     }
 
     private static void AssertInspectorCollapsedWorkspace(JsonElement state)
     {
         Assert.False(state.GetProperty("navigation").GetProperty("hidden").GetBoolean());
         Assert.False(state.GetProperty("navigation").GetProperty("collapsed").GetBoolean());
-        Assert.True(state.GetProperty("inspector").GetProperty("hidden").GetBoolean());
+        Assert.False(state.GetProperty("inspector").GetProperty("hidden").GetBoolean());
+        Assert.True(state.GetProperty("inspector").GetProperty("collapsed").GetBoolean());
         Assert.True(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean());
         Assert.False(state.GetProperty("inspectorToggle").GetProperty("expanded").GetBoolean());
-        AssertNormalFlow(state, includeNavigation: true, includeInspector: false);
+        AssertNormalFlow(state, includeNavigation: true, includeInspector: true);
     }
 
     private static void AssertWorkspaceSemantics(JsonElement state, Uri apiOrigin)

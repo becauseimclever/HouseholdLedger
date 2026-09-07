@@ -2,9 +2,11 @@
 
 ## Status
 
-Status: Proposed.
+Status: Complete.
 
 - Planned: 2026-09-05.
+- Implemented: 2026-09-06.
+- Validated: 2026-09-06.
 - Depends on the semantic theme-token contract, Feature 008's open-source
   notices route, and Feature 020's two production themes.
 

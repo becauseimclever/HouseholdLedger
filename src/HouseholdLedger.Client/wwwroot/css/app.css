@@ -55,6 +55,7 @@
     --hl-workspace-navigation-extent: minmax(13rem, 17rem);
     --hl-workspace-navigation-rail-extent: 3.75rem;
     --hl-workspace-inspector-extent: minmax(15rem, 20rem);
+    --hl-workspace-inspector-rail-extent: 3.75rem;
     --hl-workspace-areas: "navigation main inspector";
     --hl-workspace-columns: var(--hl-workspace-navigation-extent) minmax(0, 1fr) var(--hl-workspace-inspector-extent);
     --hl-workspace-rows: minmax(0, 1fr);
@@ -64,6 +65,12 @@
     --hl-workspace-collapsed-navigation-no-inspector-areas: "navigation main";
     --hl-workspace-collapsed-navigation-no-inspector-columns: var(--hl-workspace-navigation-rail-extent) minmax(0, 1fr);
     --hl-workspace-collapsed-navigation-no-inspector-rows: minmax(0, 1fr);
+    --hl-workspace-collapsed-inspector-areas: "navigation main inspector";
+    --hl-workspace-collapsed-inspector-columns: var(--hl-workspace-navigation-extent) minmax(0, 1fr) var(--hl-workspace-inspector-rail-extent);
+    --hl-workspace-collapsed-inspector-rows: minmax(0, 1fr);
+    --hl-workspace-collapsed-navigation-and-inspector-areas: "navigation main inspector";
+    --hl-workspace-collapsed-navigation-and-inspector-columns: var(--hl-workspace-navigation-rail-extent) minmax(0, 1fr) var(--hl-workspace-inspector-rail-extent);
+    --hl-workspace-collapsed-navigation-and-inspector-rows: minmax(0, 1fr);
     --hl-workspace-no-navigation-areas: "main inspector";
     --hl-workspace-no-navigation-columns: minmax(0, 1fr) var(--hl-workspace-inspector-extent);
     --hl-workspace-no-navigation-rows: minmax(0, 1fr);
@@ -147,13 +154,25 @@ body {
     grid-template-rows: var(--hl-workspace-collapsed-navigation-rows);
 }
 
-.workspace-grid:has(.inspector-pane[hidden]) {
+.workspace-grid:has(.inspector-pane-collapsed) {
+    grid-template-areas: var(--hl-workspace-collapsed-inspector-areas);
+    grid-template-columns: var(--hl-workspace-collapsed-inspector-columns);
+    grid-template-rows: var(--hl-workspace-collapsed-inspector-rows);
+}
+
+.workspace-grid:has(.navigation-pane-collapsed):has(.inspector-pane-collapsed) {
+    grid-template-areas: var(--hl-workspace-collapsed-navigation-and-inspector-areas);
+    grid-template-columns: var(--hl-workspace-collapsed-navigation-and-inspector-columns);
+    grid-template-rows: var(--hl-workspace-collapsed-navigation-and-inspector-rows);
+}
+
+.workspace-grid-no-inspector {
     grid-template-areas: var(--hl-workspace-no-inspector-areas);
     grid-template-columns: var(--hl-workspace-no-inspector-columns);
     grid-template-rows: var(--hl-workspace-no-inspector-rows);
 }
 
-.workspace-grid:has(.navigation-pane-collapsed):has(.inspector-pane[hidden]) {
+.workspace-grid-no-inspector:has(.navigation-pane-collapsed) {
     grid-template-areas: var(--hl-workspace-collapsed-navigation-no-inspector-areas);
     grid-template-columns: var(--hl-workspace-collapsed-navigation-no-inspector-columns);
     grid-template-rows: var(--hl-workspace-collapsed-navigation-no-inspector-rows);
@@ -162,8 +181,10 @@ body {
 @media (max-width: 48rem) {
     .workspace-grid,
     .workspace-grid:has(.navigation-pane-collapsed),
-    .workspace-grid:has(.inspector-pane[hidden]),
-    .workspace-grid:has(.navigation-pane-collapsed):has(.inspector-pane[hidden]) {
+    .workspace-grid:has(.inspector-pane-collapsed),
+    .workspace-grid:has(.navigation-pane-collapsed):has(.inspector-pane-collapsed),
+    .workspace-grid-no-inspector,
+    .workspace-grid-no-inspector:has(.navigation-pane-collapsed) {
         grid-template-columns: minmax(0, 1fr);
         grid-template-rows: auto;
     }
@@ -176,11 +197,16 @@ body {
         grid-template-areas: "navigation" "main" "inspector";
     }
 
-    .workspace-grid:has(.inspector-pane[hidden]) {
+    .workspace-grid:has(.inspector-pane-collapsed),
+    .workspace-grid:has(.navigation-pane-collapsed):has(.inspector-pane-collapsed) {
+        grid-template-areas: "navigation" "main" "inspector";
+    }
+
+    .workspace-grid-no-inspector {
         grid-template-areas: "navigation" "main";
     }
 
-    .workspace-grid:has(.navigation-pane-collapsed):has(.inspector-pane[hidden]) {
+    .workspace-grid-no-inspector:has(.navigation-pane-collapsed) {
         grid-template-areas: "navigation" "main";
     }
 }
@@ -192,6 +218,8 @@ a {
 
 a {
     color: var(--hl-text-link);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
 }
 
 a:hover {
@@ -229,7 +257,14 @@ a:hover {
 
 #blazor-error-ui .reload {
     margin-left: 0.5rem;
+    color: var(--hl-text-link);
     font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+}
+
+#blazor-error-ui .reload:hover {
+    color: var(--hl-text-link-hover);
 }
 
 #blazor-error-ui .dismiss {

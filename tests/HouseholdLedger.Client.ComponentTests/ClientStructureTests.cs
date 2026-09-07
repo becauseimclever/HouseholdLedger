@@ -92,6 +92,26 @@ public sealed class ClientStructureTests
         Assert.Equivalent(ExpectedProductReferences, householdLedgerReferences);
     }
 
+    /// <summary>Verifies every shipped anchor is assigned an intentional presentation role.</summary>
+    [Fact]
+    public void EveryShippedAnchorHasAnIntentionalRoleClass()
+    {
+        var clientDirectory = FindClientDirectory();
+        var sourceFiles = Directory.GetFiles(clientDirectory, "*.razor", SearchOption.AllDirectories)
+            .Append(Path.Combine(clientDirectory, "wwwroot", "index.html"));
+        var anchors = sourceFiles
+            .SelectMany(file => Regex.Matches(File.ReadAllText(file), @"<(?:a|NavLink)\s[^>]*>")
+                .Select(match => (File: file, Markup: match.Value)))
+            .ToArray();
+
+        Assert.NotEmpty(anchors);
+        Assert.All(
+            anchors,
+            anchor => Assert.Matches(
+                @"\bclass\s*=\s*\""[^\""\r\n]+\""",
+                anchor.Markup));
+    }
+
     /// <summary>Verifies Workbench Dark is established before WebAssembly starts.</summary>
     [Fact]
     public void StaticHostDeclaresWorkbenchDarkThemeAndMatchingBrowserChrome()

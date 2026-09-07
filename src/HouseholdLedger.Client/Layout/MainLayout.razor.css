@@ -44,12 +44,6 @@
     outline-offset: var(--hl-focus-offset);
 }
 
-.workspace-tools {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
 .pane-toggle {
     position: relative;
     display: grid;
@@ -121,6 +115,8 @@
 
 .navigation-pane-collapsed {
     display: flex;
+    min-height: 0;
+    flex-direction: column;
     justify-content: center;
     padding: 0.5rem;
 }
@@ -148,6 +144,90 @@
     color: var(--hl-text-primary);
     font-weight: var(--hl-weight-control);
     text-decoration: none;
+    gap: 0.625rem;
+}
+
+.navigation-icon {
+    display: grid;
+    width: 1.25rem;
+    height: 1.25rem;
+    flex: 0 0 1.25rem;
+    place-items: center;
+}
+
+.navigation-label {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.workspace-navigation-rail-list {
+    min-height: 0;
+    margin-top: 0.5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.workspace-navigation-rail-list ::deep .workspace-navigation-link,
+.workspace-navigation-rail-list ::deep .account-navigation-link {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    padding: 0;
+    justify-content: center;
+}
+
+.workspace-navigation-rail-list .navigation-label,
+.workspace-navigation-rail-list .account-navigation-name,
+.workspace-navigation-rail-list .current-account-marker,
+.workspace-navigation-rail-list .account-navigation-state {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+
+.workspace-navigation-rail-list .account-navigation-error {
+    position: static;
+    display: block;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+}
+
+.workspace-navigation-rail-list .account-navigation-error > span,
+.workspace-navigation-rail-list .retry-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+
+.workspace-navigation-rail-list .account-navigation-retry {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    place-items: center;
+}
+
+.workspace-navigation-rail-list .accounts-navigation-heading {
+    display: grid;
+    grid-template-columns: 2.75rem;
+}
+
+.workspace-navigation-rail-list .accounts-disclosure {
+    border-top: 0.0625rem solid var(--hl-border-default);
+    border-left: 0;
+    border-radius: 0 0 var(--hl-radius-control) var(--hl-radius-control);
+}
+
+.workspace-navigation-rail-list .account-navigation-list {
+    margin-left: 0;
+    padding-left: 0;
 }
 
 .workspace-navigation-list ::deep .workspace-navigation-link:hover {
@@ -303,6 +383,33 @@
     border-left-width: 0.0625rem;
 }
 
+.inspector-pane-header {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.inspector-toggle {
+    flex: 0 0 auto;
+}
+
+.inspector-toggle .pane-toggle-tooltip {
+    right: auto;
+    left: 0;
+}
+
+.inspector-pane-collapsed {
+    display: flex;
+    justify-content: center;
+    padding: 0.5rem;
+}
+
+.inspector-pane-collapsed .inspector-toggle .pane-toggle-tooltip {
+    right: 0;
+    left: auto;
+}
+
 .workspace-pane h2 {
     margin: 0;
     color: var(--hl-text-secondary);
@@ -323,15 +430,23 @@
     display: flex;
     min-height: 3.5rem;
     align-items: center;
+    justify-content: space-between;
     padding-inline: 0.75rem;
     border-top: 0.0625rem solid var(--hl-border-strong);
     background: var(--hl-surface-chrome);
+    color: var(--hl-text-secondary);
+    font-size: 0.875rem;
+    gap: 1rem;
 }
 
 .workspace-auxiliary ::deep .workspace-auxiliary-link {
-    color: var(--hl-text-primary);
-    font-size: 0.875rem;
+    padding: 0.375rem 0.5rem;
+    border: 0.0625rem solid var(--hl-border-default);
+    border-radius: var(--hl-radius-control);
+    color: var(--hl-text-link);
     font-weight: var(--hl-weight-control);
+    text-decoration: underline;
+    text-underline-offset: 0.2rem;
 }
 
 .workspace-auxiliary ::deep .workspace-auxiliary-link:hover {
@@ -373,6 +488,22 @@
 
     .inspector-pane {
         border-top: 0.0625rem solid var(--hl-border-default);
+    }
+
+    .inspector-pane-collapsed {
+        justify-content: flex-start;
+    }
+
+    .workspace-navigation-rail-list {
+        display: flex;
+        width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+
+    .workspace-auxiliary {
+        flex-wrap: wrap;
+        padding-block: 0.625rem;
     }
 
     .workspace-main {

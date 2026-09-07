@@ -2,9 +2,11 @@
 
 ## Status
 
-Status: Proposed.
+Status: Complete.
 
 - Planned: 2026-09-05.
+- Implemented: 2026-09-06.
+- Validated: 2026-09-06.
 - Depends on Feature 014's account hierarchy, Feature 018's navigation tiles,
   and Feature 019's collapsed navigation rail.
 
