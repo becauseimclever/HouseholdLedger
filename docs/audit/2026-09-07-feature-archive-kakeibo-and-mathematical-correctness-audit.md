@@ -10,11 +10,11 @@ Features 010 through 015 and 018 through 023 are complete bounded slices and
 have moved to `docs/features/archive`. Feature 005 was already archived; its
 byte-identical active duplicate was removed.
 
-Features 016 and 017 remain active. Feature 016 formats USD-denominated ledger
-values as EUR, CAD, GBP, or AUD without conversion. A currency symbol asserts
-denomination, so that behavior is financially misleading even though the
-numeric decimal is unchanged. Feature 017's generic `¤` mode is honest, but its
-named-currency restore path depends on Feature 016 and remains blocked with it.
+Features 016 and 017 are complete and archived. The maintainer confirmed that
+display currency is intentionally a presentation culture and user-facing
+indicator, not a ledger denomination or conversion instruction. The Settings
+flow now presents an explicit no-conversion notice and requires acknowledgement
+before any changed display currency can be saved.
 
 ## Kakeibo Alignment
 
@@ -31,9 +31,9 @@ Kakeibo:
 It does not yet implement a complete Kakeibo cycle. Income, intended savings,
 spending plans, classification totals, intention-versus-actual comparison, and
 end-of-period reflection are explicitly deferred or absent. These are roadmap
-gaps, not defects in the archived slices. After correcting currency semantics,
-new core features should prioritize receive, plan, save, spend, and reflect
-outcomes before further workspace presentation work.
+gaps, not defects in the archived slices. New core features should prioritize
+receive, plan, save, spend, and reflect outcomes before further workspace
+presentation work.
 
 ## Mathematical And Integrity Findings
 
@@ -73,8 +73,8 @@ places. No floating-point arithmetic is used for ledger amounts.
 | --- | --- | --- |
 | 005 | Already archived | Removed the redundant active copy. |
 | 010-015 | Archived | Implemented calendar expense, account, ownership, history, navigation, and filtering slices with proportionate tests. |
-| 016 | Reopened | Named display currencies currently misstate USD denomination without conversion. |
-| 017 | Active and blocked by 016 | Generic mode is truthful, but restoring a named mode reintroduces Feature 016's defect. |
+| 016 | Archived | Display culture and indicator are explicitly non-converting, with acknowledgement required before save. |
+| 017 | Archived | Generic mode and restoration of named display cultures follow the same acknowledged presentation-only contract. |
 | 018-023 | Archived | Implemented bounded workspace presentation and interaction slices with focused Client coverage. |
 
 ## Validation Evidence
@@ -85,6 +85,8 @@ places. No floating-point arithmetic is used for ledger amounts.
 - API contract tests: 7 passed.
 - API integration tests: 37 passed.
 - Client component tests: 96 passed.
+- Focused Settings component tests after the acknowledgement change: 12
+  passed.
 - Infrastructure integration tests: 1 passed and 4 live-PostgreSQL tests
   skipped because the isolated database connection variable was unavailable.
 - EF migration and Infrastructure project: built successfully. The locally
@@ -100,9 +102,8 @@ therefore not executed by this audit.
 
 ## Recommended Next Outcome
 
-Use Feature 024 to make denomination truthful. The smallest safe direction is
-to retain USD and generic `¤` presentation while removing unsupported named
-currency relabeling; real alternative currencies require explicit ledger
-denomination and conversion rules. Subsequent features should establish
-monthly income, intended savings, a classified spending plan, actual-versus-
-plan review, and a calm end-of-period reflection flow.
+Use Feature 024 for the next Kakeibo outcome. Prioritize monthly income,
+intended savings, a classified spending plan, actual-versus-plan review, and a
+calm end-of-period reflection flow. Real conversion or mixed-currency ledger
+semantics remain separate future outcomes and are not implied by display
+culture selection.

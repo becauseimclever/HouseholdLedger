@@ -2,13 +2,13 @@
 
 ## Status
 
-Status: Blocked by Feature 016's financial semantics correction.
+Status: Complete.
 
 - Planned: 2026-09-05.
 - Implemented: 2026-09-06.
 - Validated: 2026-09-06.
-- Reopened: 2026-09-07 because restoring a named currency also restores
-  Feature 016's misleading denomination behavior.
+- Clarified: 2026-09-07 with Feature 016's display-only acknowledgement before
+  any currency presentation change is saved.
 - Depends on Feature 016's persisted global display-currency setting and shared
   application-wide money formatter.
 

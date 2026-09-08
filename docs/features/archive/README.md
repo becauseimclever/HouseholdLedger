@@ -20,6 +20,8 @@ as historical product, acceptance, and decision records.
 | [013](013-view-an-accounts-transactions.md) | Complete | Added complete per-account transaction history. |
 | [014](014-expand-accounts-in-workspace-navigation.md) | Complete | Added persisted account destinations to workspace navigation. |
 | [015](015-filter-and-search-account-transactions.md) | Complete | Added backend-owned account transaction filters and search. |
+| [016](016-configure-global-display-currency.md) | Complete | Added a durable display culture and currency indicator with explicit no-conversion acknowledgement. |
+| [017](017-use-a-generic-money-display.md) | Complete | Added the durable generic `¤` money display option. |
 | [018](018-present-navigation-as-workspace-tiles.md) | Complete | Presented application destinations as workspace navigation tiles. |
 | [019](019-collapse-navigation-from-its-pane.md) | Complete | Added pane-owned navigation collapse and a reachable rail. |
 | [020](020-select-a-workbench-light-theme.md) | Complete | Added a durable Workbench Light theme choice. |

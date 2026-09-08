@@ -17,6 +17,7 @@ public partial class SettingsPage : ComponentBase, IDisposable
     private string? saveError;
     private string? saveStatus;
     private bool hasUnsavedSelection;
+    private bool hasAcknowledgedCurrencyDisplay;
     private bool isSaving;
     private string selectedTheme = ThemeCatalog.DefaultTheme;
     private string? themeSaveError;
@@ -66,8 +67,14 @@ public partial class SettingsPage : ComponentBase, IDisposable
     {
         this.selectedCurrency = eventArgs.Value?.ToString() ?? string.Empty;
         this.hasUnsavedSelection = true;
+        this.hasAcknowledgedCurrencyDisplay = false;
         this.saveError = null;
         this.saveStatus = null;
+    }
+
+    private void ChangeCurrencyAcknowledgement(ChangeEventArgs eventArgs)
+    {
+        this.hasAcknowledgedCurrencyDisplay = eventArgs.Value is true;
     }
 
     private void ChangeTheme(ChangeEventArgs eventArgs)
@@ -101,13 +108,14 @@ public partial class SettingsPage : ComponentBase, IDisposable
             this.selectedCurrency = this.CurrencyState.CurrentCode;
             this.selectedTheme = this.CurrencyState.CurrentTheme;
             this.hasUnsavedSelection = false;
+            this.hasAcknowledgedCurrencyDisplay = false;
             this.hasUnsavedThemeSelection = false;
         }
     }
 
     private async Task SaveAsync()
     {
-        if (!this.IsDirty || this.isSaving)
+        if (!this.IsDirty || !this.hasAcknowledgedCurrencyDisplay || this.isSaving)
         {
             return;
         }
@@ -122,6 +130,7 @@ public partial class SettingsPage : ComponentBase, IDisposable
                 this.selectedCurrency,
                 this.lifetimeCancellation.Token);
             this.hasUnsavedSelection = false;
+            this.hasAcknowledgedCurrencyDisplay = false;
             this.saveStatus = $"Display currency saved as {MoneyFormatter.GetDisplayName(this.selectedCurrency)}.";
         }
         catch (Exception exception) when (IsApiFailure(exception))

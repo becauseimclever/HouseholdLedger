@@ -37,7 +37,23 @@
                     </select>
                 </div>
 
-                <button type="submit" disabled="@(!IsDirty || isSaving)">@(isSaving ? "Saving" : "Save")</button>
+                @if (IsDirty)
+                {
+                    <div class="currency-display-warning" role="note" aria-labelledby="currency-display-warning-heading">
+                        <p id="currency-display-warning-heading">
+                            <strong>Display only.</strong> Amount values will not be converted. Only their currency symbol and number format will change.
+                        </p>
+                        <label class="settings-checkbox" for="confirm-currency-display">
+                            <input id="confirm-currency-display"
+                                   type="checkbox"
+                                   checked="@hasAcknowledgedCurrencyDisplay"
+                                   @onchange="ChangeCurrencyAcknowledgement" />
+                            I understand that changing this setting does not convert any amount.
+                        </label>
+                    </div>
+                }
+
+                <button type="submit" disabled="@(!IsDirty || !hasAcknowledgedCurrencyDisplay || isSaving)">@(isSaving ? "Saving" : "Save")</button>
             </form>
 
             @if (saveError is not null)

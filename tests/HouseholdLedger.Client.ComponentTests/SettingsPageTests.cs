@@ -49,9 +49,9 @@ public sealed class SettingsPageTests
             () => Assert.Contains("No unsaved changes", component.Markup, StringComparison.Ordinal)));
     }
 
-    /// <summary>Verifies saving EUR publishes it and uses the documented formatting culture.</summary>
+    /// <summary>Verifies currency changes require acknowledging display-only behavior before saving.</summary>
     [Fact]
-    public void SavePublishesCurrencyAndFormatterUsesItsCulture()
+    public void SaveRequiresDisplayOnlyAcknowledgement()
     {
         using var context = CreateContext();
         var state = context.Services.GetRequiredService<GlobalSettingsState>();
@@ -59,6 +59,14 @@ public sealed class SettingsPageTests
         component.WaitForElement("#display-currency");
 
         component.Find("#display-currency").Change("EUR");
+        component.Find(".currency-settings-form").Submit();
+
+        Assert.Multiple(
+            () => Assert.Equal("USD", state.CurrentCode),
+            () => Assert.Contains("Amount values will not be converted", component.Markup, StringComparison.Ordinal),
+            () => Assert.True(component.Find(".currency-settings-form button[type='submit']").HasAttribute("disabled")));
+
+        component.Find("#confirm-currency-display").Change(true);
         component.Find(".currency-settings-form").Submit();
 
         component.WaitForAssertion(() => Assert.Multiple(
@@ -77,6 +85,7 @@ public sealed class SettingsPageTests
         component.WaitForElement("#display-currency");
 
         component.Find("#display-currency").Change("XXX");
+        component.Find("#confirm-currency-display").Change(true);
         component.Find(".currency-settings-form").Submit();
         component.WaitForAssertion(() => Assert.Multiple(
             () => Assert.Equal("XXX", state.CurrentCode),
@@ -85,6 +94,7 @@ public sealed class SettingsPageTests
             () => Assert.Contains("Display currency saved as No currency", component.Markup, StringComparison.Ordinal)));
 
         component.Find("#display-currency").Change("USD");
+        component.Find("#confirm-currency-display").Change(true);
         component.Find(".currency-settings-form").Submit();
         component.WaitForAssertion(() => Assert.Equal("$1,234.50", MoneyFormatter.Format(1234.5m, state.CurrentCode)));
     }
@@ -100,6 +110,7 @@ public sealed class SettingsPageTests
         component.WaitForElement("#display-currency");
 
         component.Find("#display-currency").Change("GBP");
+        component.Find("#confirm-currency-display").Change(true);
         component.Find(".currency-settings-form").Submit();
 
         component.WaitForAssertion(() => Assert.Multiple(
@@ -148,7 +159,8 @@ public sealed class SettingsPageTests
             () => Assert.Equal("USD", state.CurrentCode),
             () => Assert.Equal("workbench-light", state.CurrentTheme),
             () => Assert.Equal("EUR", component.Find("#display-currency").GetAttribute("value")),
-            () => Assert.False(component.Find(".currency-settings-form button").HasAttribute("disabled")),
+            () => Assert.True(component.Find(".currency-settings-form button").HasAttribute("disabled")),
+            () => Assert.Contains("Amount values will not be converted", component.Markup, StringComparison.Ordinal),
             () => Assert.Contains("Theme saved as Workbench Light", component.Markup, StringComparison.Ordinal)));
     }
 

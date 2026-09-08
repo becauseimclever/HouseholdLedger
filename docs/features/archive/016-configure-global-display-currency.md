@@ -2,13 +2,13 @@
 
 ## Status
 
-Status: Reopened - financial semantics correction required.
+Status: Complete.
 
 - Planned: 2026-09-05.
 - Implemented: 2026-09-06.
 - Validated: 2026-09-06.
-- Reopened: 2026-09-07 because changing a currency symbol without converting
-  USD-denominated amounts misstates their denomination.
+- Clarified: 2026-09-07 as a user-selected display culture and indicator that
+  never converts ledger values; saving requires explicit acknowledgement.
 - Depends on existing USD-denominated transaction amounts and all current money
   presentation surfaces.
 
@@ -26,11 +26,13 @@ rewrites stored transaction amounts or calculated totals.
 
 1. The user follows `Settings` in the workspace navigation.
 2. The `/settings` page loads the authoritative global money setting.
-3. The user chooses a named currency from a native dropdown and saves.
-4. The page confirms the persisted choice.
-5. Calendar totals, selected-day transactions, account history, forms, and
+3. The user chooses a named currency from a native dropdown.
+4. The page explains that values will not be converted, and the user
+  acknowledges that display-only behavior before saving.
+5. The page confirms the persisted choice.
+6. Calendar totals, selected-day transactions, account history, forms, and
    confirmation text immediately render monetary values in that currency.
-6. Refreshing or restarting the application retains the saved choice.
+7. Refreshing or restarting the application retains the saved choice.
 
 ## Initial Currency Contract
 
@@ -62,6 +64,9 @@ The initial named choices are deliberately finite and explicit:
 - The page has one Global money display section with a labeled native select,
   explicit Save command, loading state, unavailable/retry state, validation,
   unchanged state, saving state, and saved confirmation.
+- An unsaved currency selection exposes a notice that only the symbol and
+  number format change. Save remains unavailable until the user acknowledges
+  that no amount conversion occurs.
 - One backend-owned global setting applies to every user and browser because
   authentication and per-household profiles do not yet exist.
 - A single-row persisted settings model has a stable identity and a required
@@ -93,7 +98,7 @@ values and carry no per-record currency conversion.
 | --- | --- |
 | AC-01: Settings destination | The expanded left navigation includes Settings linking to `/settings`, with accessible current-route behavior on the Settings page. |
 | AC-02: Default USD | With no persisted setting, the Settings page selects USD and every monetary value retains the current USD presentation. |
-| AC-03: Persist named currency | Saving any supported named currency persists its code, confirms success, and restores that choice after refresh and application restart. |
+| AC-03: Persist named currency | Saving any supported named currency first requires acknowledgement that values are not converted, then persists its code, confirms success, and restores that choice after refresh and application restart. |
 | AC-04: Application-wide update | After a successful save, every visible calendar total, inspector amount/label/confirmation, account-history amount, and other monetary value uses the selected format without reloading the browser. |
 | AC-05: No conversion | Changing currency changes only presentation; API transaction amounts, database values, sums, filters, validation, and transaction behavior remain numerically unchanged. |
 | AC-06: Truthful resilient states | Loading, unavailable/retry, invalid, unchanged, saving, and saved states are distinct; failed or obsolete saves do not publish an unsaved currency. |
@@ -121,7 +126,8 @@ No new runtime dependency is expected.
   update durability.
 - API tests cover read/update/default/validation and checked OpenAPI.
 - Client component tests cover Settings states and every current money surface
-  through the shared formatter and live setting-change notification.
+  through the shared formatter and live setting-change notification, including
+  prevention of save before display-only acknowledgement.
 - One hosted PostgreSQL-backed browser journey changes USD to EUR, verifies
   unchanged numeric data with updated formatting across Settings, Calendar,
   inspector, and account history, then refreshes and verifies persistence.
@@ -149,12 +155,13 @@ outcomes.
 | 2026-09-05 | Treat selection as formatting only. | Re-labeling must not silently perform financial conversion or mutate ledger history. |
 | 2026-09-05 | Use USD when no row exists. | The requested default needs no automatic startup seed. |
 | 2026-09-05 | Start with five explicit two-decimal currencies. | A finite list gives deterministic symbols and formatting while leaving broader currency support for evidence-driven expansion. |
+| 2026-09-07 | Keep named currencies as display cultures and indicators without conversion. | The setting intentionally changes presentation rather than ledger values; an explicit acknowledgement prevents users from mistaking it for conversion. |
 
 ## Dependencies
 
-- [Feature 010](archive/010-calendar-daily-expense-amounts.md) supplies calendar money
+- [Feature 010](010-calendar-daily-expense-amounts.md) supplies calendar money
   totals.
-- [Feature 012](archive/012-require-an-account-for-every-transaction.md) supplies
+- [Feature 012](012-require-an-account-for-every-transaction.md) supplies
   inspector transaction amounts.
-- [Feature 013](archive/013-view-an-accounts-transactions.md) supplies account-history
+- [Feature 013](013-view-an-accounts-transactions.md) supplies account-history
   amounts.
