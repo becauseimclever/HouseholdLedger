@@ -119,6 +119,27 @@ public sealed class CalendarPageTests
             () => Assert.Equal(1, api.GetCallCount));
     }
 
+    /// <summary>Verifies completed receipts and future scheduled income have distinct calendar states.</summary>
+    [Fact]
+    public void MonthCellsDifferentiateCompletedAndPendingIncome()
+    {
+        using var context = new BunitContext();
+        var date = new DateOnly(2026, 9, 13);
+        context.Services.AddSingleton<TimeProvider>(new FixedTimeProvider(date));
+        context.Services.AddSingleton<IMonthlyExpenseSummaryApiClient>(new StubMonthlyExpenseSummaryApiClient());
+        context.Services.AddSingleton<IPaySchedulesApiClient>(new StubPaySchedulesApiClient(
+            [new PayScheduleResponse(Guid.Parse("10000000-0000-0000-0000-000000000001"), "Completed salary", new DateOnly(2026, 9, 15), PayPeriodCadence.Biweekly, 1000m, [], null, false), new PayScheduleResponse(Guid.Parse("20000000-0000-0000-0000-000000000002"), "Pending contract", new DateOnly(2026, 9, 15), PayPeriodCadence.Biweekly, 500m, [], null, false)],
+            [new IncomeReceiptResponse(Guid.NewGuid(), Guid.Parse("10000000-0000-0000-0000-000000000001"), new DateOnly(2026, 9, 15), 1000m, [])]));
+        context.Services.AddScoped<SelectedDateState>();
+
+        var component = context.Render<CalendarPage>();
+        var income = FindDateButton(component, new DateOnly(2026, 9, 15)).TextContent;
+
+        Assert.Multiple(
+            () => Assert.Contains("Completed income $1,000.00", income, StringComparison.Ordinal),
+            () => Assert.Contains("Pending income $500.00", income, StringComparison.Ordinal));
+    }
+
     /// <summary>Verifies a zero-expense date remains visually quiet.</summary>
     [Fact]
     public void MonthCellsDoNotPresentZeroExpenseSummaries()
@@ -596,6 +617,25 @@ public sealed class CalendarPageTests
         {
             this.summaries.Add(summary);
         }
+    }
+
+    private sealed class StubPaySchedulesApiClient(
+        IReadOnlyList<PayScheduleResponse> schedules,
+        IReadOnlyList<IncomeReceiptResponse> receipts) : IPaySchedulesApiClient
+    {
+        public Task<PayScheduleResponse> CreateAsync(CreatePayScheduleRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<PayScheduleResponse>> ListAsync(CancellationToken cancellationToken) => Task.FromResult(schedules);
+
+        public Task<IReadOnlyList<IncomeReceiptResponse>> ListReceiptsAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<IncomeReceiptResponse>>(receipts.Where(receipt => receipt.PayDate >= from && receipt.PayDate <= to).ToArray());
+
+        public Task<IReadOnlyList<IncomeReceiptResponse>> MaterializeAsync(DateOnly payDate, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<bool> PauseAsync(Guid scheduleId, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<bool> ResumeAsync(Guid scheduleId, ResumePayScheduleRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<PayScheduleResponse?> ReviseAsync(Guid scheduleId, RevisePayScheduleRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
     private sealed class ControllableMonthlyExpenseSummaryApiClient : IMonthlyExpenseSummaryApiClient

@@ -201,7 +201,7 @@ public partial class PaySchedulesPage : ComponentBase, IDisposable
 
     private void UpdateResumeDate(Guid id, ChangeEventArgs args) => this.resumeDateTexts[id] = args.Value?.ToString() ?? string.Empty;
 
-    private void AddAllocation() => this.allocations.Add(new AllocationInput());
+    private void AddAllocation() => this.allocations = [.. this.allocations, new()];
 
     private void RemoveAllocation(Guid id)
     {

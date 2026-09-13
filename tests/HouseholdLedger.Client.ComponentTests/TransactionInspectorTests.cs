@@ -30,7 +30,7 @@ public sealed class TransactionInspectorTests
     [Fact]
     public async Task ValidSaveRereadsAndDisplaysThePersistedTransaction()
     {
-        using var context = new BunitContext();
+        using var context = CreateContext();
         var selectedDate = new SelectedDateState();
         var api = new StubTransactionsApiClient();
         selectedDate.Select(new DateOnly(2026, 9, 1));
@@ -56,12 +56,46 @@ public sealed class TransactionInspectorTests
         });
     }
 
+    /// <summary>Verifies a selected date presents completed and pending income without hiding expense entry.</summary>
+    [Fact]
+    public void SelectedDateShowsIncomeDetailsAndExpenseEntry()
+    {
+        using var context = CreateContext();
+        var selectedDate = new SelectedDateState();
+        var incomeDate = DateOnly.FromDateTime(DateTime.Today).AddDays(2);
+        var completedScheduleId = Guid.Parse("30000000-0000-0000-0000-000000000001");
+        selectedDate.Select(incomeDate);
+        context.Services.AddSingleton(selectedDate);
+        context.Services.AddSingleton<ITransactionsApiClient>(new StubTransactionsApiClient());
+        context.Services.AddSingleton<IAccountsApiClient>(new StubAccountsApiClient([HouseholdChecking, CashWallet]));
+        context.Services.AddSingleton<IPaySchedulesApiClient>(new StubPaySchedulesApiClient(
+            [
+                new PayScheduleResponse(completedScheduleId, "Salary", incomeDate, PayPeriodCadence.Biweekly, 1000m, [new IncomeAllocationResponse(HouseholdChecking.Id, 1000m)], null, false),
+                new PayScheduleResponse(Guid.Parse("30000000-0000-0000-0000-000000000002"), "Freelance", incomeDate, PayPeriodCadence.Biweekly, 500m, [new IncomeAllocationResponse(CashWallet.Id, 500m)], null, false),
+            ],
+            [new IncomeReceiptResponse(Guid.NewGuid(), completedScheduleId, incomeDate, 1000m, [new IncomeAllocationResponse(HouseholdChecking.Id, 1000m)])]));
+
+        var component = context.Render<TransactionInspector>();
+
+        component.WaitForAssertion(() => Assert.Multiple(
+            () => Assert.Contains("Completed income", component.Markup, StringComparison.Ordinal),
+            () => Assert.Contains("Salary", component.Markup, StringComparison.Ordinal),
+            () => Assert.Contains("$1,000.00", component.Markup, StringComparison.Ordinal),
+            () => Assert.Contains("Pending income", component.Markup, StringComparison.Ordinal),
+            () => Assert.Contains("Freelance", component.Markup, StringComparison.Ordinal),
+            () => Assert.Contains("$500.00", component.Markup, StringComparison.Ordinal),
+            () => Assert.Contains("Household Checking", component.Markup, StringComparison.Ordinal),
+            () => Assert.Contains("Cash Wallet", component.Markup, StringComparison.Ordinal),
+            () => Assert.DoesNotContain("Salary", component.Find("#pending-income-heading").ParentElement!.TextContent, StringComparison.Ordinal),
+            () => Assert.Single(component.FindAll("form[aria-label='Record an expense']"))));
+    }
+
     /// <summary>Verifies correction and confirmed removal each reread backend state.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
     public async Task ReviseAndConfirmedRemoveRereadAuthoritativeState()
     {
-        using var context = new BunitContext();
+        using var context = CreateContext();
         var date = new DateOnly(2026, 9, 1);
         var selectedDate = new SelectedDateState();
         var api = new StubTransactionsApiClient();
@@ -113,7 +147,7 @@ public sealed class TransactionInspectorTests
     [Fact]
     public void InvalidRevisionDoesNotCallTheApi()
     {
-        using var context = new BunitContext();
+        using var context = CreateContext();
         var date = new DateOnly(2026, 9, 1);
         var selectedDate = new SelectedDateState();
         var api = new StubTransactionsApiClient();
@@ -139,7 +173,7 @@ public sealed class TransactionInspectorTests
     [Fact]
     public void AccountFieldsAreLabeledRequiredAndValidatedLocally()
     {
-        using var context = new BunitContext();
+        using var context = CreateContext();
         var date = new DateOnly(2026, 9, 1);
         var selectedDate = new SelectedDateState();
         var api = new StubTransactionsApiClient();
@@ -169,7 +203,7 @@ public sealed class TransactionInspectorTests
     [Fact]
     public void EmptyAccountCatalogShowsNativeAccountsLinkWithoutPlaceholderForm()
     {
-        using var context = new BunitContext();
+        using var context = CreateContext();
         var selectedDate = new SelectedDateState();
         selectedDate.Select(new DateOnly(2026, 9, 1));
         context.Services.AddSingleton(selectedDate);
@@ -189,7 +223,7 @@ public sealed class TransactionInspectorTests
     [Fact]
     public void AccountLoadFailureIsDistinctAndRetryable()
     {
-        using var context = new BunitContext();
+        using var context = CreateContext();
         var selectedDate = new SelectedDateState();
         var accountsApi = new StubAccountsApiClient([HouseholdChecking]) { FailNextList = true };
         selectedDate.Select(new DateOnly(2026, 9, 1));
@@ -211,7 +245,7 @@ public sealed class TransactionInspectorTests
     [Fact]
     public void LateResponsesDoNotReplaceTheCurrentDatesAccountsOrTransactions()
     {
-        using var context = new BunitContext();
+        using var context = CreateContext();
         var initialDate = new DateOnly(2026, 9, 1);
         var obsoleteDate = new DateOnly(2026, 9, 2);
         var currentDate = new DateOnly(2026, 9, 3);
@@ -248,6 +282,13 @@ public sealed class TransactionInspectorTests
             () => Assert.Contains("Cash Wallet", component.Markup, StringComparison.Ordinal),
             () => Assert.DoesNotContain("Household Checking", component.Markup, StringComparison.Ordinal),
             () => Assert.DoesNotContain("Unexpected", component.Find(".transaction-list").TextContent, StringComparison.Ordinal)));
+    }
+
+    private static BunitContext CreateContext()
+    {
+        var context = new BunitContext();
+        context.Services.AddSingleton(TimeProvider.System);
+        return context;
     }
 
     private sealed class StubTransactionsApiClient : ITransactionsApiClient
@@ -356,6 +397,25 @@ public sealed class TransactionInspectorTests
 
             return Task.FromResult(accounts);
         }
+    }
+
+    private sealed class StubPaySchedulesApiClient(
+        IReadOnlyList<PayScheduleResponse> schedules,
+        IReadOnlyList<IncomeReceiptResponse> receipts) : IPaySchedulesApiClient
+    {
+        public Task<PayScheduleResponse> CreateAsync(CreatePayScheduleRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<PayScheduleResponse>> ListAsync(CancellationToken cancellationToken) => Task.FromResult(schedules);
+
+        public Task<IReadOnlyList<IncomeReceiptResponse>> ListReceiptsAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<IncomeReceiptResponse>>(receipts.Where(receipt => receipt.PayDate >= from && receipt.PayDate <= to).ToArray());
+
+        public Task<IReadOnlyList<IncomeReceiptResponse>> MaterializeAsync(DateOnly payDate, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<bool> PauseAsync(Guid scheduleId, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<bool> ResumeAsync(Guid scheduleId, ResumePayScheduleRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<PayScheduleResponse?> ReviseAsync(Guid scheduleId, RevisePayScheduleRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
     private sealed class ControllableAccountsApiClient(IReadOnlyList<AccountResponse> initialAccounts) : IAccountsApiClient

@@ -12,6 +12,7 @@
 }
 
 .income-receipts h4,
+.income-receipts h5,
 .income-receipts p {
     margin: 0;
 }
@@ -19,6 +20,23 @@
 .income-receipts h4 {
     color: var(--hl-text-primary);
     font-size: 1rem;
+}
+
+.income-state {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.income-state h5 {
+    margin: 0;
+    color: var(--hl-text-secondary);
+    font-size: 0.8125rem;
+    font-weight: var(--hl-weight-heading);
+}
+
+.pending-income-list {
+    color: var(--hl-text-secondary);
 }
 
 .income-receipt-list {

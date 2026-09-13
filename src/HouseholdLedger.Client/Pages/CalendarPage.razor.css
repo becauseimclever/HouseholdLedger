@@ -183,6 +183,14 @@
     font-weight: var(--hl-weight-control);
 }
 
+.income-pending {
+    color: var(--hl-text-secondary);
+}
+
+.income-pending strong {
+    color: var(--hl-text-secondary);
+}
+
 .calendar-day[aria-pressed="true"] {
     border-color: var(--hl-border-selected);
     background: var(--hl-surface-selected);

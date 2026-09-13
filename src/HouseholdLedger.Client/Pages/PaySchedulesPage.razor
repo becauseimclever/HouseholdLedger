@@ -1,5 +1,6 @@
 @page "/pay-schedules"
 @using HouseholdLedger.Api.Contracts
+@using Microsoft.AspNetCore.Components.Web
 
 <Microsoft.AspNetCore.Components.Web.PageTitle>Pay schedules</Microsoft.AspNetCore.Components.Web.PageTitle>
 
@@ -34,17 +35,17 @@
                 <form class="schedule-form" @onsubmit="SaveAsync" @onsubmit:preventDefault="true">
                     <div class="schedule-field">
                         <label for="schedule-name">Name</label>
-                        <input id="schedule-name" name="name" maxlength="100" autocomplete="off" @bind="nameText" aria-invalid="@(nameError is null ? "false" : "true")" />
+                        <input id="schedule-name" name="name" maxlength="100" autocomplete="off" value="@nameText" @oninput="UpdateName" aria-invalid="@(nameError is null ? "false" : "true")" />
                         @if (nameError is not null) { <p class="field-error">@nameError</p> }
                     </div>
                     <div class="schedule-field">
                         <label for="schedule-first-date">First pay date</label>
-                        <input id="schedule-first-date" name="firstPayDate" type="date" @bind="firstPayDateText" aria-invalid="@(firstPayDateError is null ? "false" : "true")" />
+                        <input id="schedule-first-date" name="firstPayDate" type="date" value="@firstPayDateText" @onchange="UpdateFirstPayDate" aria-invalid="@(firstPayDateError is null ? "false" : "true")" />
                         @if (firstPayDateError is not null) { <p class="field-error">@firstPayDateError</p> }
                     </div>
                     <div class="schedule-field">
                         <label for="schedule-cadence">Cadence</label>
-                        <select id="schedule-cadence" name="cadence" @bind="cadenceText">
+                        <select id="schedule-cadence" name="cadence" value="@cadenceText" @onchange="UpdateCadence">
                             @foreach (var cadenceOption in CadenceOptions)
                             { <option value="@cadenceOption.Value">@cadenceOption.Label</option> }
                         </select>
@@ -53,13 +54,13 @@
                     {
                         <div class="schedule-field">
                             <label for="schedule-second-pay-day">Second pay day</label>
-                            <input id="schedule-second-pay-day" name="secondPayDay" type="number" min="1" max="31" @bind="secondPayDayText" aria-invalid="@(secondPayDayError is null ? "false" : "true")" />
+                            <input id="schedule-second-pay-day" name="secondPayDay" type="number" min="1" max="31" value="@secondPayDayText" @onchange="UpdateSecondPayDay" aria-invalid="@(secondPayDayError is null ? "false" : "true")" />
                             @if (secondPayDayError is not null) { <p class="field-error">@secondPayDayError</p> }
                         </div>
                     }
                     <div class="schedule-field">
                         <label for="schedule-net-income">Net income (@CurrentCurrencyLabel)</label>
-                        <input id="schedule-net-income" name="netIncome" type="number" min="0.01" step="0.01" inputmode="decimal" @bind="netIncomeText" aria-invalid="@(netIncomeError is null ? "false" : "true")" />
+                        <input id="schedule-net-income" name="netIncome" type="number" min="0.01" step="0.01" inputmode="decimal" value="@netIncomeText" @onchange="UpdateNetIncome" aria-invalid="@(netIncomeError is null ? "false" : "true")" />
                         @if (netIncomeError is not null) { <p class="field-error">@netIncomeError</p> }
                     </div>
                     <fieldset class="allocation-fields">
@@ -70,7 +71,7 @@
                             <div class="allocation-row">
                                 <div class="schedule-field">
                                     <label for="@GetAllocationId("account", allocation.Id)">Account</label>
-                                    <select id="@GetAllocationId("account", allocation.Id)" @bind="allocation.AccountId">
+                                    <select id="@GetAllocationId("account", allocation.Id)" value="@allocation.AccountId" @onchange="args => UpdateAllocationAccount(allocation.Id, args)">
                                         <option value="">Choose an account</option>
                                         @foreach (var account in accounts)
                                         { <option value="@account.Id" disabled="@IsAccountChosenByAnotherAllocation(account.Id, allocation.Id)">@account.Name</option> }
@@ -78,7 +79,7 @@
                                 </div>
                                 <div class="schedule-field">
                                     <label for="@GetAllocationId("amount", allocation.Id)">Amount (@CurrentCurrencyLabel)</label>
-                                    <input id="@GetAllocationId("amount", allocation.Id)" type="number" min="0.01" step="0.01" inputmode="decimal" @bind="allocation.AmountText" />
+                                    <input id="@GetAllocationId("amount", allocation.Id)" type="number" min="0.01" step="0.01" inputmode="decimal" value="@allocation.AmountText" @onchange="args => UpdateAllocationAmount(allocation.Id, args)" />
                                 </div>
                                 <button class="secondary-action allocation-remove" type="button" aria-label="Remove allocation" title="Remove allocation" disabled="@(allocations.Count == 1 || isSaving)" @onclick="() => RemoveAllocation(allocation.Id)">Remove</button>
                             </div>

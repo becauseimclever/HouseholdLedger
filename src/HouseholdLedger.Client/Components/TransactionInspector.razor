@@ -17,24 +17,46 @@ else
             <h4 id="income-receipts-heading">Income</h4>
             @if (isLoadingIncome)
             {
-                <p role="status" aria-live="polite">Loading income receipts</p>
+                <p role="status" aria-live="polite">Loading income</p>
             }
             else if (incomeLoadError)
             {
-                <p class="transaction-error" role="alert">Income receipts are unavailable.</p>
-            }
-            else if (incomeReceipts.Count == 0)
-            {
-                <p>No income receipts recorded for this day.</p>
+                <p class="transaction-error" role="alert">Income details are unavailable.</p>
             }
             else
             {
-                <ol class="income-receipt-list">
-                    @foreach (var receipt in incomeReceipts)
+                <section class="income-state" aria-labelledby="completed-income-heading">
+                    <h5 id="completed-income-heading">Completed income</h5>
+                    @if (incomeReceipts.Count == 0)
                     {
-                        <li><strong>@GetScheduleName(receipt.ScheduleId)</strong><span>@MoneyFormatter.Format(receipt.NetIncome, CurrentCurrencyCode)</span><ul>@foreach (var allocation in receipt.Allocations) { <li>@allocation.AccountId: @MoneyFormatter.Format(allocation.Amount, CurrentCurrencyCode)</li> }</ul></li>
+                        <p>No completed income recorded for this day.</p>
                     }
-                </ol>
+                    else
+                    {
+                        <ol class="income-receipt-list">
+                            @foreach (var receipt in incomeReceipts)
+                            {
+                                <li><strong>@GetScheduleName(receipt.ScheduleId)</strong><span>@MoneyFormatter.Format(receipt.NetIncome, CurrentCurrencyCode)</span><ul>@foreach (var allocation in receipt.Allocations) { <li>@GetAccountName(allocation.AccountId): @MoneyFormatter.Format(allocation.Amount, CurrentCurrencyCode)</li> }</ul></li>
+                            }
+                        </ol>
+                    }
+                </section>
+                <section class="income-state" aria-labelledby="pending-income-heading">
+                    <h5 id="pending-income-heading">Pending income</h5>
+                    @if (pendingIncome.Count == 0)
+                    {
+                        <p>No pending income for this day.</p>
+                    }
+                    else
+                    {
+                        <ol class="income-receipt-list pending-income-list">
+                            @foreach (var income in pendingIncome)
+                            {
+                                <li><strong>@income.Name</strong><span>@MoneyFormatter.Format(income.NetIncome, CurrentCurrencyCode)</span><ul>@foreach (var allocation in income.Allocations) { <li>@GetAccountName(allocation.AccountId): @MoneyFormatter.Format(allocation.Amount, CurrentCurrencyCode)</li> }</ul></li>
+                            }
+                        </ol>
+                    }
+                </section>
             }
         </section>
 

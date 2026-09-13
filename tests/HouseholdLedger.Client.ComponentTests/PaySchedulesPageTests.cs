@@ -30,6 +30,19 @@ public sealed class PaySchedulesPageTests
             () => Assert.Equal(0, api.CreateCalls));
     }
 
+    /// <summary>Verifies an additional account allocation row can be added.</summary>
+    [Fact]
+    public void AddingAllocationAddsAnotherAccountRow()
+    {
+        using var context = CreateContext(out _);
+        var component = context.Render<PaySchedulesPage>();
+        component.WaitForElement(".schedule-form");
+
+        component.FindAll("button").Single(button => button.TextContent == "Add allocation").Click();
+
+        Assert.Equal(2, component.FindAll("select[id^='account-']").Count);
+    }
+
     /// <summary>Verifies all supported cadence choices are available to schedule creation.</summary>
     [Fact]
     public void CreationFormExposesEverySupportedCadence()

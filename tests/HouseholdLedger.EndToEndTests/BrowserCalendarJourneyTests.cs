@@ -27,7 +27,7 @@ public sealed class BrowserCalendarJourneyTests
     private const string OutputDirectoryEnvironmentVariable = "HOUSEHOLDLEDGER_E2E_OUTPUT_DIR";
     private const string ApiPortEnvironmentVariable = "HOUSEHOLDLEDGER_E2E_API_PORT";
     private const string PostgreSqlConnectionEnvironmentVariable =
-        "HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING";
+        "HOUSEHOLDLEDGER_E2E_POSTGRES_CONNECTION_STRING";
 
     private const string FirefoxSha256 = "79f01d224fe7f31795f2d4edcb31f497c96e11e9d0770704ed8495861f70d1c1";
     private const string GeckodriverSha256 = "e95b4eac7960ffcd5acbfd92bb7d49d48f99c1d01a20ddd297fef8c80821020d";
