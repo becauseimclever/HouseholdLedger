@@ -169,6 +169,20 @@
     font-weight: var(--hl-weight-control);
 }
 
+.calendar-income-total {
+    display: grid;
+    color: var(--hl-status-success);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    gap: 0.0625rem;
+}
+
+.calendar-income-total strong {
+    color: var(--hl-text-primary);
+    font-size: 0.75rem;
+    font-weight: var(--hl-weight-control);
+}
+
 .calendar-day[aria-pressed="true"] {
     border-color: var(--hl-border-selected);
     background: var(--hl-surface-selected);
@@ -216,6 +230,13 @@
     justify-content: flex-end;
     padding: 0 1.25rem 1.25rem;
     gap: 0.5rem;
+}
+
+.calendar-materialize-status {
+    margin: 0;
+    padding: 0 1.25rem 1.25rem;
+    color: var(--hl-text-secondary);
+    font-size: 0.875rem;
 }
 
 .calendar-navigation button {

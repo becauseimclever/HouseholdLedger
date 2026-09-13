@@ -4,6 +4,36 @@
     margin-top: 1rem;
 }
 
+.income-receipts {
+    margin: 1rem 0;
+    padding: 1rem 0;
+    border-top: 0.0625rem solid var(--hl-border-default);
+    border-bottom: 0.0625rem solid var(--hl-border-default);
+}
+
+.income-receipts h4,
+.income-receipts p {
+    margin: 0;
+}
+
+.income-receipts h4 {
+    color: var(--hl-text-primary);
+    font-size: 1rem;
+}
+
+.income-receipt-list {
+    display: grid;
+    padding-left: 1.25rem;
+    margin: 0.75rem 0 0;
+    color: var(--hl-text-secondary);
+    gap: 0.5rem;
+}
+
+.income-receipt-list strong,
+.income-receipt-list span {
+    color: var(--hl-text-primary);
+}
+
 .transaction-inspector h3,
 .transaction-inspector p {
     margin: 0;

@@ -8,10 +8,10 @@ decisions and acceptance boundaries; historical audits remain under
 
 | Feature | Status | Outcome |
 | --- | --- | --- |
-| [024](024-set-a-monthly-kakeibo-spending-plan.md) | Proposed | Set one period's money available and intended savings, then compare exact planned spendable and remaining amounts with recorded expenses. |
+| [024](024-track-recurring-pay-period-income.md) | Proposed | Track recurring pay-period income and allocate each dated receipt exactly across household accounts. |
 
-Feature 024 starts the planning part of the Kakeibo cycle while reusing the
-calendar-centered expense record. Display currency remains an intentional
+Feature 024 starts the receive step of the Kakeibo cycle while extending the
+calendar-centered record with durable income receipts. Display currency remains an intentional
 presentation culture and indicator: changing it never converts ledger values,
 and the Settings flow requires acknowledgement of that behavior before saving.
 

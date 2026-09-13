@@ -44,6 +44,10 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     private bool isSaving;
     private bool loadError;
     private bool accountLoadError;
+    private bool incomeLoadError;
+    private bool isLoadingIncome;
+    private IReadOnlyList<IncomeReceiptResponse> incomeReceipts = [];
+    private IReadOnlyDictionary<Guid, string> scheduleNames = new Dictionary<Guid, string>();
     private IReadOnlyList<ExpenseTransactionResponse> transactions = [];
 
     /// <summary>Gets or sets the selected-date state.</summary>
@@ -57,6 +61,10 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     /// <summary>Gets or sets the transaction API client.</summary>
     [Inject]
     private ITransactionsApiClient TransactionsApi { get; set; } = null!;
+
+    /// <summary>Gets or sets the service provider used for optional income receipt data.</summary>
+    [Inject]
+    private IServiceProvider Services { get; set; } = null!;
 
     /// <summary>Gets or sets the global display-currency state.</summary>
     [CascadingParameter]
@@ -121,10 +129,12 @@ public partial class TransactionInspector : ComponentBase, IDisposable
         this.requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(this.lifetimeCancellation.Token);
         this.accounts = [];
         this.transactions = [];
+        this.incomeReceipts = [];
         this.accountId = string.Empty;
         this.accountError = null;
         this.accountLoadError = false;
         this.loadError = false;
+        this.incomeLoadError = false;
         this.saveError = null;
         this.isSaving = false;
         this.isMutating = false;
@@ -135,7 +145,51 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     private Task LoadSelectionAsync(DateOnly ledgerDate, CancellationToken cancellationToken) =>
         Task.WhenAll(
             this.LoadAccountsAsync(ledgerDate, cancellationToken),
-            this.LoadAsync(ledgerDate, cancellationToken));
+            this.LoadAsync(ledgerDate, cancellationToken),
+            this.LoadIncomeAsync(ledgerDate, cancellationToken));
+
+    private string GetScheduleName(Guid scheduleId) => this.scheduleNames.GetValueOrDefault(scheduleId, "Income receipt");
+
+    private async Task LoadIncomeAsync(DateOnly ledgerDate, CancellationToken cancellationToken)
+    {
+        var paySchedulesApi = this.Services.GetService(typeof(IPaySchedulesApiClient)) as IPaySchedulesApiClient;
+        if (paySchedulesApi is null)
+        {
+            return;
+        }
+
+        this.isLoadingIncome = true;
+        this.incomeLoadError = false;
+        try
+        {
+            var receiptsTask = paySchedulesApi.ListReceiptsAsync(ledgerDate, ledgerDate, cancellationToken);
+            var schedulesTask = paySchedulesApi.ListAsync(cancellationToken);
+            await Task.WhenAll(receiptsTask, schedulesTask);
+            if (!cancellationToken.IsCancellationRequested && this.SelectedDate.Value == ledgerDate)
+            {
+                this.incomeReceipts = await receiptsTask;
+                this.scheduleNames = (await schedulesTask).ToDictionary(schedule => schedule.Id, schedule => schedule.Name);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (HttpRequestException)
+        {
+            if (this.SelectedDate.Value == ledgerDate)
+            {
+                this.incomeLoadError = true;
+            }
+        }
+        finally
+        {
+            if (!cancellationToken.IsCancellationRequested && this.SelectedDate.Value == ledgerDate)
+            {
+                this.isLoadingIncome = false;
+                await this.InvokeAsync(this.StateHasChanged);
+            }
+        }
+    }
 
     private async Task LoadAccountsAsync(DateOnly ledgerDate, CancellationToken cancellationToken)
     {

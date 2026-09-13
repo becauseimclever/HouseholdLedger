@@ -9,6 +9,7 @@ var connectionString = builder.Configuration.GetConnectionString("HouseholdLedge
 if (!string.IsNullOrWhiteSpace(connectionString) && HasUsableConnectionStringSyntax(connectionString))
 {
     builder.Services.AddScoped<HouseholdLedger.Application.Accounts.AccountService>();
+    builder.Services.AddScoped<HouseholdLedger.Application.Income.IncomeScheduleService>();
     builder.Services.AddScoped<HouseholdLedger.Application.Settings.GlobalSettingsService>();
     builder.Services.AddScoped<HouseholdLedger.Application.Transactions.ExpenseTransactionService>();
     builder.Services.AddHouseholdLedgerInfrastructure(connectionString);

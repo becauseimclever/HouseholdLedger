@@ -28,7 +28,7 @@
           "500": {
             "description": "Internal Server Error",
             "content": {
-              "application/problem\u002Bjson": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -55,7 +55,7 @@
                 "$ref": "#/components/schemas/CreateAccountRequest"
               }
             },
-            "application/*\u002Bjson": {
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateAccountRequest"
               }
@@ -77,7 +77,7 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "application/problem\u002Bjson": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
@@ -135,7 +135,7 @@
             "in": "query",
             "description": "Gets or initializes the inclusive minimum stored amount.",
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
               "type": [
                 "number",
                 "string"
@@ -148,7 +148,7 @@
             "in": "query",
             "description": "Gets or initializes the inclusive maximum stored amount.",
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+              "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
               "type": [
                 "number",
                 "string"
@@ -179,7 +179,7 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "application/problem\u002Bjson": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
@@ -189,7 +189,7 @@
           "404": {
             "description": "Not Found",
             "content": {
-              "application/problem\u002Bjson": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -199,7 +199,7 @@
           "500": {
             "description": "Internal Server Error",
             "content": {
-              "application/problem\u002Bjson": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -229,7 +229,7 @@
           "500": {
             "description": "Internal Server Error",
             "content": {
-              "application/problem\u002Bjson": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -256,7 +256,7 @@
                 "$ref": "#/components/schemas/UpdateGlobalSettingsRequest"
               }
             },
-            "application/*\u002Bjson": {
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateGlobalSettingsRequest"
               }
@@ -278,7 +278,7 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "application/problem\u002Bjson": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
@@ -307,7 +307,7 @@
                 "$ref": "#/components/schemas/UpdateThemeRequest"
               }
             },
-            "application/*\u002Bjson": {
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateThemeRequest"
               }
@@ -329,7 +329,7 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "application/problem\u002Bjson": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
@@ -359,7 +359,7 @@
           "500": {
             "description": "Internal Server Error",
             "content": {
-              "application/problem\u002Bjson": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -420,6 +420,380 @@
         }
       }
     },
+    "/api/v1/pay-schedules": {
+      "get": {
+        "tags": [
+          "PaySchedules"
+        ],
+        "summary": "Lists recurring income pay schedules.",
+        "responses": {
+          "200": {
+            "description": "The pay schedules.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PayScheduleResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "PaySchedules"
+        ],
+        "summary": "Creates one recurring income pay schedule.",
+        "requestBody": {
+          "description": "The request cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePayScheduleRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePayScheduleRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePayScheduleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayScheduleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pay-schedules/{scheduleId}": {
+      "get": {
+        "tags": [
+          "PaySchedules"
+        ],
+        "summary": "Gets one recurring income pay schedule.",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "description": "The schedule identifier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayScheduleResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "PaySchedules"
+        ],
+        "summary": "Revises the future settings for one recurring income pay schedule.",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "description": "The schedule identifier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The request cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisePayScheduleRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisePayScheduleRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevisePayScheduleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayScheduleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pay-schedules/receipts": {
+      "get": {
+        "tags": [
+          "PaySchedules"
+        ],
+        "summary": "Lists materialized income receipts in an inclusive calendar range.",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "description": "The inclusive first pay date.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "The inclusive final pay date.",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IncomeReceiptResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pay-schedules/{scheduleId}/pause": {
+      "post": {
+        "tags": [
+          "PaySchedules"
+        ],
+        "summary": "Pauses one recurring income pay schedule.",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "description": "The schedule identifier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pay-schedules/{scheduleId}/resume": {
+      "post": {
+        "tags": [
+          "PaySchedules"
+        ],
+        "summary": "Resumes one recurring income pay schedule without backfilling missed receipts.",
+        "parameters": [
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "description": "The schedule identifier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The request cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumePayScheduleRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumePayScheduleRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResumePayScheduleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pay-schedules/materialize/{payDate}": {
+      "post": {
+        "tags": [
+          "PaySchedules"
+        ],
+        "summary": "Materializes active pay schedules that are due on a selected date.",
+        "parameters": [
+          {
+            "name": "payDate",
+            "in": "path",
+            "description": "The date for which due receipts are materialized.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IncomeReceiptResponse"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/days/{ledgerDate}/transactions": {
       "get": {
         "tags": [
@@ -455,7 +829,7 @@
           "500": {
             "description": "Internal Server Error",
             "content": {
-              "application/problem\u002Bjson": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -494,7 +868,7 @@
                 "$ref": "#/components/schemas/CreateExpenseTransactionRequest"
               }
             },
-            "application/*\u002Bjson": {
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateExpenseTransactionRequest"
               }
@@ -516,7 +890,7 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "application/problem\u002Bjson": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
@@ -567,7 +941,7 @@
                 "$ref": "#/components/schemas/UpdateExpenseTransactionRequest"
               }
             },
-            "application/*\u002Bjson": {
+            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateExpenseTransactionRequest"
               }
@@ -589,7 +963,7 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "application/problem\u002Bjson": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
@@ -599,7 +973,7 @@
           "404": {
             "description": "Not Found",
             "content": {
-              "application/problem\u002Bjson": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -642,7 +1016,7 @@
           "404": {
             "description": "Not Found",
             "content": {
-              "application/problem\u002Bjson": {
+              "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
                 }
@@ -722,7 +1096,7 @@
             "format": "uuid"
           },
           "amount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
             "type": [
               "number",
               "string"
@@ -736,6 +1110,58 @@
           }
         },
         "description": "Requests creation of one expense for a route-selected date."
+      },
+      "CreatePayScheduleRequest": {
+        "required": [
+          "name",
+          "firstPayDate",
+          "cadence",
+          "netIncome",
+          "allocations"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The user-visible schedule name."
+          },
+          "firstPayDate": {
+            "type": "string",
+            "description": "The first pay date.",
+            "format": "date"
+          },
+          "cadence": {
+            "description": "The schedule recurrence cadence.",
+            "$ref": "#/components/schemas/PayPeriodCadence"
+          },
+          "netIncome": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The positive net income for each receipt.",
+            "format": "double"
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomeAllocationRequest"
+            },
+            "description": "The account allocations for each receipt."
+          },
+          "secondMonthlyPayDay": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "The second pay day for a semimonthly schedule.",
+            "format": "int32"
+          }
+        },
+        "description": "Requests creation of a recurring income pay schedule."
       },
       "DailyExpenseSummaryResponse": {
         "required": [
@@ -751,7 +1177,7 @@
             "format": "date"
           },
           "dailyTotal": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
             "type": [
               "number",
               "string"
@@ -760,7 +1186,7 @@
             "format": "double"
           },
           "monthToDateTotal": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
             "type": [
               "number",
               "string"
@@ -769,7 +1195,7 @@
             "format": "double"
           }
         },
-        "description": "Describes one day\u0027s expense total and month-to-date spending."
+        "description": "Describes one day's expense total and month-to-date spending."
       },
       "ExpenseTransactionResponse": {
         "required": [
@@ -802,7 +1228,7 @@
             "format": "date"
           },
           "amount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
             "type": [
               "number",
               "string"
@@ -848,6 +1274,166 @@
         },
         "description": "Describes API service availability."
       },
+      "IncomeAllocationRequest": {
+        "required": [
+          "accountId",
+          "amount"
+        ],
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "The destination account identifier.",
+            "format": "uuid"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The positive amount allocated to the account.",
+            "format": "double"
+          }
+        },
+        "description": "Requests the allocation of one income receipt amount to an account."
+      },
+      "IncomeAllocationResponse": {
+        "required": [
+          "accountId",
+          "amount"
+        ],
+        "type": "object",
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "description": "The destination account identifier.",
+            "format": "uuid"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The allocated amount.",
+            "format": "double"
+          }
+        },
+        "description": "Describes one income allocation to an account."
+      },
+      "IncomeReceiptResponse": {
+        "required": [
+          "id",
+          "scheduleId",
+          "payDate",
+          "netIncome",
+          "allocations"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The receipt identifier.",
+            "format": "uuid"
+          },
+          "scheduleId": {
+            "type": "string",
+            "description": "The originating pay schedule identifier.",
+            "format": "uuid"
+          },
+          "payDate": {
+            "type": "string",
+            "description": "The receipt pay date.",
+            "format": "date"
+          },
+          "netIncome": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The received net income.",
+            "format": "double"
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomeAllocationResponse"
+            },
+            "description": "The immutable account allocation snapshot."
+          }
+        },
+        "description": "Describes a materialized income receipt."
+      },
+      "PayPeriodCadence": {
+        "type": "integer",
+        "description": "Defines the recurrence cadence for a pay schedule."
+      },
+      "PayScheduleResponse": {
+        "required": [
+          "id",
+          "name",
+          "firstPayDate",
+          "cadence",
+          "netIncome",
+          "allocations",
+          "secondMonthlyPayDay",
+          "isPaused"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "The schedule identifier.",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "The user-visible schedule name."
+          },
+          "firstPayDate": {
+            "type": "string",
+            "description": "The first pay date.",
+            "format": "date"
+          },
+          "cadence": {
+            "description": "The recurrence cadence.",
+            "$ref": "#/components/schemas/PayPeriodCadence"
+          },
+          "netIncome": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The net income for each receipt.",
+            "format": "double"
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomeAllocationResponse"
+            },
+            "description": "The account allocations for each receipt."
+          },
+          "secondMonthlyPayDay": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "The second pay day for a semimonthly schedule.",
+            "format": "int32"
+          },
+          "isPaused": {
+            "type": "boolean",
+            "description": "Whether future receipt creation is paused."
+          }
+        },
+        "description": "Describes a recurring income pay schedule."
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -886,6 +1472,72 @@
           }
         }
       },
+      "ResumePayScheduleRequest": {
+        "required": [
+          "resumeDate"
+        ],
+        "type": "object",
+        "properties": {
+          "resumeDate": {
+            "type": "string",
+            "description": "The date from which future receipts are eligible.",
+            "format": "date"
+          }
+        },
+        "description": "Requests resumption of a pay schedule from a date."
+      },
+      "RevisePayScheduleRequest": {
+        "required": [
+          "name",
+          "firstPayDate",
+          "cadence",
+          "netIncome",
+          "allocations"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The replacement schedule name."
+          },
+          "firstPayDate": {
+            "type": "string",
+            "description": "The first pay date using the replacement settings.",
+            "format": "date"
+          },
+          "cadence": {
+            "description": "The replacement recurrence cadence.",
+            "$ref": "#/components/schemas/PayPeriodCadence"
+          },
+          "netIncome": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The replacement net income for each receipt.",
+            "format": "double"
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomeAllocationRequest"
+            },
+            "description": "The replacement account allocations for each receipt."
+          },
+          "secondMonthlyPayDay": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "The replacement second pay day for a semimonthly schedule.",
+            "format": "int32"
+          }
+        },
+        "description": "Requests replacement of a pay schedule's future settings."
+      },
       "UpdateExpenseTransactionRequest": {
         "required": [
           "accountId",
@@ -900,7 +1552,7 @@
             "format": "uuid"
           },
           "amount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d\u002B)?$",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
             "type": [
               "number",
               "string"
@@ -1011,6 +1663,9 @@
     },
     {
       "name": "MonthlyExpenseSummary"
+    },
+    {
+      "name": "PaySchedules"
     },
     {
       "name": "Transactions"

@@ -13,6 +13,31 @@ else
         <h3 id="selected-day-heading">@selectedDate.ToString("D", CultureInfo.CurrentCulture)</h3>
         <p class="transaction-currency">Expenses in @CurrentCurrencyLabel</p>
 
+        <section class="income-receipts" aria-labelledby="income-receipts-heading">
+            <h4 id="income-receipts-heading">Income</h4>
+            @if (isLoadingIncome)
+            {
+                <p role="status" aria-live="polite">Loading income receipts</p>
+            }
+            else if (incomeLoadError)
+            {
+                <p class="transaction-error" role="alert">Income receipts are unavailable.</p>
+            }
+            else if (incomeReceipts.Count == 0)
+            {
+                <p>No income receipts recorded for this day.</p>
+            }
+            else
+            {
+                <ol class="income-receipt-list">
+                    @foreach (var receipt in incomeReceipts)
+                    {
+                        <li><strong>@GetScheduleName(receipt.ScheduleId)</strong><span>@MoneyFormatter.Format(receipt.NetIncome, CurrentCurrencyCode)</span><ul>@foreach (var allocation in receipt.Allocations) { <li>@allocation.AccountId: @MoneyFormatter.Format(allocation.Amount, CurrentCurrencyCode)</li> }</ul></li>
+                    }
+                </ol>
+            }
+        </section>
+
         @if (isLoadingAccounts)
         {
             <p class="account-load-state" role="status" aria-live="polite">Loading accounts</p>

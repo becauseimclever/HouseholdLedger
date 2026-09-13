@@ -1,0 +1,127 @@
+@page "/pay-schedules"
+@using HouseholdLedger.Api.Contracts
+
+<Microsoft.AspNetCore.Components.Web.PageTitle>Pay schedules</Microsoft.AspNetCore.Components.Web.PageTitle>
+
+<main class="pay-schedules-page" aria-labelledby="pay-schedules-heading">
+    <h1 id="pay-schedules-heading">Pay schedules</h1>
+
+    @if (isLoading)
+    {
+        <p class="pay-schedules-state" role="status" aria-live="polite">Loading pay schedules</p>
+    }
+    else if (loadError)
+    {
+        <div class="pay-schedules-state error-state" role="alert">
+            <p>Pay schedules are unavailable.</p>
+            <button type="button" @onclick="LoadAsync">Try again</button>
+        </div>
+    }
+    else
+    {
+        <section class="schedule-form-section" aria-labelledby="schedule-form-heading">
+            <h2 id="schedule-form-heading">@(editingScheduleId is null ? "New pay schedule" : "Edit pay schedule")</h2>
+            @if (accountsLoadError)
+            {
+                <p class="field-error" role="alert">Accounts are unavailable. Allocation accounts cannot be chosen.</p>
+            }
+            else if (accounts.Count == 0)
+            {
+                <p class="pay-schedules-state">Add an account before creating a pay schedule. <a class="content-link" href="/accounts">Go to Accounts</a>.</p>
+            }
+            else
+            {
+                <form class="schedule-form" @onsubmit="SaveAsync" @onsubmit:preventDefault="true">
+                    <div class="schedule-field">
+                        <label for="schedule-name">Name</label>
+                        <input id="schedule-name" name="name" maxlength="100" autocomplete="off" @bind="nameText" aria-invalid="@(nameError is null ? "false" : "true")" />
+                        @if (nameError is not null) { <p class="field-error">@nameError</p> }
+                    </div>
+                    <div class="schedule-field">
+                        <label for="schedule-first-date">First pay date</label>
+                        <input id="schedule-first-date" name="firstPayDate" type="date" @bind="firstPayDateText" aria-invalid="@(firstPayDateError is null ? "false" : "true")" />
+                        @if (firstPayDateError is not null) { <p class="field-error">@firstPayDateError</p> }
+                    </div>
+                    <div class="schedule-field">
+                        <label for="schedule-cadence">Cadence</label>
+                        <select id="schedule-cadence" name="cadence" @bind="cadenceText">
+                            @foreach (var cadenceOption in CadenceOptions)
+                            { <option value="@cadenceOption.Value">@cadenceOption.Label</option> }
+                        </select>
+                    </div>
+                    @if (IsSemimonthly)
+                    {
+                        <div class="schedule-field">
+                            <label for="schedule-second-pay-day">Second pay day</label>
+                            <input id="schedule-second-pay-day" name="secondPayDay" type="number" min="1" max="31" @bind="secondPayDayText" aria-invalid="@(secondPayDayError is null ? "false" : "true")" />
+                            @if (secondPayDayError is not null) { <p class="field-error">@secondPayDayError</p> }
+                        </div>
+                    }
+                    <div class="schedule-field">
+                        <label for="schedule-net-income">Net income (@CurrentCurrencyLabel)</label>
+                        <input id="schedule-net-income" name="netIncome" type="number" min="0.01" step="0.01" inputmode="decimal" @bind="netIncomeText" aria-invalid="@(netIncomeError is null ? "false" : "true")" />
+                        @if (netIncomeError is not null) { <p class="field-error">@netIncomeError</p> }
+                    </div>
+                    <fieldset class="allocation-fields">
+                        <legend>Account allocations</legend>
+                        @for (var index = 0; index < allocations.Count; index++)
+                        {
+                            var allocation = allocations[index];
+                            <div class="allocation-row">
+                                <div class="schedule-field">
+                                    <label for="@GetAllocationId("account", allocation.Id)">Account</label>
+                                    <select id="@GetAllocationId("account", allocation.Id)" @bind="allocation.AccountId">
+                                        <option value="">Choose an account</option>
+                                        @foreach (var account in accounts)
+                                        { <option value="@account.Id" disabled="@IsAccountChosenByAnotherAllocation(account.Id, allocation.Id)">@account.Name</option> }
+                                    </select>
+                                </div>
+                                <div class="schedule-field">
+                                    <label for="@GetAllocationId("amount", allocation.Id)">Amount (@CurrentCurrencyLabel)</label>
+                                    <input id="@GetAllocationId("amount", allocation.Id)" type="number" min="0.01" step="0.01" inputmode="decimal" @bind="allocation.AmountText" />
+                                </div>
+                                <button class="secondary-action allocation-remove" type="button" aria-label="Remove allocation" title="Remove allocation" disabled="@(allocations.Count == 1 || isSaving)" @onclick="() => RemoveAllocation(allocation.Id)">Remove</button>
+                            </div>
+                        }
+                        <button class="secondary-action" type="button" disabled="@isSaving" @onclick="AddAllocation">Add allocation</button>
+                        <p class="allocation-total" aria-live="polite">Allocated: @FormatCurrency(AllocationTotal) of @NetIncomePreview</p>
+                        @if (allocationError is not null) { <p class="field-error" role="alert">@allocationError</p> }
+                    </fieldset>
+                    <div class="schedule-form-actions">
+                        <button type="submit" disabled="@isSaving">@(isSaving ? "Saving" : editingScheduleId is null ? "Create pay schedule" : "Save changes")</button>
+                        @if (editingScheduleId is not null) { <button class="secondary-action" type="button" disabled="@isSaving" @onclick="CancelEdit">Cancel</button> }
+                    </div>
+                </form>
+            }
+        </section>
+
+        <section class="schedule-list-section" aria-labelledby="configured-schedules-heading">
+            <h2 id="configured-schedules-heading">Configured schedules</h2>
+            @if (schedules.Count == 0) { <p class="pay-schedules-state">No pay schedules yet.</p> }
+            else
+            {
+                <ol class="schedule-list">
+                    @foreach (var schedule in schedules)
+                    {
+                        <li class="schedule-item">
+                            <div class="schedule-summary"><h3>@schedule.Name</h3><p>@(schedule.IsPaused ? "Paused" : "Active") · @GetCadenceLabel(schedule.Cadence)</p><p>Next or first date: @GetNextPayDate(schedule).ToString("D", CurrentCulture)</p><p>@FormatCurrency(schedule.NetIncome) · @GetAllocationSummary(schedule)</p></div>
+                            <div class="schedule-actions">
+                                <button class="secondary-action" type="button" @onclick="() => BeginEdit(schedule)">Edit</button>
+                                @if (schedule.IsPaused)
+                                {
+                                    <label class="resume-date-label" for="@GetScheduleId("resume-date", schedule.Id)">Resume date<input id="@GetScheduleId("resume-date", schedule.Id)" type="date" value="@GetResumeDateText(schedule.Id)" @onchange="args => UpdateResumeDate(schedule.Id, args)" /></label>
+                                    <button type="button" disabled="@isMutating" @onclick="() => ResumeAsync(schedule)">@(isMutating ? "Resuming" : "Resume")</button>
+                                    <p class="no-backfill-status">Resuming does not backfill missed receipts.</p>
+                                }
+                                else { <button type="button" disabled="@isMutating" @onclick="() => PauseAsync(schedule.Id)">@(isMutating ? "Pausing" : "Pause")</button> }
+                            </div>
+                        </li>
+                    }
+                </ol>
+            }
+        </section>
+    }
+
+    @if (saveError is not null) { <p class="save-message error-state" role="alert">@saveError</p> }
+    else if (saveStatus is not null) { <p class="save-message success-state" role="status" aria-live="polite">@saveStatus</p> }
+</main>

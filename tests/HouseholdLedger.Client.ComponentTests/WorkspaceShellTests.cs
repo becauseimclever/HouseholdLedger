@@ -42,13 +42,15 @@ public sealed class WorkspaceShellTests
             () => Assert.Equal("Navigation", component.Find("#navigation-heading").TextContent),
             () => Assert.Equal("Inspector", component.Find("#inspector-heading").TextContent),
             () => Assert.Equal("No calendar item selected", component.Find(".inspector-empty-state").TextContent),
-            () => Assert.Equal(3, component.FindAll("#workspace-navigation a").Count),
+            () => Assert.Equal(4, component.FindAll("#workspace-navigation a").Count),
             () => Assert.Equal("Home", component.FindAll("#workspace-navigation .navigation-label")[0].TextContent),
             () => Assert.Equal("/", component.FindAll("#workspace-navigation a")[0].GetAttribute("href")),
             () => Assert.Equal("Accounts", component.FindAll("#workspace-navigation .navigation-label")[1].TextContent),
             () => Assert.Equal("/accounts", component.FindAll("#workspace-navigation a")[1].GetAttribute("href")),
-            () => Assert.Equal("Settings", component.FindAll("#workspace-navigation .navigation-label")[2].TextContent),
-            () => Assert.Equal("/settings", component.FindAll("#workspace-navigation a")[2].GetAttribute("href")),
+            () => Assert.Equal("Pay schedules", component.FindAll("#workspace-navigation .navigation-label")[2].TextContent),
+            () => Assert.Equal("/pay-schedules", component.FindAll("#workspace-navigation a")[2].GetAttribute("href")),
+            () => Assert.Equal("Settings", component.FindAll("#workspace-navigation .navigation-label")[3].TextContent),
+            () => Assert.Equal("/settings", component.FindAll("#workspace-navigation a")[3].GetAttribute("href")),
             () => Assert.Empty(component.FindAll(".workspace-toolbar button[aria-controls='workspace-navigation']")),
             () => Assert.Single(component.FindAll("#workspace-navigation button[aria-controls='workspace-navigation']")),
             () => Assert.Equal("button", navigationToggle.GetAttribute("type")),
@@ -67,7 +69,7 @@ public sealed class WorkspaceShellTests
             () => Assert.Contains("navigation-pane-collapsed", component.Find("#workspace-navigation").ClassList),
             () => Assert.Equal("Navigation", component.Find("#workspace-navigation").GetAttribute("aria-label")),
             () => Assert.Empty(component.FindAll("#navigation-heading")),
-            () => Assert.Equal(3, component.FindAll("#workspace-navigation a").Count),
+            () => Assert.Equal(4, component.FindAll("#workspace-navigation a").Count),
             () => Assert.All(component.FindAll("#workspace-navigation a"), link => Assert.NotNull(link.GetAttribute("aria-label"))),
             () => Assert.All(component.FindAll("#workspace-navigation .navigation-label"), label => Assert.Contains("navigation-label", label.ClassList)),
             () => Assert.Equal("false", navigationToggle.GetAttribute("aria-expanded")),
@@ -80,7 +82,7 @@ public sealed class WorkspaceShellTests
         Assert.Multiple(
             () => Assert.DoesNotContain("navigation-pane-collapsed", component.Find("#workspace-navigation").ClassList),
             () => Assert.Equal("Navigation", component.Find("#navigation-heading").TextContent),
-            () => Assert.Equal(3, component.FindAll("#workspace-navigation a").Count),
+            () => Assert.Equal(4, component.FindAll("#workspace-navigation a").Count),
             () => Assert.Equal("true", navigationToggle.GetAttribute("aria-expanded")),
             () => Assert.Equal("Collapse navigation", navigationToggle.GetAttribute("aria-label")));
 
@@ -254,7 +256,7 @@ public sealed class WorkspaceShellTests
         Assert.Multiple(
             () => Assert.Equal("Try loading accounts again", retry.GetAttribute("aria-label")),
             () => Assert.Equal("Try loading accounts again", retry.GetAttribute("title")),
-            () => Assert.Equal(3, component.FindAll("#workspace-navigation a").Count));
+            () => Assert.Equal(4, component.FindAll("#workspace-navigation a").Count));
         retry.Click();
         component.WaitForAssertion(() => Assert.Equal(2, apiClient.Requests.Count));
 
@@ -303,8 +305,8 @@ public sealed class WorkspaceShellTests
         var disclosure = component.Find("button[aria-controls='accounts-navigation-list']");
 
         Assert.Multiple(
-            () => Assert.Equal(4, component.FindAll("#workspace-navigation a").Count),
-            () => Assert.Equal(4, component.FindAll("#workspace-navigation .navigation-icon").Count),
+            () => Assert.Equal(5, component.FindAll("#workspace-navigation a").Count),
+            () => Assert.Equal(5, component.FindAll("#workspace-navigation .navigation-icon").Count),
             () => Assert.Equal("true", disclosure.GetAttribute("aria-expanded")),
             () => Assert.Equal("Collapse accounts", disclosure.GetAttribute("aria-label")),
             () => Assert.Equal("Collapse accounts", disclosure.GetAttribute("title")),
