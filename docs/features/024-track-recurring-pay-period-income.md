@@ -26,8 +26,9 @@ or reflects on spending.
    recurrence cadence, and the net income for each pay period.
 3. The user adds one or more account allocations whose total equals the net
    income, then saves the schedule.
-4. The system creates the first income receipt and its allocations and shows
-   the receipt on the calendar's pay date.
+4. The system creates a receipt and its allocations for every due occurrence
+  from and including the first pay date through the current local date, then
+  shows each receipt on its calendar pay date.
 5. On later pay dates, the system creates each due receipt once from the saved
    schedule and shows it in the matching calendar period.
 6. The user can revise future pay periods without altering durable past
@@ -59,6 +60,12 @@ $$
 - An occurrence is identified by its pay schedule and pay date. The system
   creates at most one receipt for that key, including when a due-period check
   is retried or runs concurrently.
+- Creating an active schedule materializes every due occurrence from and
+  including its first pay date through the creation operation's authoritative
+  current local date. This limited creation-time history treats the schedule as
+  though it had existed since its configured start date.
+- A first pay date in the future creates no receipt until it becomes due
+  through the explicit materialization operation.
 - Generated receipts preserve the schedule values effective when they were
   created. Revising a schedule changes only future, not already materialized,
   receipts.
@@ -127,14 +134,14 @@ $$
 | --- | --- |
 | AC-01: Recurring pay schedule | A user can create a named schedule with a first pay date and weekly, biweekly, semimonthly, four-week, or monthly cadence. |
 | AC-02: Exact income allocation | A schedule accepts one or more unique-account allocations only when their exact decimal sum equals its positive net income. |
-| AC-03: Durable receipt per pay date | Materializing a due pay date creates one durable income receipt and its allocations; retries and concurrent requests never duplicate it. |
+| AC-03: Durable receipt per pay date | Creating an active schedule materializes every due occurrence from and including its first pay date through the authoritative current local date. Materializing a later due pay date creates one durable income receipt and its allocations; retries and concurrent requests never duplicate it. |
 | AC-04: Calendar-visible income | The calendar and selected-day inspector show income receipts on their pay dates, distinguish them from expenses, and identify each credited account and amount. |
 | AC-05: Future-only revision | Revising a schedule changes its future receipts while past materialized receipts retain the amount and allocations received on their pay dates. |
 | AC-06: Paused schedule | Pausing prevents new receipts and resuming does not fabricate historical receipts for skipped dates. |
 | AC-07: Account integrity | Missing, duplicate, or nonexistent allocation accounts, nonpositive amounts, precision violations, and allocation totals that differ from income produce no persisted change and return truthful validation. |
 | AC-08: Calendar safety | Navigating calendar ranges loads matching income data, and obsolete responses cannot replace the active range. |
 | AC-09: Accessible responsive operation | Schedule fields, allocation controls, total preview, receipt details, and all states are labeled, keyboard operable, announced where appropriate, and usable at supported viewports without overlap or horizontal page scrolling. |
-| AC-10: Bounded slice | No account balance, transfer, income tax calculation, irregular or one-off income, automatic backfill, bank synchronization, recurring expense, spending plan, category allocation, forecasting, or reflection is introduced. |
+| AC-10: Bounded slice | No account balance, transfer, income tax calculation, irregular or one-off income, backfill for dates missed by an existing or resumed schedule, bank synchronization, recurring expense, spending plan, category allocation, forecasting, or reflection is introduced. |
 
 ## Implementation Notes
 
@@ -158,9 +165,10 @@ No new runtime dependency is expected.
 - Domain tests cover all recurrence cadences, valid pay dates, positive and
   two-decimal money boundaries, duplicate accounts, and exact allocation-sum
   validation.
-- Application tests cover first and later occurrences, schedule revisions,
-  pause/resume behavior, no automatic backfill, receipt snapshots, and
-  idempotent/concurrent materialization.
+- Application tests cover inclusive historical receipt generation when a
+  schedule is created, future first dates, later occurrences, schedule
+  revisions, pause/resume behavior without resume backfill, receipt snapshots,
+  and idempotent/concurrent materialization.
 - PostgreSQL tests cover migrations, exact-decimal and allocation constraints,
   account foreign keys, schedule/pay-date uniqueness, receipt durability, and
   isolation between schedules.
@@ -169,9 +177,9 @@ No new runtime dependency is expected.
 - Client component tests cover schedule editing, allocation total previews,
   states, receipt and allocation presentation, calendar navigation, and stale
   responses.
-- One hosted browser journey creates a biweekly schedule split between two
-  accounts, materializes its first receipt, verifies the calendar and inspector
-  details, revises a future allocation, and confirms the original receipt is
+- One hosted browser journey creates a biweekly schedule with a past first date
+  split between two accounts, verifies the generated calendar and inspector
+  details, revises a future allocation, and confirms an original receipt is
   unchanged.
 
 ## Definition of Done
@@ -200,6 +208,7 @@ available.
 | 2026-09-12 | Require each receipt to allocate its full net income across accounts. | The receipt should explain exactly where the received money is intended to be held without an implicit remainder. |
 | 2026-09-12 | Preserve past receipts on schedule revision. | Historical calendar records must remain honest after a paycheck or allocation changes. |
 | 2026-09-12 | Reserve receipts as the future bank-deposit matching anchor. | Imported deposits should reconcile to durable dated income records without mutating the original schedule or receipt snapshot. |
+| 2026-09-14 | Materialize past due receipts when an active schedule is created. | A configured past start date represents a schedule that existed from that date, so the calendar needs its complete receipt history. |
 
 ## Dependencies
 
