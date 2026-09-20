@@ -234,6 +234,89 @@ public sealed class ApiContractTests
                 parameter => Assert.False(parameter.TryGetProperty("required", out _))));
     }
 
+    /// <summary>Verifies the checked contract describes pay schedule mutation and materialization.</summary>
+    [Fact]
+    public void CheckedOpenApiDescribesPayScheduleMutationContract()
+    {
+        using var document = LoadOpenApiJsonDocument();
+        var root = document.RootElement;
+        var collection = root.GetProperty("paths").GetProperty("/api/v1/pay-schedules");
+        var list = collection.GetProperty("get");
+        var create = collection.GetProperty("post");
+        var schedule = root.GetProperty("paths").GetProperty("/api/v1/pay-schedules/{scheduleId}");
+        var get = schedule.GetProperty("get");
+        var revise = schedule
+            .GetProperty("put");
+        var receipts = root.GetProperty("paths")
+            .GetProperty("/api/v1/pay-schedules/receipts")
+            .GetProperty("get");
+        var pause = root.GetProperty("paths")
+            .GetProperty("/api/v1/pay-schedules/{scheduleId}/pause")
+            .GetProperty("post");
+        var resume = root.GetProperty("paths")
+            .GetProperty("/api/v1/pay-schedules/{scheduleId}/resume")
+            .GetProperty("post");
+        var materialize = root.GetProperty("paths")
+            .GetProperty("/api/v1/pay-schedules/materialize/{payDate}")
+            .GetProperty("post");
+        var createRequestReference = create.GetProperty("requestBody")
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+        var receiptResponseReference = materialize.GetProperty("responses")
+            .GetProperty("200")
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema")
+            .GetProperty("items")
+            .GetProperty("$ref")
+            .GetString();
+        var listResponseReference = list.GetProperty("responses")
+            .GetProperty("200")
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema")
+            .GetProperty("items")
+            .GetProperty("$ref")
+            .GetString();
+        var getResponseReference = get.GetProperty("responses")
+            .GetProperty("200")
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+        var receiptParameters = receipts.GetProperty("parameters")
+            .EnumerateArray()
+            .Select(parameter => parameter.GetProperty("name").GetString())
+            .ToArray();
+
+        Assert.Multiple(
+            () => Assert.Equal("#/components/schemas/PayScheduleResponse", listResponseReference),
+            () => Assert.Equal("#/components/schemas/CreatePayScheduleRequest", createRequestReference),
+            () => Assert.Equal("#/components/schemas/PayScheduleResponse", getResponseReference),
+            () => Assert.True(get.GetProperty("responses").TryGetProperty("404", out _)),
+            () => Assert.Equal(["from", "to"], receiptParameters),
+            () => Assert.Equal("#/components/schemas/IncomeReceiptResponse", receipts.GetProperty("responses")
+                .GetProperty("200")
+                .GetProperty("content")
+                .GetProperty("application/json")
+                .GetProperty("schema")
+                .GetProperty("items")
+                .GetProperty("$ref")
+                .GetString()),
+            () => Assert.True(receipts.GetProperty("responses").TryGetProperty("400", out _)),
+            () => Assert.True(create.GetProperty("responses").TryGetProperty("201", out _)),
+            () => Assert.True(revise.GetProperty("responses").TryGetProperty("200", out _)),
+            () => Assert.True(revise.GetProperty("responses").TryGetProperty("400", out _)),
+            () => Assert.True(revise.GetProperty("responses").TryGetProperty("404", out _)),
+            () => Assert.True(pause.GetProperty("responses").TryGetProperty("204", out _)),
+            () => Assert.True(resume.GetProperty("responses").TryGetProperty("204", out _)),
+            () => Assert.Equal("#/components/schemas/IncomeReceiptResponse", receiptResponseReference));
+    }
+
     /// <summary>Verifies the checked contract describes global settings read and update operations.</summary>
     [Fact]
     public void CheckedOpenApiDescribesGlobalSettingsContract()

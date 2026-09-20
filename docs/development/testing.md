@@ -104,18 +104,6 @@ password, and exposes the connection only to the test process through
 `HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING`. Its `finally` block removes
 the container and confirms removal.
 
-To run the real-provider tests followed by the hosted transaction browser journey
-against that same isolated database and a fresh Release publish:
-
-```powershell
-pwsh tests/HouseholdLedger.Infrastructure.IntegrationTests/Run-PostgreSqlTests.ps1 `
-  -RunHostedBrowserJourneys
-```
-
-This option uses the pinned user-local Firefox and geckodriver runtime, selects
-an available API port, and removes the temporary publish, profiles, output,
-environment variables, and PostgreSQL container in its `finally` cleanup.
-
 Choose another already reviewed image only through the script parameter:
 
 ```powershell
@@ -138,9 +126,15 @@ runtime. It does not use Selenium, Selenium Manager, Playwright, a cloud grid,
 or a runtime downloader. Before launching any browser process, the tests enforce
 the approved Firefox and geckodriver SHA-256 values.
 
-The complete E2E run requires five normalized absolute paths, one available
-loopback port, and the isolated PostgreSQL connection supplied by the combined
-harness:
+Browser E2E runs against the persistent manual-development `PiDB` / `BudgetV2`
+database. It never initializes, migrates, resets, seeds, or deletes that
+database. Browser journeys may create and revise development records as part of
+their assertions, so use the dedicated runner only when that is intentional.
+Automated PostgreSQL integration tests remain the only workflow that uses a
+disposable Podman database.
+
+The complete E2E run requires a freshly published API, the pinned browser
+runtime, a loopback port, and the existing PiDB connection:
 
 - `HOUSEHOLDLEDGER_API_ARTIFACT`: a freshly published file named exactly
   `HouseholdLedger.Api.dll`.
@@ -152,63 +146,33 @@ harness:
   run writes screenshots and diagnostics.
 - `HOUSEHOLDLEDGER_E2E_API_PORT`: an available loopback TCP port reserved for
   the test-owned API host.
-- `HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING`: a test-only connection to
-  the migrated isolated database used by the transaction journey.
+- `HOUSEHOLDLEDGER_E2E_POSTGRES_CONNECTION_STRING`: the connection supplied by
+  the dedicated runner only to its child browser-test and API processes.
 
-Use a fresh API publish for every run. It includes the referenced Client static
-web assets:
+Run the dedicated browser workflow. It prompts for the already-configured PiDB
+connection string without echoing or saving it, publishes the API with its
+referenced Client static web assets, and removes the temporary publish,
+profiles, output, and process-scoped environment variables after the run:
 
 ```powershell
-$publishRoot = Join-Path ([System.IO.Path]::GetTempPath()) `
-  ("HouseholdLedger-BrowserE2E-" + [guid]::NewGuid().ToString("N"))
-$apiOutput = Join-Path $publishRoot "api"
-$profileRoot = Join-Path $publishRoot "profiles"
-$e2eOutput = Join-Path $publishRoot "output"
-
-try {
-  dotnet publish src/HouseholdLedger.Api --configuration Release `
-    --no-restore --output $apiOutput
-  if ($LASTEXITCODE -ne 0) { throw "API publish failed." }
-
-  $env:HOUSEHOLDLEDGER_API_ARTIFACT = Join-Path `
-    $apiOutput "HouseholdLedger.Api.dll"
-  $env:HOUSEHOLDLEDGER_FIREFOX_BINARY = Join-Path $env:LOCALAPPDATA `
-    "HouseholdLedger\BrowserTestRuntime\firefox\153.0.1-eme-free\core\firefox.exe"
-  $env:HOUSEHOLDLEDGER_GECKODRIVER = Join-Path $env:LOCALAPPDATA `
-    "HouseholdLedger\BrowserTestRuntime\geckodriver\0.37.1\geckodriver.exe"
-  New-Item -ItemType Directory -Path $profileRoot, $e2eOutput | Out-Null
-  $env:HOUSEHOLDLEDGER_E2E_PROFILE_ROOT = $profileRoot
-  $env:HOUSEHOLDLEDGER_E2E_OUTPUT_DIR = $e2eOutput
-  $env:HOUSEHOLDLEDGER_E2E_API_PORT = "51271"
-
-  dotnet test tests/HouseholdLedger.EndToEndTests `
-    --configuration Release --no-restore
-  if ($LASTEXITCODE -ne 0) { throw "End-to-end tests failed." }
-}
-finally {
-  Remove-Item Env:HOUSEHOLDLEDGER_API_ARTIFACT -ErrorAction SilentlyContinue
-  Remove-Item Env:HOUSEHOLDLEDGER_FIREFOX_BINARY -ErrorAction SilentlyContinue
-  Remove-Item Env:HOUSEHOLDLEDGER_GECKODRIVER -ErrorAction SilentlyContinue
-  Remove-Item Env:HOUSEHOLDLEDGER_E2E_PROFILE_ROOT -ErrorAction SilentlyContinue
-  Remove-Item Env:HOUSEHOLDLEDGER_E2E_OUTPUT_DIR -ErrorAction SilentlyContinue
-  Remove-Item Env:HOUSEHOLDLEDGER_E2E_API_PORT -ErrorAction SilentlyContinue
-  Remove-Item $publishRoot -Recurse -Force -ErrorAction SilentlyContinue
-}
+pwsh tests/HouseholdLedger.EndToEndTests/Run-BrowserEndToEndTests.ps1
 ```
 
-Before using the example port, confirm that it is available and reserve it for
-this workflow. The test validates the port before it starts its owned host. Do
-not point the profile or output variables at a shared directory. The test
-removes each profile; the outer `finally` block removes the allocated output
-and fresh publish.
+To run another browser test class, use its fully qualified-name filter:
+
+```powershell
+pwsh tests/HouseholdLedger.EndToEndTests/Run-BrowserEndToEndTests.ps1 `
+  -TestFilter "FullyQualifiedName~OpenSourceNoticesBrowserJourneyTests"
+```
+
+Do not point the profile or output variables at shared directories. The runner
+uses a unique temporary root and removes it after each run.
 
 The browser cases use the published API URL to exercise the API-hosted
 WebAssembly Client. Current assertions cover the calendar workspace, calendar
 interaction, persisted transaction creation/correction/removal with backend
 rereads, open-source notices navigation and return behavior, accessibility,
-normal-flow geometry, and visible text containment. Prefer the combined owned
-harness above for the transaction journey because it configures the database
-and all browser inputs together.
+normal-flow geometry, and visible text containment.
 
 Historical two-host evidence consists of two complete consecutive runs that
 passed all three EndToEndTests cases on 2026-08-03 in 8.7 seconds and 8.1

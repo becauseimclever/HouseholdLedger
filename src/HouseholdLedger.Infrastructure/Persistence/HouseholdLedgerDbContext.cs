@@ -5,6 +5,7 @@
 namespace HouseholdLedger.Infrastructure.Persistence;
 
 using HouseholdLedger.Domain.Accounts;
+using HouseholdLedger.Domain.Income;
 using HouseholdLedger.Domain.Settings;
 using HouseholdLedger.Domain.Transactions;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,10 @@ public sealed class HouseholdLedgerDbContext(DbContextOptions<HouseholdLedgerDbC
 
     /// <summary>Gets the singleton global settings.</summary>
     public DbSet<GlobalSettings> GlobalSettings => this.Set<GlobalSettings>();
+
+    internal DbSet<PayScheduleRecord> PayScheduleRecords => this.Set<PayScheduleRecord>();
+
+    internal DbSet<IncomeReceiptRecord> IncomeReceiptRecords => this.Set<IncomeReceiptRecord>();
 
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -95,5 +100,76 @@ public sealed class HouseholdLedgerDbContext(DbContextOptions<HouseholdLedgerDbC
                 theme => WorkbenchThemeCode.ToCode(theme),
                 value => WorkbenchThemeCode.Parse(value))
             .HasMaxLength(32);
+
+        var paySchedule = modelBuilder.Entity<PayScheduleRecord>();
+        paySchedule.ToTable(
+            "pay_schedules",
+            tableBuilder =>
+            {
+                tableBuilder.HasCheckConstraint("ck_pay_schedules_net_income_positive", "net_income > 0");
+                tableBuilder.HasCheckConstraint("ck_pay_schedules_net_income_maximum", $"net_income <= {IncomeAmount.Maximum}");
+                tableBuilder.HasCheckConstraint("ck_pay_schedules_net_income_scale", "net_income = round(net_income, 2)");
+                tableBuilder.HasCheckConstraint("ck_pay_schedules_cadence", "cadence IN ('Weekly', 'Biweekly', 'Semimonthly', 'FourWeekly', 'Monthly')");
+            });
+        paySchedule.HasKey(item => item.Id);
+        paySchedule.Property(item => item.Id).HasColumnName("id").ValueGeneratedNever();
+        paySchedule.Property(item => item.Name).HasColumnName("name").HasMaxLength(100);
+        paySchedule.Property(item => item.FirstPayDate).HasColumnName("first_pay_date").HasColumnType("date");
+        paySchedule.Property(item => item.Cadence).HasColumnName("cadence").HasConversion<string>().HasMaxLength(32);
+        paySchedule.Property(item => item.NetIncome).HasColumnName("net_income").HasColumnType("numeric");
+        paySchedule.Property(item => item.SecondMonthlyPayDay).HasColumnName("second_monthly_pay_day");
+        paySchedule.Property(item => item.IsPaused).HasColumnName("is_paused");
+        paySchedule.Property(item => item.ReceiptEligibleFrom).HasColumnName("receipt_eligible_from").HasColumnType("date");
+
+        var scheduleAllocation = modelBuilder.Entity<IncomeScheduleAllocationRecord>();
+        scheduleAllocation.ToTable(
+            "income_schedule_allocations",
+            tableBuilder =>
+            {
+                tableBuilder.HasCheckConstraint("ck_income_schedule_allocations_amount_positive", "amount > 0");
+                tableBuilder.HasCheckConstraint("ck_income_schedule_allocations_amount_maximum", $"amount <= {IncomeAmount.Maximum}");
+                tableBuilder.HasCheckConstraint("ck_income_schedule_allocations_amount_scale", "amount = round(amount, 2)");
+            });
+        scheduleAllocation.HasKey(item => new { item.ScheduleId, item.AccountId });
+        scheduleAllocation.Property(item => item.ScheduleId).HasColumnName("schedule_id");
+        scheduleAllocation.Property(item => item.AccountId).HasColumnName("account_id");
+        scheduleAllocation.Property(item => item.Amount).HasColumnName("amount").HasColumnType("numeric");
+        scheduleAllocation.HasOne<PayScheduleRecord>().WithMany(item => item.Allocations).HasForeignKey(item => item.ScheduleId).OnDelete(DeleteBehavior.Restrict);
+        scheduleAllocation.HasOne<Account>().WithMany().HasForeignKey(item => item.AccountId).OnDelete(DeleteBehavior.Restrict);
+        scheduleAllocation.HasIndex(item => new { item.ScheduleId, item.AccountId }).IsUnique().HasDatabaseName("ux_income_schedule_allocations_schedule_id_account_id");
+
+        var receipt = modelBuilder.Entity<IncomeReceiptRecord>();
+        receipt.ToTable(
+            "income_receipts",
+            tableBuilder =>
+            {
+                tableBuilder.HasCheckConstraint("ck_income_receipts_net_income_positive", "net_income > 0");
+                tableBuilder.HasCheckConstraint("ck_income_receipts_net_income_maximum", $"net_income <= {IncomeAmount.Maximum}");
+                tableBuilder.HasCheckConstraint("ck_income_receipts_net_income_scale", "net_income = round(net_income, 2)");
+            });
+        receipt.HasKey(item => item.Id);
+        receipt.Property(item => item.Id).HasColumnName("id").ValueGeneratedNever();
+        receipt.Property(item => item.ScheduleId).HasColumnName("schedule_id");
+        receipt.Property(item => item.PayDate).HasColumnName("pay_date").HasColumnType("date");
+        receipt.Property(item => item.NetIncome).HasColumnName("net_income").HasColumnType("numeric");
+        receipt.HasOne<PayScheduleRecord>().WithMany(item => item.Receipts).HasForeignKey(item => item.ScheduleId).OnDelete(DeleteBehavior.Restrict);
+        receipt.HasIndex(item => new { item.ScheduleId, item.PayDate }).IsUnique().HasDatabaseName("ux_income_receipts_schedule_id_pay_date");
+
+        var receiptAllocation = modelBuilder.Entity<IncomeReceiptAllocationRecord>();
+        receiptAllocation.ToTable(
+            "income_receipt_allocations",
+            tableBuilder =>
+            {
+                tableBuilder.HasCheckConstraint("ck_income_receipt_allocations_amount_positive", "amount > 0");
+                tableBuilder.HasCheckConstraint("ck_income_receipt_allocations_amount_maximum", $"amount <= {IncomeAmount.Maximum}");
+                tableBuilder.HasCheckConstraint("ck_income_receipt_allocations_amount_scale", "amount = round(amount, 2)");
+            });
+        receiptAllocation.HasKey(item => new { item.ReceiptId, item.AccountId });
+        receiptAllocation.Property(item => item.ReceiptId).HasColumnName("receipt_id");
+        receiptAllocation.Property(item => item.AccountId).HasColumnName("account_id");
+        receiptAllocation.Property(item => item.Amount).HasColumnName("amount").HasColumnType("numeric");
+        receiptAllocation.HasOne<IncomeReceiptRecord>().WithMany(item => item.Allocations).HasForeignKey(item => item.ReceiptId).OnDelete(DeleteBehavior.Restrict);
+        receiptAllocation.HasOne<Account>().WithMany().HasForeignKey(item => item.AccountId).OnDelete(DeleteBehavior.Restrict);
+        receiptAllocation.HasIndex(item => new { item.ReceiptId, item.AccountId }).IsUnique().HasDatabaseName("ux_income_receipt_allocations_receipt_id_account_id");
     }
 }

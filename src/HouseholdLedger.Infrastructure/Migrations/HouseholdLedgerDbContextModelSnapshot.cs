@@ -131,6 +131,156 @@ namespace HouseholdLedger.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.IncomeReceiptAllocationRecord", b =>
+                {
+                    b.Property<Guid>("ReceiptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("receipt_id");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("amount");
+
+                    b.HasKey("ReceiptId", "AccountId");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("ReceiptId", "AccountId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_income_receipt_allocations_receipt_id_account_id");
+
+                    b.ToTable("income_receipt_allocations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_income_receipt_allocations_amount_maximum", "amount <= 9999999999999999.99");
+
+                            t.HasCheckConstraint("ck_income_receipt_allocations_amount_positive", "amount > 0");
+
+                            t.HasCheckConstraint("ck_income_receipt_allocations_amount_scale", "amount = round(amount, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.IncomeReceiptRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("NetIncome")
+                        .HasColumnType("numeric")
+                        .HasColumnName("net_income");
+
+                    b.Property<DateOnly>("PayDate")
+                        .HasColumnType("date")
+                        .HasColumnName("pay_date");
+
+                    b.Property<Guid>("ScheduleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("schedule_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScheduleId", "PayDate")
+                        .IsUnique()
+                        .HasDatabaseName("ux_income_receipts_schedule_id_pay_date");
+
+                    b.ToTable("income_receipts", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_income_receipts_net_income_maximum", "net_income <= 9999999999999999.99");
+
+                            t.HasCheckConstraint("ck_income_receipts_net_income_positive", "net_income > 0");
+
+                            t.HasCheckConstraint("ck_income_receipts_net_income_scale", "net_income = round(net_income, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.IncomeScheduleAllocationRecord", b =>
+                {
+                    b.Property<Guid>("ScheduleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("schedule_id");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("amount");
+
+                    b.HasKey("ScheduleId", "AccountId");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("ScheduleId", "AccountId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_income_schedule_allocations_schedule_id_account_id");
+
+                    b.ToTable("income_schedule_allocations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_income_schedule_allocations_amount_maximum", "amount <= 9999999999999999.99");
+
+                            t.HasCheckConstraint("ck_income_schedule_allocations_amount_positive", "amount > 0");
+
+                            t.HasCheckConstraint("ck_income_schedule_allocations_amount_scale", "amount = round(amount, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.PayScheduleRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Cadence")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("cadence");
+
+                    b.Property<DateOnly>("FirstPayDate")
+                        .HasColumnType("date")
+                        .HasColumnName("first_pay_date");
+
+                    b.Property<bool>("IsPaused")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_paused");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<decimal>("NetIncome")
+                        .HasColumnType("numeric")
+                        .HasColumnName("net_income");
+
+                    b.Property<DateOnly>("ReceiptEligibleFrom")
+                        .HasColumnType("date")
+                        .HasColumnName("receipt_eligible_from");
+
+                    b.Property<int?>("SecondMonthlyPayDay")
+                        .HasColumnType("integer")
+                        .HasColumnName("second_monthly_pay_day");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("pay_schedules", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_pay_schedules_cadence", "cadence IN ('Weekly', 'Biweekly', 'Semimonthly', 'FourWeekly', 'Monthly')");
+
+                            t.HasCheckConstraint("ck_pay_schedules_net_income_maximum", "net_income <= 9999999999999999.99");
+
+                            t.HasCheckConstraint("ck_pay_schedules_net_income_positive", "net_income > 0");
+
+                            t.HasCheckConstraint("ck_pay_schedules_net_income_scale", "net_income = round(net_income, 2)");
+                        });
+                });
+
             modelBuilder.Entity("HouseholdLedger.Domain.Transactions.ExpenseTransaction", b =>
                 {
                     b.HasOne("HouseholdLedger.Domain.Accounts.Account", null)
@@ -138,6 +288,57 @@ namespace HouseholdLedger.Infrastructure.Migrations
                         .HasForeignKey("AccountId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.IncomeReceiptAllocationRecord", b =>
+                {
+                    b.HasOne("HouseholdLedger.Domain.Accounts.Account", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HouseholdLedger.Infrastructure.Persistence.IncomeReceiptRecord", null)
+                        .WithMany("Allocations")
+                        .HasForeignKey("ReceiptId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.IncomeReceiptRecord", b =>
+                {
+                    b.HasOne("HouseholdLedger.Infrastructure.Persistence.PayScheduleRecord", null)
+                        .WithMany("Receipts")
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.IncomeScheduleAllocationRecord", b =>
+                {
+                    b.HasOne("HouseholdLedger.Domain.Accounts.Account", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HouseholdLedger.Infrastructure.Persistence.PayScheduleRecord", null)
+                        .WithMany("Allocations")
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.IncomeReceiptRecord", b =>
+                {
+                    b.Navigation("Allocations");
+                });
+
+            modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.PayScheduleRecord", b =>
+                {
+                    b.Navigation("Allocations");
+
+                    b.Navigation("Receipts");
                 });
 #pragma warning restore 612, 618
         }

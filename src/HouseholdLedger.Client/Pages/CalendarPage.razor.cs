@@ -22,7 +22,13 @@ public partial class CalendarPage : ComponentBase, IDisposable
     private IReadOnlyDictionary<DateOnly, DailyExpenseSummaryResponse> expenseSummaries =
         new Dictionary<DateOnly, DailyExpenseSummaryResponse>();
 
+    private IReadOnlyDictionary<DateOnly, decimal> completedIncomeTotals = new Dictionary<DateOnly, decimal>();
+    private IReadOnlyDictionary<DateOnly, decimal> pendingIncomeTotals = new Dictionary<DateOnly, decimal>();
+
     private CancellationTokenSource? summaryRequestCancellation;
+    private CancellationTokenSource? receiptsRequestCancellation;
+    private bool isMaterializing;
+    private string? materializeStatus;
 
     private DateOnly currentDate;
     private ElementReference activeDateControl;
@@ -65,6 +71,10 @@ public partial class CalendarPage : ComponentBase, IDisposable
     /// </summary>
     [Inject]
     private IMonthlyExpenseSummaryApiClient MonthlyExpenseSummaryApi { get; set; } = null!;
+
+    /// <summary>Gets or sets the service provider used for optional receipt data.</summary>
+    [Inject]
+    private IServiceProvider Services { get; set; } = null!;
 
     /// <summary>Gets or sets the global display-currency state.</summary>
     [CascadingParameter]
@@ -115,6 +125,8 @@ public partial class CalendarPage : ComponentBase, IDisposable
 
         this.summaryRequestCancellation?.Cancel();
         this.summaryRequestCancellation?.Dispose();
+        this.receiptsRequestCancellation?.Cancel();
+        this.receiptsRequestCancellation?.Dispose();
         this.lifetimeCancellation.Cancel();
         this.lifetimeCancellation.Dispose();
         GC.SuppressFinalize(this);
@@ -134,6 +146,7 @@ public partial class CalendarPage : ComponentBase, IDisposable
         this.SelectedDate.TransactionsChanged += this.OnTransactionsChanged;
         this.SelectedDate.Select(this.currentDate);
         await this.LoadExpenseSummariesAsync();
+        await this.LoadIncomeReceiptsAsync();
     }
 
     /// <inheritdoc/>
@@ -167,6 +180,60 @@ public partial class CalendarPage : ComponentBase, IDisposable
     private static string AccessibleDateName(DateOnly date) => date.ToString("D", CultureInfo.CurrentCulture);
 
     private static string GetSummaryId(DateOnly date) => $"expense-summary-{date:yyyyMMdd}";
+
+    private static Dictionary<DateOnly, decimal> GetPendingIncomeTotals(
+        IReadOnlyList<PayScheduleResponse> schedules,
+        IReadOnlyList<IncomeReceiptResponse> receipts,
+        DateOnly from,
+        DateOnly to,
+        DateOnly currentDate)
+    {
+        var receiptKeys = receipts.Select(receipt => (receipt.ScheduleId, receipt.PayDate)).ToHashSet();
+        return schedules.Where(schedule => !schedule.IsPaused)
+            .SelectMany(schedule => GetDuePayDates(schedule, from, to)
+                .Where(payDate => payDate >= currentDate && !receiptKeys.Contains((schedule.Id, payDate)))
+                .Select(payDate => (payDate, schedule.NetIncome)))
+            .GroupBy(item => item.payDate)
+            .ToDictionary(group => group.Key, group => group.Sum(item => item.NetIncome));
+    }
+
+    private static IEnumerable<DateOnly> GetDuePayDates(PayScheduleResponse schedule, DateOnly from, DateOnly to)
+    {
+        var intervalDays = schedule.Cadence switch
+        {
+            PayPeriodCadence.Weekly => 7,
+            PayPeriodCadence.Biweekly => 14,
+            PayPeriodCadence.FourWeekly => 28,
+            _ => 0,
+        };
+        if (intervalDays > 0)
+        {
+            for (var payDate = schedule.FirstPayDate; payDate <= to; payDate = payDate.AddDays(intervalDays))
+            {
+                if (payDate >= from)
+                {
+                    yield return payDate;
+                }
+            }
+
+            yield break;
+        }
+
+        var payDays = schedule.Cadence == PayPeriodCadence.Semimonthly
+            ? new[] { schedule.FirstPayDate.Day, schedule.SecondMonthlyPayDay!.Value }
+            : new[] { schedule.FirstPayDate.Day };
+        for (var month = new DateOnly(schedule.FirstPayDate.Year, schedule.FirstPayDate.Month, 1); month <= to; month = month.AddMonths(1))
+        {
+            foreach (var payDay in payDays.Distinct().Order())
+            {
+                var payDate = new DateOnly(month.Year, month.Month, Math.Min(payDay, DateTime.DaysInMonth(month.Year, month.Month)));
+                if (payDate >= schedule.FirstPayDate && payDate >= from && payDate <= to)
+                {
+                    yield return payDate;
+                }
+            }
+        }
+    }
 
     private string FormatCurrency(decimal amount) => MoneyFormatter.Format(
         amount,
@@ -212,6 +279,67 @@ public partial class CalendarPage : ComponentBase, IDisposable
     {
         var summary = this.expenseSummaries.GetValueOrDefault(date);
         return summary?.DailyTotal > 0 ? summary : null;
+    }
+
+    private decimal? GetCompletedIncomeTotal(DateOnly date) => this.completedIncomeTotals.GetValueOrDefault(date) is var total && total > 0 ? total : null;
+
+    private decimal? GetPendingIncomeTotal(DateOnly date) => this.pendingIncomeTotals.GetValueOrDefault(date) is var total && total > 0 ? total : null;
+
+    private (DateOnly From, DateOnly To) GetReceiptRange() => this.CurrentMode switch
+    {
+        CalendarMode.Today => (this.ActiveDate, this.ActiveDate),
+        CalendarMode.Week => (GetWeekStart(this.ActiveDate), GetWeekStart(this.ActiveDate).AddDays(6)),
+        CalendarMode.Month => (new DateOnly(this.ActiveDate.Year, this.ActiveDate.Month, 1), new DateOnly(this.ActiveDate.Year, this.ActiveDate.Month, 1).AddMonths(1).AddDays(-1)),
+        _ => throw new InvalidOperationException("The calendar mode is not supported."),
+    };
+
+    private async Task LoadIncomeReceiptsAsync()
+    {
+        var (from, to) = this.GetReceiptRange();
+        var paySchedulesApi = this.Services.GetService(typeof(IPaySchedulesApiClient)) as IPaySchedulesApiClient;
+        if (paySchedulesApi is null)
+        {
+            this.completedIncomeTotals = new Dictionary<DateOnly, decimal>();
+            this.pendingIncomeTotals = new Dictionary<DateOnly, decimal>();
+            return;
+        }
+
+        this.receiptsRequestCancellation?.Cancel();
+        this.receiptsRequestCancellation?.Dispose();
+        var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(this.lifetimeCancellation.Token);
+        this.receiptsRequestCancellation = requestCancellation;
+        this.completedIncomeTotals = new Dictionary<DateOnly, decimal>();
+        this.pendingIncomeTotals = new Dictionary<DateOnly, decimal>();
+
+        try
+        {
+            var receiptsTask = paySchedulesApi.ListReceiptsAsync(from, to, requestCancellation.Token);
+            var schedulesTask = paySchedulesApi.ListAsync(requestCancellation.Token);
+            await Task.WhenAll(receiptsTask, schedulesTask);
+            if (!requestCancellation.IsCancellationRequested && this.GetReceiptRange() == (from, to))
+            {
+                var receipts = await receiptsTask;
+                this.completedIncomeTotals = receipts.GroupBy(receipt => receipt.PayDate)
+                    .ToDictionary(group => group.Key, group => group.Sum(receipt => receipt.NetIncome));
+                this.pendingIncomeTotals = GetPendingIncomeTotals(await schedulesTask, receipts, from, to, this.currentDate);
+            }
+        }
+        catch (OperationCanceledException) when (requestCancellation.IsCancellationRequested)
+        {
+        }
+        catch (HttpRequestException)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(this.receiptsRequestCancellation, requestCancellation))
+            {
+                this.receiptsRequestCancellation = null;
+            }
+
+            requestCancellation.Dispose();
+            await this.InvokeAsync(this.StateHasChanged);
+        }
     }
 
     private async Task LoadExpenseSummariesAsync()
@@ -339,6 +467,8 @@ public partial class CalendarPage : ComponentBase, IDisposable
         {
             await this.LoadExpenseSummariesAsync();
         }
+
+        await this.LoadIncomeReceiptsAsync();
     }
 
     private async Task SetMode(CalendarMode mode)
@@ -347,6 +477,35 @@ public partial class CalendarPage : ComponentBase, IDisposable
         if (mode == CalendarMode.Month)
         {
             await this.LoadExpenseSummariesAsync();
+        }
+
+        await this.LoadIncomeReceiptsAsync();
+    }
+
+    private async Task MaterializeActiveDateAsync()
+    {
+        var paySchedulesApi = this.Services.GetService(typeof(IPaySchedulesApiClient)) as IPaySchedulesApiClient;
+        if (paySchedulesApi is null)
+        {
+            return;
+        }
+
+        this.isMaterializing = true;
+        this.materializeStatus = null;
+        try
+        {
+            var receipts = await paySchedulesApi.MaterializeAsync(this.ActiveDate, this.lifetimeCancellation.Token);
+            await this.LoadIncomeReceiptsAsync();
+            this.SelectedDate.Select(this.ActiveDate);
+            this.materializeStatus = receipts.Count == 0 ? "No receipts were due on this date." : $"Recorded {receipts.Count} income {(receipts.Count == 1 ? "receipt" : "receipts")}.";
+        }
+        catch (HttpRequestException)
+        {
+            this.materializeStatus = "Income receipts could not be recorded.";
+        }
+        finally
+        {
+            this.isMaterializing = false;
         }
     }
 }

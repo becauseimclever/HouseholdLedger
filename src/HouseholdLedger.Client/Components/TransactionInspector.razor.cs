@@ -44,6 +44,11 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     private bool isSaving;
     private bool loadError;
     private bool accountLoadError;
+    private bool incomeLoadError;
+    private bool isLoadingIncome;
+    private IReadOnlyList<IncomeReceiptResponse> incomeReceipts = [];
+    private IReadOnlyList<PayScheduleResponse> pendingIncome = [];
+    private IReadOnlyDictionary<Guid, string> scheduleNames = new Dictionary<Guid, string>();
     private IReadOnlyList<ExpenseTransactionResponse> transactions = [];
 
     /// <summary>Gets or sets the selected-date state.</summary>
@@ -57,6 +62,14 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     /// <summary>Gets or sets the transaction API client.</summary>
     [Inject]
     private ITransactionsApiClient TransactionsApi { get; set; } = null!;
+
+    /// <summary>Gets or sets the service provider used for optional income receipt data.</summary>
+    [Inject]
+    private IServiceProvider Services { get; set; } = null!;
+
+    /// <summary>Gets or sets the clock used to identify future scheduled income.</summary>
+    [Inject]
+    private TimeProvider Clock { get; set; } = null!;
 
     /// <summary>Gets or sets the global display-currency state.</summary>
     [CascadingParameter]
@@ -112,6 +125,17 @@ public partial class TransactionInspector : ComponentBase, IDisposable
 
     private static string GetElementId(string prefix, Guid transactionId) => $"{prefix}-{transactionId:N}";
 
+    private static bool IsDueOn(PayScheduleResponse schedule, DateOnly date)
+    {
+        if (schedule.Cadence is PayPeriodCadence.Weekly or PayPeriodCadence.Biweekly or PayPeriodCadence.FourWeekly)
+        {
+            var interval = schedule.Cadence == PayPeriodCadence.Weekly ? 7 : schedule.Cadence == PayPeriodCadence.Biweekly ? 14 : 28;
+            return date >= schedule.FirstPayDate && (date.DayNumber - schedule.FirstPayDate.DayNumber) % interval == 0;
+        }
+
+        return date >= schedule.FirstPayDate && (date.Day == Math.Min(schedule.FirstPayDate.Day, DateTime.DaysInMonth(date.Year, date.Month)) || (schedule.Cadence == PayPeriodCadence.Semimonthly && date.Day == Math.Min(schedule.SecondMonthlyPayDay!.Value, DateTime.DaysInMonth(date.Year, date.Month))));
+    }
+
     private void RefreshCurrency() => _ = this.InvokeAsync(this.StateHasChanged);
 
     private void OnSelectedDateChanged(DateOnly ledgerDate)
@@ -121,10 +145,13 @@ public partial class TransactionInspector : ComponentBase, IDisposable
         this.requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(this.lifetimeCancellation.Token);
         this.accounts = [];
         this.transactions = [];
+        this.incomeReceipts = [];
+        this.pendingIncome = [];
         this.accountId = string.Empty;
         this.accountError = null;
         this.accountLoadError = false;
         this.loadError = false;
+        this.incomeLoadError = false;
         this.saveError = null;
         this.isSaving = false;
         this.isMutating = false;
@@ -135,7 +162,57 @@ public partial class TransactionInspector : ComponentBase, IDisposable
     private Task LoadSelectionAsync(DateOnly ledgerDate, CancellationToken cancellationToken) =>
         Task.WhenAll(
             this.LoadAccountsAsync(ledgerDate, cancellationToken),
-            this.LoadAsync(ledgerDate, cancellationToken));
+            this.LoadAsync(ledgerDate, cancellationToken),
+            this.LoadIncomeAsync(ledgerDate, cancellationToken));
+
+    private string GetScheduleName(Guid scheduleId) => this.scheduleNames.GetValueOrDefault(scheduleId, "Income receipt");
+
+    private string GetAccountName(Guid accountId) => this.accounts.FirstOrDefault(account => account.Id == accountId)?.Name ?? accountId.ToString();
+
+    private async Task LoadIncomeAsync(DateOnly ledgerDate, CancellationToken cancellationToken)
+    {
+        var paySchedulesApi = this.Services.GetService(typeof(IPaySchedulesApiClient)) as IPaySchedulesApiClient;
+        if (paySchedulesApi is null)
+        {
+            return;
+        }
+
+        this.isLoadingIncome = true;
+        this.incomeLoadError = false;
+        try
+        {
+            var receiptsTask = paySchedulesApi.ListReceiptsAsync(ledgerDate, ledgerDate, cancellationToken);
+            var schedulesTask = paySchedulesApi.ListAsync(cancellationToken);
+            await Task.WhenAll(receiptsTask, schedulesTask);
+            if (!cancellationToken.IsCancellationRequested && this.SelectedDate.Value == ledgerDate)
+            {
+                this.incomeReceipts = await receiptsTask;
+                var schedules = await schedulesTask;
+                this.scheduleNames = schedules.ToDictionary(schedule => schedule.Id, schedule => schedule.Name);
+                this.pendingIncome = schedules
+                    .Where(schedule => !schedule.IsPaused && ledgerDate >= DateOnly.FromDateTime(this.Clock.GetLocalNow().DateTime) && IsDueOn(schedule, ledgerDate) && !this.incomeReceipts.Any(receipt => receipt.ScheduleId == schedule.Id))
+                    .ToArray();
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (HttpRequestException)
+        {
+            if (this.SelectedDate.Value == ledgerDate)
+            {
+                this.incomeLoadError = true;
+            }
+        }
+        finally
+        {
+            if (!cancellationToken.IsCancellationRequested && this.SelectedDate.Value == ledgerDate)
+            {
+                this.isLoadingIncome = false;
+                await this.InvokeAsync(this.StateHasChanged);
+            }
+        }
+    }
 
     private async Task LoadAccountsAsync(DateOnly ledgerDate, CancellationToken cancellationToken)
     {
