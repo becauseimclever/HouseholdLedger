@@ -7,7 +7,7 @@ namespace HouseholdLedger.Application.Income;
 using HouseholdLedger.Application.Accounts;
 using HouseholdLedger.Domain.Income;
 
-/// <summary>Manages recurring income schedules and materializes due income receipts.</summary>
+/// <summary>Manages recurring income expectation schedules.</summary>
 public sealed class IncomeScheduleService(IIncomeScheduleRepository repository, IAccountRepository accountRepository)
 {
     /// <summary>Creates a recurring income schedule after verifying every allocation destination.</summary>
@@ -41,7 +41,7 @@ public sealed class IncomeScheduleService(IIncomeScheduleRepository repository, 
         return schedules.Select(Map).ToArray();
     }
 
-    /// <summary>Lists materialized income receipts in an inclusive calendar range.</summary>
+    /// <summary>Lists explicitly confirmed income receipts in an inclusive calendar range.</summary>
     /// <param name="startDate">The inclusive first pay date.</param>
     /// <param name="endDate">The inclusive final pay date.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
@@ -60,7 +60,7 @@ public sealed class IncomeScheduleService(IIncomeScheduleRepository repository, 
         return receipts.Select(Map).ToArray();
     }
 
-    /// <summary>Revises a schedule's future occurrences without changing existing receipts.</summary>
+    /// <summary>Revises a schedule's future expectations without changing existing receipts.</summary>
     /// <param name="scheduleId">The schedule identifier.</param>
     /// <param name="command">The replacement future schedule values.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
@@ -80,7 +80,7 @@ public sealed class IncomeScheduleService(IIncomeScheduleRepository repository, 
         return Map(schedule);
     }
 
-    /// <summary>Pauses one schedule so it creates no new receipts.</summary>
+    /// <summary>Pauses one schedule so it no longer suggests expected income dates.</summary>
     /// <param name="scheduleId">The schedule identifier.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns><see langword="true"/> when the schedule exists.</returns>
@@ -97,7 +97,7 @@ public sealed class IncomeScheduleService(IIncomeScheduleRepository repository, 
         return true;
     }
 
-    /// <summary>Resumes one schedule from the supplied date without backfilling missed receipts.</summary>
+    /// <summary>Resumes one schedule from the supplied date without restoring missed expectations.</summary>
     /// <param name="scheduleId">The schedule identifier.</param>
     /// <param name="resumeDate">The date the schedule became active.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
@@ -115,7 +115,7 @@ public sealed class IncomeScheduleService(IIncomeScheduleRepository repository, 
         return true;
     }
 
-    /// <summary>Determines a schedule's due dates in an inclusive calendar range.</summary>
+    /// <summary>Determines a schedule's expected dates in an inclusive calendar range.</summary>
     /// <param name="scheduleId">The schedule identifier.</param>
     /// <param name="startDate">The inclusive first date.</param>
     /// <param name="endDate">The inclusive final date.</param>
@@ -125,32 +125,6 @@ public sealed class IncomeScheduleService(IIncomeScheduleRepository repository, 
     {
         var schedule = await repository.FindScheduleAsync(scheduleId, cancellationToken);
         return schedule is null ? [] : PayScheduleCalendar.GetDuePayDates(schedule, startDate, endDate);
-    }
-
-    /// <summary>Materializes every active schedule that is due on the supplied pay date.</summary>
-    /// <param name="payDate">The pay date to materialize.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The receipts newly materialized for the date.</returns>
-    public async Task<IReadOnlyList<IncomeReceipt>> MaterializeDueReceiptsAsync(DateOnly payDate, CancellationToken cancellationToken = default)
-    {
-        var receipts = new List<IncomeReceipt>();
-        var schedules = await repository.ListSchedulesAsync(cancellationToken);
-        foreach (var schedule in schedules)
-        {
-            if (schedule.IsPaused || payDate < schedule.ReceiptEligibleFrom || PayScheduleCalendar.GetDuePayDates(schedule, payDate, payDate).Count == 0)
-            {
-                continue;
-            }
-
-            var receipt = new IncomeReceipt(Guid.NewGuid(), schedule.Id, payDate, schedule.NetIncome, schedule.Allocations);
-            var storedReceipt = await repository.GetOrAddReceiptAsync(receipt, cancellationToken);
-            if (storedReceipt is not null)
-            {
-                receipts.Add(storedReceipt);
-            }
-        }
-
-        return receipts;
     }
 
     private static IncomeScheduleDto Map(PaySchedule schedule) => new(

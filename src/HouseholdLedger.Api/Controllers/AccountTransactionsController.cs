@@ -81,7 +81,8 @@ public sealed class AccountTransactionsController(ExpenseTransactionService serv
         transaction.AccountName,
         transaction.Date,
         transaction.Amount,
-        transaction.Classification.ToString());
+        transaction.Classification.ToString(),
+        transaction.Description);
 
     private ActionResult<AccountTransactionHistoryResponse> FilterValidationProblem(string field, string message)
     {

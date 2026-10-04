@@ -183,14 +183,6 @@
     font-weight: var(--hl-weight-control);
 }
 
-.income-pending {
-    color: var(--hl-text-secondary);
-}
-
-.income-pending strong {
-    color: var(--hl-text-secondary);
-}
-
 .calendar-day[aria-pressed="true"] {
     border-color: var(--hl-border-selected);
     background: var(--hl-surface-selected);
@@ -199,7 +191,8 @@
 
 .calendar-day:focus-visible,
 .calendar-mode-picker input:focus-visible,
-.calendar-navigation button:focus-visible {
+.calendar-navigation button:focus-visible,
+.calendar-navigation a:focus-visible {
     outline: var(--hl-focus-width) solid var(--hl-action-focus);
     outline-offset: var(--hl-focus-offset);
 }
@@ -235,16 +228,10 @@
 
 .calendar-navigation {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
     padding: 0 1.25rem 1.25rem;
     gap: 0.5rem;
-}
-
-.calendar-materialize-status {
-    margin: 0;
-    padding: 0 1.25rem 1.25rem;
-    color: var(--hl-text-secondary);
-    font-size: 0.875rem;
 }
 
 .calendar-navigation button {

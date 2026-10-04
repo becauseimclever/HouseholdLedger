@@ -8,7 +8,7 @@ internal sealed class IncomeReceiptRecord
 {
     public Guid Id { get; set; }
 
-    public Guid ScheduleId { get; set; }
+    public Guid? ScheduleId { get; set; }
 
     public DateOnly PayDate { get; set; }
 

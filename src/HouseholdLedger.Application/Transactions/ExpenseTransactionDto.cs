@@ -15,4 +15,5 @@ public sealed record ExpenseTransactionDto(
     string AccountName,
     DateOnly Date,
     decimal Amount,
-    ExpenseClassification Classification);
+    ExpenseClassification Classification,
+    string? Description = null);

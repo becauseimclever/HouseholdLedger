@@ -15,6 +15,9 @@ public sealed class SelectedDateState
     /// <summary>Occurs after transactions for a date may have changed.</summary>
     public event Action<DateOnly>? TransactionsChanged;
 
+    /// <summary>Occurs after actual income has been explicitly confirmed.</summary>
+    public event Action<DateOnly>? IncomeReceiptsChanged;
+
     /// <summary>Gets the selected date, or <see langword="null"/> before selection.</summary>
     public DateOnly? Value { get; private set; }
 
@@ -32,4 +35,8 @@ public sealed class SelectedDateState
     {
         this.TransactionsChanged?.Invoke(ledgerDate);
     }
+
+    /// <summary>Notifies consumers that confirmed income for a date changed.</summary>
+    /// <param name="receivedDate">The actual receipt date.</param>
+    public void NotifyIncomeReceiptsChanged(DateOnly receivedDate) => this.IncomeReceiptsChanged?.Invoke(receivedDate);
 }

@@ -27,7 +27,7 @@
         }
 
         <section class="accounts-gallery" aria-label="Account gallery">
-            @foreach (var account in accounts)
+            @foreach (var account in accounts.Where(account => AccountId is null || account.Id == AccountId))
             {
                 var isSelected = account.Id == AccountId;
                 <article class="account-card @(isSelected ? "selected-account-card" : null)">
@@ -68,7 +68,8 @@
     @if (AccountId is not null)
     {
         <section class="account-history" aria-labelledby="account-history-heading">
-            <h2 id="account-history-heading">@(historyNotFound ? "Account not found" : historyLoadError ? "Transaction history unavailable" : history?.Account.Name ?? "Account transactions")</h2>
+            <h2 id="account-history-heading">@(historyNotFound ? "Account not found" : historyLoadError ? "Expense history unavailable" : "Expense history")</h2>
+            <p>Recorded expenses only; this is not an account balance.</p>
             @if (!historyNotFound)
             {
                 <form class="transaction-filters" @onsubmit="ApplyFiltersAsync" @onsubmit:preventDefault="true" aria-describedby="@(filterError is not null ? "transaction-filter-error" : null)">
@@ -139,12 +140,13 @@
                 {
                     <div class="history-table-region" tabindex="0">
                         <table>
-                            <caption>Transactions for @history.Account.Name</caption>
+                            <caption>Expense history for @history.Account.Name</caption>
                             <thead>
                                 <tr>
                                     <th scope="col">Date</th>
                                     <th scope="col">Amount</th>
                                     <th scope="col">Classification</th>
+                                    <th scope="col">Description</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -154,6 +156,7 @@
                                         <td>@transaction.Date.ToString("MMM d, yyyy", DateCulture)</td>
                                         <td>@FormatCurrency(transaction.Amount)</td>
                                         <td>@transaction.Classification</td>
+                                        <td>@transaction.Description</td>
                                     </tr>
                                 }
                             </tbody>

@@ -103,6 +103,11 @@ namespace HouseholdLedger.Infrastructure.Migrations
                         .HasColumnType("date")
                         .HasColumnName("ledger_date");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("description");
+
                     b.Property<long>("Sequence")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint")
@@ -177,7 +182,7 @@ namespace HouseholdLedger.Infrastructure.Migrations
                         .HasColumnType("date")
                         .HasColumnName("pay_date");
 
-                    b.Property<Guid>("ScheduleId")
+                    b.Property<Guid?>("ScheduleId")
                         .HasColumnType("uuid")
                         .HasColumnName("schedule_id");
 
@@ -195,6 +200,27 @@ namespace HouseholdLedger.Infrastructure.Migrations
 
                             t.HasCheckConstraint("ck_income_receipts_net_income_scale", "net_income = round(net_income, 2)");
                         });
+                });
+
+            modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.IncomeReceiptRequestRecord", b =>
+                {
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload");
+
+                    b.Property<Guid>("ReceiptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("receipt_id");
+
+                    b.HasKey("RequestId")
+                        .HasName("pk_income_receipt_requests");
+
+                    b.ToTable("income_receipt_requests", (string)null);
                 });
 
             modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.IncomeScheduleAllocationRecord", b =>
@@ -227,6 +253,97 @@ namespace HouseholdLedger.Infrastructure.Migrations
 
                             t.HasCheckConstraint("ck_income_schedule_allocations_amount_scale", "amount = round(amount, 2)");
                         });
+                });
+
+            modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.MonthlyBudgetPlanRecord", b =>
+                {
+                    b.Property<DateOnly>("Month")
+                        .HasColumnType("date")
+                        .HasColumnName("month");
+
+                    b.Property<decimal>("Culture")
+                        .HasColumnType("numeric")
+                        .HasColumnName("culture");
+
+                    b.Property<decimal>("ExpectedIncome")
+                        .HasColumnType("numeric")
+                        .HasColumnName("expected_income");
+
+                    b.Property<decimal>("IntendedSavings")
+                        .HasColumnType("numeric")
+                        .HasColumnName("intended_savings");
+
+                    b.Property<DateTimeOffset>("LastRevisedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_revised_at");
+
+                    b.Property<decimal>("Necessities")
+                        .HasColumnType("numeric")
+                        .HasColumnName("necessities");
+
+                    b.Property<decimal>("Optional")
+                        .HasColumnType("numeric")
+                        .HasColumnName("optional");
+
+                    b.Property<decimal>("Unexpected")
+                        .HasColumnType("numeric")
+                        .HasColumnName("unexpected");
+
+                    b.HasKey("Month");
+
+                    b.ToTable("monthly_budget_plans", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_monthly_budget_plans_culture_range", "culture >= 0 AND culture <= 9999999999999999.99");
+
+                            t.HasCheckConstraint("ck_monthly_budget_plans_culture_scale", "culture = round(culture, 2)");
+
+                            t.HasCheckConstraint("ck_monthly_budget_plans_expected_income_range", "expected_income >= 0 AND expected_income <= 9999999999999999.99");
+
+                            t.HasCheckConstraint("ck_monthly_budget_plans_expected_income_scale", "expected_income = round(expected_income, 2)");
+
+                            t.HasCheckConstraint("ck_monthly_budget_plans_intended_savings_range", "intended_savings >= 0 AND intended_savings <= 9999999999999999.99");
+
+                            t.HasCheckConstraint("ck_monthly_budget_plans_intended_savings_scale", "intended_savings = round(intended_savings, 2)");
+
+                            t.HasCheckConstraint("ck_monthly_budget_plans_necessities_range", "necessities >= 0 AND necessities <= 9999999999999999.99");
+
+                            t.HasCheckConstraint("ck_monthly_budget_plans_necessities_scale", "necessities = round(necessities, 2)");
+
+                            t.HasCheckConstraint("ck_monthly_budget_plans_optional_range", "optional >= 0 AND optional <= 9999999999999999.99");
+
+                            t.HasCheckConstraint("ck_monthly_budget_plans_optional_scale", "optional = round(optional, 2)");
+
+                            t.HasCheckConstraint("ck_monthly_budget_plans_reconciled", "expected_income = intended_savings + necessities + optional + culture + unexpected");
+
+                            t.HasCheckConstraint("ck_monthly_budget_plans_unexpected_range", "unexpected >= 0 AND unexpected <= 9999999999999999.99");
+
+                            t.HasCheckConstraint("ck_monthly_budget_plans_unexpected_scale", "unexpected = round(unexpected, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.MonthlyReflectionRecord", b =>
+                {
+                    b.Property<DateOnly>("Month")
+                        .HasColumnType("date")
+                        .HasColumnName("month");
+
+                    b.Property<DateTimeOffset>("LastRevisedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_revised_at");
+
+                    b.Property<string>("NextMonthIntention")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("next_month_intention");
+
+                    b.Property<string>("WhatWorked")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("what_worked");
+
+                    b.HasKey("Month");
+
+                    b.ToTable("monthly_reflections", (string)null);
                 });
 
             modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.PayScheduleRecord", b =>
@@ -310,8 +427,7 @@ namespace HouseholdLedger.Infrastructure.Migrations
                     b.HasOne("HouseholdLedger.Infrastructure.Persistence.PayScheduleRecord", null)
                         .WithMany("Receipts")
                         .HasForeignKey("ScheduleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("HouseholdLedger.Infrastructure.Persistence.IncomeScheduleAllocationRecord", b =>

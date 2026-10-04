@@ -1,24 +1,21 @@
 # Testing
 
 HouseholdLedger places tests at the boundary they are intended to prove. Run a
-focused project while developing, then run every available layer before a
-handoff. Database and system tests have additional gates described below.
+focused project while developing, escalating only when the change crosses
+boundaries. Database and system tests have additional gates described below.
 
 ## Test Projects
 
-| Layer | Project | Current cases | External resource |
-| --- | --- | ---: | --- |
-| Domain unit | `HouseholdLedger.Domain.UnitTests` | 0 | None |
-| Application unit | `HouseholdLedger.Application.UnitTests` | 0 | None |
-| API contract | `HouseholdLedger.Api.Contracts.Tests` | 2 | None |
-| API structural | `HouseholdLedger.Api.Contracts.Tests` and `HouseholdLedger.Api.IntegrationTests` | 2 | None |
-| Client unit | `HouseholdLedger.Client.ComponentTests` | 12 | None |
-| Client component | `HouseholdLedger.Client.ComponentTests` | 8 | None |
-| Client structural | `HouseholdLedger.Client.ComponentTests` | 2 | None |
-| API integration | `HouseholdLedger.Api.IntegrationTests` | 12 | In-process API host |
-| Infrastructure integration | `HouseholdLedger.Infrastructure.IntegrationTests` | 3 | One in-process; two Podman PostgreSQL |
-| HTTP system smoke | `HouseholdLedger.EndToEndTests` | 1 | Separate API process |
-| Browser end to end | `HouseholdLedger.EndToEndTests` | 2 | Published API and Client, Firefox, and geckodriver |
+| Layer | Project | External resource |
+| --- | --- | --- |
+| Domain unit | `HouseholdLedger.Domain.UnitTests` | None |
+| Application unit | `HouseholdLedger.Application.UnitTests` | None |
+| API contract and structural | `HouseholdLedger.Api.Contracts.Tests` | None |
+| Client unit, component, and structural | `HouseholdLedger.Client.ComponentTests` | None |
+| API integration | `HouseholdLedger.Api.IntegrationTests` | In-process API host |
+| Infrastructure integration | `HouseholdLedger.Infrastructure.IntegrationTests` | Isolated PostgreSQL container |
+| HTTP system smoke | `HouseholdLedger.EndToEndTests` | Separate API process |
+| Browser end to end | `HouseholdLedger.EndToEndTests` | Published API and Client, PostgreSQL, Firefox, and geckodriver |
 
 ## Resource-Free Tests
 
@@ -33,11 +30,11 @@ dotnet test tests/HouseholdLedger.Api.IntegrationTests --no-build --no-restore
 ```
 
 API integration tests use `WebApplicationFactory`; they do not require a
-separately running API. The 37 Client cases cover unit, bUnit component, and
+separately running API. Client cases cover unit, bUnit component, and
 structural behavior. They do not require a browser or live API.
 
 The EndToEndTests project uses xUnit v3 and contains one separate-process HTTP
-system smoke plus two desktop browser journeys. Its test project has no
+system smoke plus representative browser journeys. Its test project has no
 HouseholdLedger project reference. The HTTP smoke starts a freshly published
 API assembly with a minimal environment, calls health and runtime OpenAPI over
 HTTP, and stops its owned process. Run it alone when the approved browser
@@ -78,14 +75,14 @@ cleared the environment variable, and removed the temporary output.
 ## PostgreSQL Integration Tests
 
 PostgreSQL behavior must be tested against PostgreSQL, not EF InMemory, SQLite,
-Testcontainers, or Docker Desktop. Start the repository's existing Podman
-machine before invoking the owned harness:
+provider substitutes. Start your configured Docker or Podman engine before
+invoking the owned harness:
 
 ### Manual Development and Automated Test Databases
 
-The persistent `PiDB` / `BudgetV2` database is for manual development and keeps
-its data between runs. Configure it through API user secrets and initialize it
-once as described in [Development Setup](setup.md). Do not point automated tests
+The persistent manual-development database keeps its data between runs.
+Configure it through API user secrets as described in
+[Development Setup](setup.md). Do not point automated tests
 at that database because integration and browser tests create, mutate, and remove
 records as part of their assertions.
 
@@ -94,9 +91,11 @@ removes an isolated database and supplies
 `HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING` only to the test process.
 
 ```powershell
-podman version
-pwsh tests/HouseholdLedger.Infrastructure.IntegrationTests/Run-PostgreSqlTests.ps1
+pwsh tests\HouseholdLedger.Infrastructure.IntegrationTests\Run-PostgreSqlTests.ps1
 ```
+
+The runner defaults to Docker. Pass `-ContainerCommand podman` when that is the
+configured container engine.
 
 The script pulls `docker.io/library/postgres:18` by default, selects a free
 loopback port, creates a unique container and database, generates a temporary
@@ -113,9 +112,9 @@ pwsh tests/HouseholdLedger.Infrastructure.IntegrationTests/Run-PostgreSqlTests.p
 
 The resource-free infrastructure registration test passes. Real PostgreSQL
 tests skip when
-`HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING` is absent. The required WSL
-real-provider and development-initialization tests, ran the hosted browser
-journey, and cleaned its PostgreSQL 18 container on 2026-09-05.
+`HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING` is absent. The
+real-provider and development-initialization tests have passed against isolated
+PostgreSQL 18; absence of a test connection is not a provider-validation pass.
 
 ## Browser End-to-End Tests
 
@@ -126,15 +125,15 @@ runtime. It does not use Selenium, Selenium Manager, Playwright, a cloud grid,
 or a runtime downloader. Before launching any browser process, the tests enforce
 the approved Firefox and geckodriver SHA-256 values.
 
-Browser E2E runs against the persistent manual-development `PiDB` / `BudgetV2`
-database. It never initializes, migrates, resets, seeds, or deletes that
-database. Browser journeys may create and revise development records as part of
-their assertions, so use the dedicated runner only when that is intentional.
-Automated PostgreSQL integration tests remain the only workflow that uses a
-disposable Podman database.
+Browser E2E mutation journeys must use a disposable database. The
+[fresh-setup runner](../../tests/HouseholdLedger.EndToEndTests/FreshSetupRegression.md)
+creates and migrates an isolated PostgreSQL 18 database, publishes the app, and
+checks the five-account setup, expected income, deliberate receipt confirmation,
+monthly intention, and recorded spending. Its relative dates have no expiring
+execution window. It cleans up its owned container and processes.
 
 The complete E2E run requires a freshly published API, the pinned browser
-runtime, a loopback port, and the existing PiDB connection:
+runtime, a loopback port, and a disposable PostgreSQL connection:
 
 - `HOUSEHOLDLEDGER_API_ARTIFACT`: a freshly published file named exactly
   `HouseholdLedger.Api.dll`.
@@ -149,16 +148,15 @@ runtime, a loopback port, and the existing PiDB connection:
 - `HOUSEHOLDLEDGER_E2E_POSTGRES_CONNECTION_STRING`: the connection supplied by
   the dedicated runner only to its child browser-test and API processes.
 
-Run the dedicated browser workflow. It prompts for the already-configured PiDB
-connection string without echoing or saving it, publishes the API with its
-referenced Client static web assets, and removes the temporary publish,
-profiles, output, and process-scoped environment variables after the run:
+Run the isolated fresh-setup workflow:
 
 ```powershell
-pwsh tests/HouseholdLedger.EndToEndTests/Run-BrowserEndToEndTests.ps1
+pwsh tests\HouseholdLedger.EndToEndTests\Run-FreshSetupBrowserRegression.ps1
 ```
 
-To run another browser test class, use its fully qualified-name filter:
+The generic browser runner accepts a masked connection or a SecureString
+parameter and a fully qualified-name filter. Supply only a disposable database,
+not application User Secrets. For example, select another browser class using:
 
 ```powershell
 pwsh tests/HouseholdLedger.EndToEndTests/Run-BrowserEndToEndTests.ps1 `
@@ -221,12 +219,8 @@ Do not run a bare `dotnet test HouseholdLedger.slnx` and expect E2E tests to
 search build or runtime directories. They intentionally fail when their
 required explicit artifact paths are absent or do not satisfy their contracts.
 
-With the two browser cases, the suite has 43 cases classified as 12 unit, 8
-component, 2 contract, 14 integration, 1 system, 2 browser E2E, and 4 structural
-tests. The available result is 42 passed and one skipped; the skipped case is
-the real PostgreSQL connectivity test. Unit tests are 27.9% of the current
-suite and are not yet its majority. The empty Domain and Application unit
-projects are intentional because the scaffold has no domain or application
-behavior to test. Browser evidence is complete for Feature 001; PostgreSQL
-evidence remains blocked because the WSL 2.7.11 upgrade required by the Podman
-engine needs unavailable administrator elevation.
+Do not interpret historical scaffold counts as current coverage. Record exact
+run results at handoff, including skipped provider checks. Domain and Application
+tests now cover ledger rules and use cases; component tests cover interaction;
+real-provider tests establish persistence behavior; browser journeys establish
+representative integrated workflows.

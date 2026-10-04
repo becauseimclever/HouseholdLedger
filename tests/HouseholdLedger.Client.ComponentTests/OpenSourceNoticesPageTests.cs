@@ -149,6 +149,7 @@ public sealed class OpenSourceNoticesPageTests
         using var context = new BunitContext();
         context.Services.AddScoped<AccountCatalogState>();
         context.Services.AddScoped<SelectedDateState>();
+        context.Services.AddSingleton<TimeProvider>(TimeProvider.System);
         context.Services.AddSingleton<IAccountsApiClient>(new EmptyAccountsApiClient());
         context.Services.GetRequiredService<NavigationManager>().NavigateTo("/open-source-notices");
 
@@ -161,7 +162,7 @@ public sealed class OpenSourceNoticesPageTests
             () => Assert.Equal("Open-source notices", link.TextContent),
             () => Assert.Equal("/open-source-notices", link.GetAttribute("href")),
             () => Assert.Equal("page", link.GetAttribute("aria-current")),
-            () => Assert.Equal(4, component.FindAll("#workspace-navigation a").Count),
+            () => Assert.Equal(5, component.FindAll("#workspace-navigation a").Count),
             () => Assert.Empty(component.FindAll("#workspace-navigation a[aria-current='page']")),
             () => Assert.Equal("Following", component.Find(".workspace-grid").CompareDocumentPosition(link).ToString()));
     }

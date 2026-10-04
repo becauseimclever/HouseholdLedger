@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string] $TestFilter = "FullyQualifiedName~BrowserCalendarJourneyTests",
+    [string] $TestFilter = "FullyQualifiedName~ApiHostRendersAccessibleDesktopCalendarWorkspace",
 
     [System.Security.SecureString] $PiDbConnectionString
 )

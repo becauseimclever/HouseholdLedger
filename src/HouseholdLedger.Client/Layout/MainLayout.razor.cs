@@ -32,6 +32,26 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
 
     private string CurrentPath => this.Navigation.ToBaseRelativePath(this.Navigation.Uri).Split('?', '#')[0].Trim('/');
 
+    private string CurrentMonthPlanLink
+    {
+        get
+        {
+            var segments = this.CurrentPath.Split('/');
+            if (segments.Length == 3
+                && segments[0].Equals("months", StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(segments[1], out var year)
+                && int.TryParse(segments[2], out var month)
+                && year is >= 1 and <= 9999
+                && month is >= 1 and <= 12)
+            {
+                return $"/months/{year}/{month}";
+            }
+
+            var date = this.SelectedDate.Value ?? DateOnly.FromDateTime(this.Clock.GetLocalNow().DateTime);
+            return $"/months/{date.Year}/{date.Month}";
+        }
+    }
+
     private bool InspectorAvailable => string.IsNullOrEmpty(this.Navigation.ToBaseRelativePath(this.Navigation.Uri).Split('?', '#')[0].Trim('/'));
 
     private string InspectorToggleLabel => this.inspectorExpanded ? "Collapse inspector" : "Expand inspector";
@@ -57,6 +77,10 @@ public partial class MainLayout : LayoutComponentBase, IDisposable
     /// <summary>Gets or sets the selected-date state.</summary>
     [Inject]
     private SelectedDateState SelectedDate { get; set; } = null!;
+
+    /// <summary>Gets or sets the client-local clock.</summary>
+    [Inject]
+    private TimeProvider Clock { get; set; } = null!;
 
     /// <inheritdoc/>
     public void Dispose()

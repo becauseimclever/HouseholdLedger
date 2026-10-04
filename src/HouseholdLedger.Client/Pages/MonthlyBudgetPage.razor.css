@@ -1,0 +1,20 @@
+.monthly-budget-page { min-width: 0; max-width: 70rem; padding: 1rem; color: var(--hl-text-primary); }
+nav { display: flex; flex-wrap: wrap; gap: 1rem; }
+section { margin-block: 1.5rem; }
+fieldset { min-width: 0; border: 1px solid var(--hl-border-default); padding: 1rem; }
+.plan-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 1rem; }
+.money-field { display: flex; flex-direction: column; gap: .4rem; }
+input { box-sizing: border-box; width: 100%; min-width: 0; min-height: 2.75rem; padding: .5rem; color: var(--hl-text-primary); background: var(--hl-surface-input); border: 1px solid var(--hl-border-input); border-radius: var(--hl-radius-control); font: inherit; }
+textarea { box-sizing: border-box; width: 100%; min-height: 7rem; padding: .5rem; color: var(--hl-text-primary); background: var(--hl-surface-input); border: 1px solid var(--hl-border-input); border-radius: var(--hl-radius-control); font: inherit; }
+.reflection-field { display: grid; gap: .4rem; margin-block: .8rem; }
+button { min-height: 2.75rem; padding: .6rem 1rem; border: 1px solid var(--hl-action-primary); border-radius: var(--hl-radius-control); background: var(--hl-action-primary); color: var(--hl-action-primary-text); cursor: pointer; font: inherit; font-weight: var(--hl-weight-control); }
+button:disabled { opacity: .6; cursor: not-allowed; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible, .review-table-container:focus-visible { outline: 2px solid var(--hl-action-focus); outline-offset: 2px; }
+.review-totals { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: .7rem; }
+dd { margin: 0; overflow-wrap: anywhere; }
+.review-table-container { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: .6rem; text-align: left; border-bottom: 1px solid var(--hl-border-default); }
+caption { text-align: left; padding-block: .7rem; }
+[role="alert"] { color: var(--hl-status-error); }
+@media (max-width: 40rem) { .review-totals { grid-template-columns: 1fr; } dd { margin-bottom: .6rem; } }

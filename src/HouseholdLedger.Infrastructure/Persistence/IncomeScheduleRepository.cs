@@ -4,16 +4,16 @@
 
 namespace HouseholdLedger.Infrastructure.Persistence;
 
+using System.Globalization;
+using System.Text.Json;
 using HouseholdLedger.Application.Income;
 using HouseholdLedger.Domain.Income;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
-/// <summary>Persists income schedules and materialized receipts through Entity Framework Core.</summary>
+/// <summary>Persists income expectations and user-confirmed receipts through Entity Framework Core.</summary>
 public sealed class IncomeScheduleRepository(HouseholdLedgerDbContext dbContext) : IIncomeScheduleRepository
 {
-    private const string ReceiptSchedulePayDateConstraint = "ux_income_receipts_schedule_id_pay_date";
-
     /// <inheritdoc/>
     public async Task AddScheduleAsync(PaySchedule schedule, CancellationToken cancellationToken)
     {
@@ -65,6 +65,16 @@ public sealed class IncomeScheduleRepository(HouseholdLedgerDbContext dbContext)
     }
 
     /// <inheritdoc/>
+    public async Task<IncomeReceipt?> FindReceiptAsync(Guid receiptId, CancellationToken cancellationToken)
+    {
+        var record = await dbContext.IncomeReceiptRecords
+            .AsNoTracking()
+            .Include(item => item.Allocations)
+            .SingleOrDefaultAsync(item => item.Id == receiptId, cancellationToken);
+        return record is null ? null : Rehydrate(record);
+    }
+
+    /// <inheritdoc/>
     public async Task UpdateScheduleAsync(PaySchedule schedule, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(schedule);
@@ -92,15 +102,47 @@ public sealed class IncomeScheduleRepository(HouseholdLedgerDbContext dbContext)
     }
 
     /// <inheritdoc/>
-    public async Task<IncomeReceipt?> GetOrAddReceiptAsync(IncomeReceipt receipt, CancellationToken cancellationToken)
+    public async Task AddReceiptAsync(IncomeReceipt receipt, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(receipt);
 
-        var record = Map(receipt);
-        dbContext.IncomeReceiptRecords.Add(record);
+        dbContext.IncomeReceiptRecords.Add(Map(receipt));
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
+    /// <inheritdoc/>
+    public async Task<IncomeReceipt> ConfirmReceiptAsync(
+        IncomeReceipt receipt,
+        Guid? requestId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(receipt);
+        if (requestId is null)
+        {
+            await this.AddReceiptAsync(receipt, cancellationToken);
+            return receipt;
+        }
+
+        var payload = SerializePayload(receipt);
+        var existing = await dbContext.IncomeReceiptRequestRecords.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.RequestId == requestId, cancellationToken);
+        if (existing is not null)
+        {
+            return Replay(existing, payload);
+        }
+
+        var request = new IncomeReceiptRequestRecord
+        {
+            RequestId = requestId.Value,
+            ReceiptId = receipt.Id,
+            Payload = payload,
+        };
+        var record = Map(receipt);
+        dbContext.IncomeReceiptRequestRecords.Add(request);
+        dbContext.IncomeReceiptRecords.Add(record);
         try
         {
+            // SaveChanges atomically commits both the token and receipt, including allocations.
             await dbContext.SaveChangesAsync(cancellationToken);
             return receipt;
         }
@@ -108,12 +150,98 @@ public sealed class IncomeScheduleRepository(HouseholdLedgerDbContext dbContext)
             exception.InnerException is PostgresException
             {
                 SqlState: PostgresErrorCodes.UniqueViolation,
-                ConstraintName: ReceiptSchedulePayDateConstraint,
+                ConstraintName: "pk_income_receipt_requests",
             })
         {
-            dbContext.ChangeTracker.Clear();
-            return null;
+            // The losing transaction was rolled back; discard only its pending insert graph.
+            dbContext.Entry(request).State = EntityState.Detached;
+            foreach (var allocation in record.Allocations.ToArray())
+            {
+                dbContext.Entry(allocation).State = EntityState.Detached;
+            }
+
+            dbContext.Entry(record).State = EntityState.Detached;
+            var winner = await dbContext.IncomeReceiptRequestRecords.AsNoTracking()
+                .SingleAsync(item => item.RequestId == requestId, cancellationToken);
+            return Replay(winner, payload);
         }
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> UpdateReceiptAsync(IncomeReceipt receipt, CancellationToken cancellationToken)
+    {
+        var record = await dbContext.IncomeReceiptRecords.Include(item => item.Allocations)
+            .SingleOrDefaultAsync(item => item.Id == receipt.Id, cancellationToken);
+        if (record is null)
+        {
+            return false;
+        }
+
+        record.PayDate = receipt.PayDate;
+        record.NetIncome = receipt.NetIncome;
+        var replacements = receipt.Allocations.ToDictionary(item => item.AccountId);
+        foreach (var allocation in record.Allocations.ToArray())
+        {
+            if (replacements.Remove(allocation.AccountId, out var replacement))
+            {
+                allocation.Amount = replacement.Amount;
+            }
+            else
+            {
+                dbContext.Remove(allocation);
+                record.Allocations.Remove(allocation);
+            }
+        }
+
+        record.Allocations.AddRange(replacements.Values.Select(item => new IncomeReceiptAllocationRecord
+        {
+            ReceiptId = receipt.Id,
+            AccountId = item.AccountId,
+            Amount = item.Amount,
+        }));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> DeleteReceiptAsync(Guid receiptId, CancellationToken cancellationToken)
+    {
+        var record = await dbContext.IncomeReceiptRecords.Include(item => item.Allocations)
+            .SingleOrDefaultAsync(item => item.Id == receiptId, cancellationToken);
+        if (record is null)
+        {
+            return false;
+        }
+
+        dbContext.RemoveRange(record.Allocations);
+        dbContext.IncomeReceiptRecords.Remove(record);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    private static string SerializePayload(IncomeReceipt receipt) => JsonSerializer.Serialize(new IncomeReceiptCommand(
+        receipt.PayDate,
+        NormalizeAmount(receipt.NetIncome),
+        receipt.Allocations.OrderBy(item => item.AccountId)
+            .Select(item => new IncomeAllocationCommand(item.AccountId, NormalizeAmount(item.Amount))).ToArray()));
+
+    private static decimal NormalizeAmount(decimal amount) =>
+        decimal.Parse(amount.ToString("0.00", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+
+    private static IncomeReceipt Replay(IncomeReceiptRequestRecord record, string payload)
+    {
+        if (!string.Equals(record.Payload, payload, StringComparison.Ordinal))
+        {
+            throw new IncomeReceiptRequestConflictException();
+        }
+
+        var original = JsonSerializer.Deserialize<IncomeReceiptCommand>(record.Payload)!;
+        return new IncomeReceipt(
+            record.ReceiptId,
+            null,
+            original.ReceivedDate,
+            original.Amount,
+            original.Allocations.Select(item => new IncomeAccountAllocation(item.AccountId, item.Amount)));
     }
 
     private static PayScheduleRecord Map(PaySchedule schedule)

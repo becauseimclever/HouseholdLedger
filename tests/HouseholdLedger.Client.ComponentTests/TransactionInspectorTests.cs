@@ -4,6 +4,8 @@
 
 namespace HouseholdLedger.Client.ComponentTests;
 
+using System.Globalization;
+
 using Bunit;
 using HouseholdLedger.Api.Contracts;
 using HouseholdLedger.Client.Api;
@@ -37,6 +39,9 @@ public sealed class TransactionInspectorTests
         context.Services.AddSingleton(selectedDate);
         context.Services.AddSingleton<ITransactionsApiClient>(api);
         context.Services.AddSingleton<IAccountsApiClient>(new StubAccountsApiClient([HouseholdChecking]));
+        var incomeApi = new StubIncomeReceiptsApiClient();
+        context.Services.AddSingleton<IIncomeReceiptsApiClient>(incomeApi);
+        context.Services.AddSingleton<IPaySchedulesApiClient>(new StubPaySchedulesApiClient([], []));
 
         var component = context.Render<TransactionInspector>();
         component.WaitForAssertion(() => Assert.Contains("No transactions recorded", component.Markup, StringComparison.Ordinal));
@@ -44,13 +49,16 @@ public sealed class TransactionInspectorTests
         await component.Find("#transaction-account").ChangeAsync(new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = HouseholdChecking.Id.ToString() });
         await component.Find("#transaction-amount").InputAsync(new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "12.34" });
         await component.Find("#transaction-classification").ChangeAsync(new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "Culture" });
+        await component.Find("#transaction-description").InputAsync(new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "  Utility bill  " });
         await component.Find("form").SubmitAsync();
 
         component.WaitForAssertion(() =>
         {
             Assert.Equal(2, api.ListCallCount);
             Assert.Equal(HouseholdChecking.Id, api.LastCreateRequest!.AccountId);
+            Assert.Equal("Utility bill", api.LastCreateRequest.Description);
             Assert.Contains("Culture", component.Markup, StringComparison.Ordinal);
+            Assert.Contains("Utility bill", component.Markup, StringComparison.Ordinal);
             Assert.Contains("Household Checking", component.Markup, StringComparison.Ordinal);
             Assert.Contains("$12.34", component.Markup, StringComparison.Ordinal);
         });
@@ -78,15 +86,17 @@ public sealed class TransactionInspectorTests
         var component = context.Render<TransactionInspector>();
 
         component.WaitForAssertion(() => Assert.Multiple(
-            () => Assert.Contains("Completed income", component.Markup, StringComparison.Ordinal),
+            () => Assert.Contains("Confirmed income", component.Markup, StringComparison.Ordinal),
             () => Assert.Contains("Salary", component.Markup, StringComparison.Ordinal),
             () => Assert.Contains("$1,000.00", component.Markup, StringComparison.Ordinal),
-            () => Assert.Contains("Pending income", component.Markup, StringComparison.Ordinal),
+            () => Assert.Contains("Scheduled expectations (not received)", component.Markup, StringComparison.Ordinal),
             () => Assert.Contains("Freelance", component.Markup, StringComparison.Ordinal),
             () => Assert.Contains("$500.00", component.Markup, StringComparison.Ordinal),
             () => Assert.Contains("Household Checking", component.Markup, StringComparison.Ordinal),
             () => Assert.Contains("Cash Wallet", component.Markup, StringComparison.Ordinal),
-            () => Assert.DoesNotContain("Salary", component.Find("#pending-income-heading").ParentElement!.TextContent, StringComparison.Ordinal),
+            () => Assert.Single(component.FindAll("details.pending-income-state:not([open])")),
+            () => Assert.Contains("Use schedule as receipt suggestion", component.Markup, StringComparison.Ordinal),
+            () => Assert.Contains("Confirm actual received income", component.Markup, StringComparison.Ordinal),
             () => Assert.Single(component.FindAll("form[aria-label='Record an expense']"))));
     }
 
@@ -114,6 +124,8 @@ public sealed class TransactionInspectorTests
             new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "19.75" });
         await component.Find("select[id^='edit-classification']").ChangeAsync(
             new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "Culture" });
+        await component.Find("input[id^='edit-description']").InputAsync(
+            new Microsoft.AspNetCore.Components.ChangeEventArgs { Value = "Reclassified purchase" });
         await component.Find("form.transaction-edit-form").SubmitAsync();
 
         component.WaitForAssertion(() =>
@@ -121,6 +133,7 @@ public sealed class TransactionInspectorTests
             Assert.Equal(2, api.ListCallCount);
             Assert.Equal(1, api.ReviseCallCount);
             Assert.Equal(CashWallet.Id, api.LastUpdateRequest!.AccountId);
+            Assert.Equal("Reclassified purchase", api.LastUpdateRequest.Description);
             Assert.Contains("$19.75", component.Markup, StringComparison.Ordinal);
             Assert.Contains("Cash Wallet", component.Markup, StringComparison.Ordinal);
             Assert.Contains("Expense updated", component.Markup, StringComparison.Ordinal);
@@ -284,11 +297,104 @@ public sealed class TransactionInspectorTests
             () => Assert.DoesNotContain("Unexpected", component.Find(".transaction-list").TextContent, StringComparison.Ordinal)));
     }
 
+    /// <summary>Verifies confirmed income corrections change the ledger date and require explicit removal.</summary>
+    [Fact]
+    public void ConfirmedIncomeCanBeCorrectedWithDateNotifications()
+    {
+        using var context = CreateContext();
+        var oldDate = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
+        var newDate = oldDate.AddDays(-1);
+        var selectedDate = new SelectedDateState();
+        selectedDate.Select(oldDate);
+        var receipt = new IncomeReceiptResponse(Guid.NewGuid(), null, oldDate, 10m, [new(HouseholdChecking.Id, 10m)]);
+        var incomeApi = new StubIncomeReceiptsApiClient([receipt]);
+        var schedulesApi = new StubPaySchedulesApiClient([], [receipt]);
+        context.Services.AddSingleton(selectedDate);
+        context.Services.AddSingleton<ITransactionsApiClient>(new StubTransactionsApiClient());
+        context.Services.AddSingleton<IAccountsApiClient>(new StubAccountsApiClient([HouseholdChecking]));
+        context.Services.AddSingleton<IIncomeReceiptsApiClient>(incomeApi);
+        context.Services.AddSingleton<IPaySchedulesApiClient>(schedulesApi);
+        var changedDates = new List<DateOnly>();
+        selectedDate.IncomeReceiptsChanged += changedDates.Add;
+
+        var component = context.Render<TransactionInspector>();
+        component.WaitForAssertion(() => Assert.Contains("10.00", component.Markup, StringComparison.Ordinal));
+        component.FindAll("button").Single(button => button.TextContent == "Correct").Click();
+        component.Find("input[id^='income-date']").Change(newDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        component.Find("input[id^='income-amount']").Input("12");
+        component.Find("input[id^='income-allocation-']").Input("12");
+        component.Find("form.income-edit-form").Submit();
+
+        Assert.Multiple(
+            () => Assert.Equal(1, incomeApi.ReviseCalls),
+            () => Assert.Equal(newDate, incomeApi.LastRequest!.ReceivedDate),
+            () => Assert.Equal(new[] { oldDate, newDate }, changedDates),
+            () => Assert.Contains("Receipt date changed", component.Markup, StringComparison.Ordinal),
+            () => Assert.DoesNotContain("10.00", component.Markup, StringComparison.Ordinal));
+    }
+
+    /// <summary>Verifies confirmed income removal requires a clear second action.</summary>
+    [Fact]
+    public void ConfirmedIncomeRemovalRequiresExplicitConfirmation()
+    {
+        using var context = CreateContext();
+        var date = DateOnly.FromDateTime(DateTime.Today).AddDays(-1);
+        var selectedDate = new SelectedDateState();
+        selectedDate.Select(date);
+        var receipt = new IncomeReceiptResponse(Guid.NewGuid(), null, date, 10m, [new(HouseholdChecking.Id, 10m)]);
+        var incomeApi = new StubIncomeReceiptsApiClient([receipt]);
+        context.Services.AddSingleton(selectedDate);
+        context.Services.AddSingleton<ITransactionsApiClient>(new StubTransactionsApiClient());
+        context.Services.AddSingleton<IAccountsApiClient>(new StubAccountsApiClient([HouseholdChecking]));
+        context.Services.AddSingleton<IIncomeReceiptsApiClient>(incomeApi);
+        context.Services.AddSingleton<IPaySchedulesApiClient>(new StubPaySchedulesApiClient([], [receipt]));
+
+        var component = context.Render<TransactionInspector>();
+        component.WaitForAssertion(() => Assert.Contains("10.00", component.Markup, StringComparison.Ordinal));
+        component.FindAll("button").Single(button => button.TextContent == "Remove").Click();
+        Assert.Contains("This changes recorded actual income", component.Markup, StringComparison.Ordinal);
+        component.FindAll("button").Single(button => button.TextContent == "Remove receipt").Click();
+        Assert.Equal(1, incomeApi.RemoveCalls);
+        Assert.Contains("Confirmed income receipt removed", component.Markup, StringComparison.Ordinal);
+    }
+
     private static BunitContext CreateContext()
     {
         var context = new BunitContext();
         context.Services.AddSingleton(TimeProvider.System);
+        context.Services.AddSingleton<IIncomeReceiptsApiClient>(new StubIncomeReceiptsApiClient());
+        context.Services.AddSingleton<IPaySchedulesApiClient>(new StubPaySchedulesApiClient([], []));
         return context;
+    }
+
+    private sealed class StubIncomeReceiptsApiClient(IReadOnlyList<IncomeReceiptResponse>? initialReceipts = null) : IIncomeReceiptsApiClient
+    {
+        private readonly List<IncomeReceiptResponse> receipts = initialReceipts?.ToList() ?? [];
+
+        public int ReviseCalls { get; private set; }
+
+        public int RemoveCalls { get; private set; }
+
+        public ConfirmIncomeReceiptRequest? LastRequest { get; private set; }
+
+        public Task<IncomeReceiptResponse> ConfirmAsync(ConfirmIncomeReceiptRequest request, Guid requestId, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<IncomeReceiptResponse> ReviseAsync(Guid receiptId, ConfirmIncomeReceiptRequest request, CancellationToken cancellationToken)
+        {
+            this.ReviseCalls++;
+            this.LastRequest = request;
+            var revised = new IncomeReceiptResponse(receiptId, null, request.ReceivedDate, request.Amount, request.Allocations.Select(allocation => new IncomeAllocationResponse(allocation.AccountId, allocation.Amount)).ToArray());
+            this.receipts.RemoveAll(receipt => receipt.Id == receiptId);
+            this.receipts.Add(revised);
+            return Task.FromResult(revised);
+        }
+
+        public Task<TransactionMutationResult> RemoveAsync(Guid receiptId, CancellationToken cancellationToken)
+        {
+            this.RemoveCalls++;
+            this.receipts.RemoveAll(receipt => receipt.Id == receiptId);
+            return Task.FromResult(TransactionMutationResult.Success);
+        }
     }
 
     private sealed class StubTransactionsApiClient : ITransactionsApiClient
@@ -322,6 +428,7 @@ public sealed class TransactionInspectorTests
             this.LastCreateRequest = request;
             var accountName = request.AccountId == HouseholdChecking.Id ? HouseholdChecking.Name : CashWallet.Name;
             this.transactions.Add(new ExpenseTransactionResponse(Guid.NewGuid(), request.AccountId, accountName, ledgerDate, request.Amount, request.Classification));
+            this.transactions[^1] = this.transactions[^1] with { Description = request.Description };
             return Task.FromResult(true);
         }
 
@@ -357,6 +464,7 @@ public sealed class TransactionInspectorTests
                 AccountName = request.AccountId == HouseholdChecking.Id ? HouseholdChecking.Name : CashWallet.Name,
                 Amount = request.Amount,
                 Classification = request.Classification,
+                Description = request.Description,
             };
             return Task.FromResult(TransactionMutationResult.Success);
         }
@@ -408,8 +516,6 @@ public sealed class TransactionInspectorTests
         public Task<IReadOnlyList<PayScheduleResponse>> ListAsync(CancellationToken cancellationToken) => Task.FromResult(schedules);
 
         public Task<IReadOnlyList<IncomeReceiptResponse>> ListReceiptsAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<IncomeReceiptResponse>>(receipts.Where(receipt => receipt.PayDate >= from && receipt.PayDate <= to).ToArray());
-
-        public Task<IReadOnlyList<IncomeReceiptResponse>> MaterializeAsync(DateOnly payDate, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<bool> PauseAsync(Guid scheduleId, CancellationToken cancellationToken) => throw new NotSupportedException();
 

@@ -61,6 +61,7 @@ public sealed class TransactionsController(ExpenseTransactionService service) : 
                 request.AccountId,
                 request.Amount,
                 classification,
+                request.Description,
                 cancellationToken);
             var response = Map(created);
             return this.Created($"api/v1/days/{ledgerDate:yyyy-MM-dd}/transactions/{created.Id}", response);
@@ -78,7 +79,7 @@ public sealed class TransactionsController(ExpenseTransactionService service) : 
             return this.ValidationProblem(new ValidationProblemDetails(
                 new Dictionary<string, string[]>
                 {
-                    [nameof(request.AccountId)] = [exception.Message],
+                    [exception.ParamName == "description" ? nameof(request.Description) : nameof(request.AccountId)] = [exception.Message],
                 }));
         }
     }
@@ -117,6 +118,7 @@ public sealed class TransactionsController(ExpenseTransactionService service) : 
                 request.AccountId,
                 request.Amount,
                 classification,
+                request.Description,
                 cancellationToken);
             return revised is null ? this.NotFound(CreateNotFoundProblem()) : this.Ok(Map(revised));
         }
@@ -133,7 +135,7 @@ public sealed class TransactionsController(ExpenseTransactionService service) : 
             return this.ValidationProblem(new ValidationProblemDetails(
                 new Dictionary<string, string[]>
                 {
-                    [nameof(request.AccountId)] = [exception.Message],
+                    [exception.ParamName == "description" ? nameof(request.Description) : nameof(request.AccountId)] = [exception.Message],
                 }));
         }
     }
@@ -168,5 +170,6 @@ public sealed class TransactionsController(ExpenseTransactionService service) : 
         transaction.AccountName,
         transaction.Date,
         transaction.Amount,
-        transaction.Classification.ToString());
+        transaction.Classification.ToString(),
+        transaction.Description);
 }

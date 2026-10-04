@@ -1,0 +1,136 @@
+@page "/months/{Year:int}/{Month:int}"
+@using System.Globalization
+@using HouseholdLedger.Client.Formatting
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Routing
+
+<NavigationLock ConfirmExternalNavigation="@HasUnsavedChanges" OnBeforeInternalNavigation="ConfirmUnsavedNavigationAsync" />
+
+<PageTitle>Monthly intention and review</PageTitle>
+
+<main class="monthly-budget-page">
+    <h1>Monthly intention and review</h1>
+    @if (!IsValidMonth)
+    {
+        <p role="alert">Choose a valid calendar month.</p>
+        <a class="content-link" href="/">Return to Calendar</a>
+    }
+    else
+    {
+        <h2>@MonthLabel</h2>
+        <nav aria-label="Monthly plan navigation">
+            <a class="content-link" href="@PreviousMonthLink">Previous month</a>
+            <a class="content-link" href="@NextMonthLink">Next month</a>
+            <a class="content-link" href="/">Calendar and expense entry</a>
+            <a class="content-link" href="@($"/income-receipts/{Year}/{Month}/1")">Confirm received income</a>
+        </nav>
+        <p>A plan expresses intention, not an account balance or transfer. Only income you confirm after receiving it counts as actual income.</p>
+        @if (isLoading)
+        {
+            <p role="status">Loading monthly plan and review</p>
+        }
+        else if (planLoadError)
+        {
+            <div role="alert"><p>The monthly plan is unavailable. This does not mean there is no plan.</p><button type="button" @onclick="LoadAsync">Try again</button></div>
+        }
+        else
+        {
+            <section aria-labelledby="plan-heading">
+                <h3 id="plan-heading">@(plan is null ? "Create a monthly plan" : "Revise your monthly plan")</h3>
+                @if (plan is null) { <p>No plan has been saved for this month.</p> }
+                else { <p>Latest plan revision: <time datetime="@plan.LastRevisedAt.ToString("O", CultureInfo.InvariantCulture)">@plan.LastRevisedAt.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</time></p> }
+                <form class="plan-form" @onsubmit="SaveAsync" @onsubmit:preventDefault="true">
+                    <fieldset disabled="@isSaving">
+                        <legend>Allocate expected take-home income (@CurrencyLabel)</legend>
+                        <div class="plan-fields">
+                            @foreach (var field in fields)
+                            {
+                                <div class="money-field">
+                                    <label for="@field.Id">@field.Label</label>
+                                    <input id="@field.Id" type="number" min="0" max="9999999999999999.99" step="0.01" inputmode="decimal" value="@field.Text" @oninput="args => UpdateField(field, args)" aria-describedby="plan-reconciliation plan-money-help" aria-invalid="@(MoneyInput.TryParse(field.Text, out _) ? "false" : "true")" />
+                                </div>
+                            }
+                        </div>
+                        <p id="plan-money-help">Enter a nonnegative amount with up to two decimal places. Maximum: 9,999,999,999,999,999.99.</p>
+                        <p id="plan-reconciliation" role="status" aria-live="polite">
+                            @if (Remaining is { } remaining) { <span>Remaining planned amount: @FormatCurrency(remaining). @(remaining == 0 ? "The plan reconciles exactly." : "Allocate exactly the expected income before saving.")</span> }
+                            else { <span>Enter a valid amount in every plan field to calculate reconciliation.</span> }
+                        </p>
+                        <button type="submit" disabled="@(isSaving || Remaining != 0m)">@(isSaving ? "Saving plan" : "Save monthly plan")</button>
+                    </fieldset>
+                </form>
+                @if (saveError is not null) { <p role="alert">@saveError</p> }
+                @if (saveStatus is not null) { <p role="status">@saveStatus</p> }
+            </section>
+        }
+        <section aria-labelledby="review-heading">
+            <h3 id="review-heading">Plan and actuals recorded so far</h3>
+            @if (isLoading) { <p role="status">Loading review</p> }
+            else if (reviewLoadError)
+            {
+                <div role="alert"><p>The monthly review is unavailable; actual totals are not known.</p><button type="button" @onclick="RefreshReviewAsync">Retry review</button></div>
+            }
+            else if (review is not null)
+            {
+                @if (review.LastRevisedAt is { } revised) { <p>Review uses latest plan revision: <time datetime="@revised.ToString("O", CultureInfo.InvariantCulture)">@revised.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</time></p> }
+                else { <p>No saved plan: planned amounts and variances are not available.</p> }
+                <dl class="review-totals">
+                    <dt>Expected take-home income</dt><dd>@FormatPlanned(review.ExpectedIncome)</dd>
+                    <dt>Intended savings (target, not actual savings)</dt><dd>@FormatPlanned(review.IntendedSavings)</dd>
+                    <dt>Income recorded so far (confirmed)</dt><dd>@FormatCurrency(review.ActualIncome)</dd>
+                    <dt>Income variance (actual minus expected)</dt><dd>@FormatPlanned(review.IncomeVariance)</dd>
+                    <dt>Unallocated remainder (confirmed income remaining after recorded expenses)</dt><dd>@FormatCurrency(review.UnallocatedRemainder)</dd>
+                    <dt>Recorded cashflow (income minus recorded expenses)</dt><dd>@FormatCurrency(review.CashflowDifference)</dd>
+                </dl>
+                <p>These are recorded totals, not a bank balance or overdraft indicator. Unallocated remainder is not savings. Account destinations describe where received money is held, not what was saved.</p>
+                <div class="review-table-container" role="region" aria-label="Spending comparison" tabindex="0">
+                    <table>
+                        <caption>Spending by classification. Positive variance means spending exceeded the plan.</caption>
+                        <thead><tr><th scope="col">Classification</th><th scope="col">Planned</th><th scope="col">Recorded actual expenses</th><th scope="col">Variance (actual minus planned)</th></tr></thead>
+                        <tbody>
+                            @foreach (var classification in review.Classifications)
+                            {
+                                <tr><th scope="row">@classification.Classification</th><td>@FormatPlanned(classification.PlannedAmount)</td><td>@FormatCurrency(classification.ActualAmount)</td><td>@FormatPlanned(classification.Variance)</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (review.ActualIncome == 0 && review.Classifications.All(item => item.ActualAmount == 0)) { <p>No confirmed income or recorded expenses this month.</p> }
+            }
+        </section>
+        <section aria-labelledby="reflection-heading">
+            <h3 id="reflection-heading">Monthly reflection</h3>
+            <p>Optional notes for learning from this month and setting an intention for the next one. Saved separately from your spending plan.</p>
+            @if (reflectionIsLoading)
+            {
+                <p role="status">Loading monthly reflection</p>
+            }
+            else if (reflectionLoadError)
+            {
+                <div role="alert"><p>The monthly reflection could not be loaded.</p><button type="button" @onclick="LoadReflectionAsync">Try again</button></div>
+            }
+            else
+            {
+                @if (reflection?.LastRevisedAt is { } reflectionRevised)
+                {
+                    <p>Last revised: <time datetime="@reflectionRevised.ToString("O", CultureInfo.InvariantCulture)">@reflectionRevised.ToLocalTime().ToString("g", CultureInfo.CurrentCulture)</time></p>
+                }
+                <form class="reflection-form" @onsubmit="SaveReflectionAsync" @onsubmit:preventDefault="true">
+                    <fieldset disabled="@isSavingReflection">
+                        <div class="reflection-field">
+                            <label for="reflection-worked">What worked well this month? (optional)</label>
+                            <textarea id="reflection-worked" maxlength="1000" @oninput="UpdateWhatWorked">@whatWorked</textarea>
+                        </div>
+                        <div class="reflection-field">
+                            <label for="reflection-intention">What is one intention for next month? (optional)</label>
+                            <textarea id="reflection-intention" maxlength="1000" @oninput="UpdateNextMonthIntention">@nextMonthIntention</textarea>
+                        </div>
+                        <button type="submit">@(isSavingReflection ? "Saving reflection" : "Save reflection")</button>
+                    </fieldset>
+                </form>
+                @if (reflectionSaveError is not null) { <p role="alert">@reflectionSaveError</p> }
+                @if (reflectionSaveStatus is not null) { <p role="status">@reflectionSaveStatus</p> }
+            }
+        </section>
+    }
+</main>

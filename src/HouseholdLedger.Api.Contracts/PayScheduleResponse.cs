@@ -12,7 +12,7 @@ namespace HouseholdLedger.Api.Contracts;
 /// <param name="NetIncome">The net income for each receipt.</param>
 /// <param name="Allocations">The account allocations for each receipt.</param>
 /// <param name="SecondMonthlyPayDay">The second pay day for a semimonthly schedule.</param>
-/// <param name="IsPaused">Whether future receipt creation is paused.</param>
+/// <param name="IsPaused">Whether future schedule expectations are paused.</param>
 public sealed record PayScheduleResponse(
     Guid Id,
     string Name,

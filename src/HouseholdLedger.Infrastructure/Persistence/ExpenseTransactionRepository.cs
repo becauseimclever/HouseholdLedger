@@ -51,7 +51,8 @@ public sealed class ExpenseTransactionRepository(HouseholdLedgerDbContext dbCont
                     account.Name,
                     transaction.Date,
                     transaction.Amount,
-                    transaction.Classification))
+                    transaction.Classification,
+                    transaction.Description))
             .ToArrayAsync(cancellationToken);
     }
 
@@ -88,6 +89,7 @@ public sealed class ExpenseTransactionRepository(HouseholdLedgerDbContext dbCont
                     classification ILIKE {{pattern}} ESCAPE '\'
                     OR ledger_date::text ILIKE {{pattern}} ESCAPE '\'
                     OR amount::text ILIKE {{pattern}} ESCAPE '\'
+                    OR description ILIKE {{pattern}} ESCAPE '\'
                   )
                 """);
         }
@@ -136,7 +138,8 @@ public sealed class ExpenseTransactionRepository(HouseholdLedgerDbContext dbCont
                     account.Name,
                     transaction.Date,
                     transaction.Amount,
-                    transaction.Classification))
+                    transaction.Classification,
+                    transaction.Description))
             .ToArrayAsync(cancellationToken);
     }
 

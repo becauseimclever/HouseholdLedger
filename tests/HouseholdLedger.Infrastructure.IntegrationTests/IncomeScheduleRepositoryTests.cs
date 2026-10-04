@@ -21,7 +21,7 @@ public sealed class IncomeScheduleRepositoryTests
     private const string ConnectionStringEnvironmentVariable =
         "HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING";
 
-    /// <summary>Persists schedules and receipts with their immutable allocation snapshots.</summary>
+    /// <summary>Persists schedules and explicitly confirmed receipts with their allocation snapshots.</summary>
     /// <returns>A task representing the asynchronous test.</returns>
     [Fact]
     public async Task PersistsSchedulesAndReceiptsWithDatabaseIntegrityConstraints()
@@ -62,6 +62,12 @@ public sealed class IncomeScheduleRepositoryTests
             payDate,
             1000.00m,
             [new IncomeAccountAllocation(firstAccount.Id, 700.00m), new IncomeAccountAllocation(secondAccount.Id, 300.00m)]);
+        var manualReceipt = new IncomeReceipt(
+            Guid.NewGuid(),
+            null,
+            payDate,
+            100.00m,
+            [new IncomeAccountAllocation(firstAccount.Id, 100.00m)]);
 
         await context.Database.MigrateAsync(cancellationToken);
         try
@@ -74,7 +80,8 @@ public sealed class IncomeScheduleRepositoryTests
             await repository.UpdateScheduleAsync(schedule, cancellationToken);
             var paused = await repository.FindScheduleAsync(scheduleId, cancellationToken);
             var schedules = await repository.ListSchedulesAsync(cancellationToken);
-            var storedReceipt = await repository.GetOrAddReceiptAsync(receipt, cancellationToken);
+            await repository.AddReceiptAsync(receipt, cancellationToken);
+            await repository.AddReceiptAsync(manualReceipt, cancellationToken);
             var firstReceipt = new IncomeReceipt(
                 Guid.NewGuid(),
                 scheduleId,
@@ -93,16 +100,18 @@ public sealed class IncomeScheduleRepositoryTests
                 new DateOnly(2026, 10, 1),
                 1200.00m,
                 [new IncomeAccountAllocation(firstAccount.Id, 900.00m), new IncomeAccountAllocation(secondAccount.Id, 300.00m)]);
-            await repository.GetOrAddReceiptAsync(firstReceipt, cancellationToken);
-            await repository.GetOrAddReceiptAsync(finalReceipt, cancellationToken);
-            await repository.GetOrAddReceiptAsync(outsideReceipt, cancellationToken);
+            await repository.AddReceiptAsync(firstReceipt, cancellationToken);
+            await repository.AddReceiptAsync(finalReceipt, cancellationToken);
+            await repository.AddReceiptAsync(outsideReceipt, cancellationToken);
             var receipts = await repository.ListReceiptsAsync(
                 new DateOnly(2026, 9, 1),
                 new DateOnly(2026, 9, 30),
                 cancellationToken);
-            var duplicateReceipt = await repository.GetOrAddReceiptAsync(
-                new IncomeReceipt(Guid.NewGuid(), scheduleId, payDate, 1000.00m, receipt.Allocations),
-                cancellationToken);
+            var duplicateReceiptUpdateException = await Assert.ThrowsAsync<DbUpdateException>(
+                () => repository.AddReceiptAsync(
+                    new IncomeReceipt(Guid.NewGuid(), scheduleId, payDate, 1000.00m, receipt.Allocations),
+                    cancellationToken));
+            var duplicateReceiptException = Assert.IsType<PostgresException>(duplicateReceiptUpdateException.InnerException);
             var duplicateAllocationException = await Assert.ThrowsAsync<PostgresException>(
                 () => context.Database.ExecuteSqlInterpolatedAsync(
                     $"INSERT INTO income_schedule_allocations (schedule_id, account_id, amount) VALUES ({scheduleId}, {firstAccount.Id}, {1m})",
@@ -123,13 +132,13 @@ public sealed class IncomeScheduleRepositoryTests
                 () => Assert.True(paused?.IsPaused),
                 () => Assert.Equal(new DateOnly(2026, 10, 1), paused?.ReceiptEligibleFrom),
                 () => Assert.Single(schedules),
-                () => Assert.Equal(receiptId, storedReceipt?.Id),
-                () => Assert.Null(duplicateReceipt),
-                () => Assert.Collection(
-                    receipts,
-                    item => Assert.Equal(firstReceipt.Id, item.Id),
-                    item => Assert.Equal(receiptId, item.Id),
-                    item => Assert.Equal(finalReceipt.Id, item.Id)),
+                () => Assert.Equal(4, receipts.Count),
+                () => Assert.Contains(receipts, item => item.Id == receiptId),
+                () => Assert.Contains(receipts, item => item.Id == manualReceipt.Id && item.ScheduleId is null),
+                () => Assert.Contains(receipts, item => item.Id == firstReceipt.Id),
+                () => Assert.Contains(receipts, item => item.Id == finalReceipt.Id),
+                () => Assert.Equal(PostgresErrorCodes.UniqueViolation, duplicateReceiptException.SqlState),
+                () => Assert.Equal("ux_income_receipts_schedule_id_pay_date", duplicateReceiptException.ConstraintName),
                 () => Assert.Contains(
                     receipts[0].Allocations,
                     allocation => allocation.AccountId == firstAccount.Id && allocation.Amount == 600.00m),
@@ -137,14 +146,26 @@ public sealed class IncomeScheduleRepositoryTests
                     receipts[0].Allocations,
                     allocation => allocation.AccountId == secondAccount.Id && allocation.Amount == 300.00m),
                 () => Assert.Equal(PostgresErrorCodes.UniqueViolation, duplicateAllocationException.SqlState),
-                () => Assert.Equal("ux_income_schedule_allocations_schedule_id_account_id", duplicateAllocationException.ConstraintName),
+                () => Assert.Equal("PK_income_schedule_allocations", duplicateAllocationException.ConstraintName),
                 () => Assert.Equal(PostgresErrorCodes.CheckViolation, invalidCadenceException.SqlState),
                 () => Assert.Equal("ck_pay_schedules_cadence", invalidCadenceException.ConstraintName));
         }
         finally
         {
             await context.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM income_receipt_allocations WHERE receipt_id IN (SELECT id FROM income_receipts WHERE schedule_id = {scheduleId})",
+                cancellationToken);
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM income_receipt_allocations WHERE receipt_id = {manualReceipt.Id}",
+                cancellationToken);
+            await context.Database.ExecuteSqlInterpolatedAsync(
                 $"DELETE FROM income_receipts WHERE schedule_id = {scheduleId}",
+                cancellationToken);
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM income_receipts WHERE id = {manualReceipt.Id}",
+                cancellationToken);
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"DELETE FROM income_schedule_allocations WHERE schedule_id = {scheduleId}",
                 cancellationToken);
             await context.Database.ExecuteSqlInterpolatedAsync(
                 $"DELETE FROM pay_schedules WHERE id = {scheduleId}",

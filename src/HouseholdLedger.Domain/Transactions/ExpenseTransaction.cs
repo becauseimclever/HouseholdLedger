@@ -21,13 +21,15 @@ public sealed class ExpenseTransaction
     /// <param name="amount">The positive USD amount.</param>
     /// <param name="classification">The expense classification.</param>
     /// <param name="sequence">The backend-assigned creation sequence.</param>
+    /// <param name="description">The optional expense description, at most 200 characters.</param>
     public ExpenseTransaction(
         Guid id,
         Guid accountId,
         DateOnly date,
         decimal amount,
         ExpenseClassification classification,
-        long sequence = 0)
+        long sequence = 0,
+        string? description = null)
     {
         if (id == Guid.Empty)
         {
@@ -48,6 +50,7 @@ public sealed class ExpenseTransaction
         this.Amount = amount;
         this.Classification = classification;
         this.Sequence = sequence;
+        this.Description = NormalizeDescription(description);
     }
 
     /// <summary>Gets the transaction identifier.</summary>
@@ -68,17 +71,34 @@ public sealed class ExpenseTransaction
     /// <summary>Gets the backend-assigned creation sequence.</summary>
     public long Sequence { get; private set; }
 
+    /// <summary>Gets the optional normalized expense description.</summary>
+    public string? Description { get; private set; }
+
     /// <summary>Replaces the correctable transaction details.</summary>
     /// <param name="accountId">The replacement owning account identifier.</param>
     /// <param name="amount">The positive USD amount.</param>
     /// <param name="classification">The expense classification.</param>
-    public void Revise(Guid accountId, decimal amount, ExpenseClassification classification)
+    /// <param name="description">The optional replacement description.</param>
+    public void Revise(Guid accountId, decimal amount, ExpenseClassification classification, string? description = null)
     {
         ValidateAccountId(accountId);
         ValidateDetails(amount, classification);
+        var normalizedDescription = NormalizeDescription(description);
         this.AccountId = accountId;
         this.Amount = amount;
         this.Classification = classification;
+        this.Description = normalizedDescription;
+    }
+
+    private static string? NormalizeDescription(string? description)
+    {
+        var normalized = description?.Trim();
+        if (normalized?.Length > 200)
+        {
+            throw new ArgumentException("The description cannot exceed 200 characters.", nameof(description));
+        }
+
+        return string.IsNullOrEmpty(normalized) ? null : normalized;
     }
 
     private static void ValidateAccountId(Guid accountId)

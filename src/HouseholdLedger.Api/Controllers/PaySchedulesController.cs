@@ -9,7 +9,7 @@ using HouseholdLedger.Application.Income;
 using HouseholdLedger.Domain.Income;
 using Microsoft.AspNetCore.Mvc;
 
-/// <summary>Reads, creates, revises, pauses, resumes, and materializes recurring income pay schedules.</summary>
+/// <summary>Manages recurring income expectations and lists user-confirmed receipts.</summary>
 [ApiController]
 [Route("api/v1/pay-schedules")]
 public sealed class PaySchedulesController(IncomeScheduleService service) : ControllerBase
@@ -38,7 +38,7 @@ public sealed class PaySchedulesController(IncomeScheduleService service) : Cont
         return schedule is null ? this.NotFound(CreateScheduleNotFoundProblem()) : this.Ok(Map(schedule));
     }
 
-    /// <summary>Lists materialized income receipts in an inclusive calendar range.</summary>
+    /// <summary>Lists user-confirmed income receipts in an inclusive calendar range.</summary>
     /// <param name="from">The inclusive first pay date.</param>
     /// <param name="to">The inclusive final pay date.</param>
     /// <param name="cancellationToken">The request cancellation token.</param>
@@ -138,9 +138,9 @@ public sealed class PaySchedulesController(IncomeScheduleService service) : Cont
         return paused ? this.NoContent() : this.NotFound(CreateScheduleNotFoundProblem());
     }
 
-    /// <summary>Resumes one recurring income pay schedule without backfilling missed receipts.</summary>
+    /// <summary>Resumes future income expectation suggestions without restoring missed dates.</summary>
     /// <param name="scheduleId">The schedule identifier.</param>
-    /// <param name="request">The date from which future receipts are eligible.</param>
+    /// <param name="request">The date from which future expectation suggestions are eligible.</param>
     /// <param name="cancellationToken">The request cancellation token.</param>
     /// <returns>No content when the schedule was resumed.</returns>
     [HttpPost("{scheduleId:guid}/resume")]
@@ -153,21 +153,6 @@ public sealed class PaySchedulesController(IncomeScheduleService service) : Cont
     {
         var resumed = await service.ResumeAsync(scheduleId, request.ResumeDate, cancellationToken);
         return resumed ? this.NoContent() : this.NotFound(CreateScheduleNotFoundProblem());
-    }
-
-    /// <summary>Materializes active pay schedules that are due on a selected date.</summary>
-    /// <param name="payDate">The date for which due receipts are materialized.</param>
-    /// <param name="cancellationToken">The request cancellation token.</param>
-    /// <returns>The newly materialized receipts.</returns>
-    [HttpPost("materialize/{payDate:datetime}")]
-    [ProducesResponseType<IReadOnlyList<IncomeReceiptResponse>>(StatusCodes.Status200OK, "application/json")]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError, "application/problem+json")]
-    public async Task<ActionResult<IReadOnlyList<IncomeReceiptResponse>>> Materialize(
-        DateOnly payDate,
-        CancellationToken cancellationToken)
-    {
-        var receipts = await service.MaterializeDueReceiptsAsync(payDate, cancellationToken);
-        return this.Ok(receipts.Select(Map).ToArray());
     }
 
     private static IncomeScheduleCommand Map(CreatePayScheduleRequest request) => new(

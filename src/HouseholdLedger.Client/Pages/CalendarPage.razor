@@ -18,24 +18,24 @@
                            name="calendar-mode"
                            checked="@(CurrentMode == CalendarMode.Today)"
                            @onchange="() => SetMode(CalendarMode.Today)"
-                           @ref="todayModeControl" />
-                    <span>Today</span>
+                           />
+                    <span>Day</span>
                 </label>
                 <label>
                     <input type="radio"
                            name="calendar-mode"
                            checked="@(CurrentMode == CalendarMode.Week)"
                            @onchange="() => SetMode(CalendarMode.Week)"
-                           @ref="weekModeControl" />
-                    <span>This Week</span>
+                           />
+                    <span>Week</span>
                 </label>
                 <label>
                     <input type="radio"
                            name="calendar-mode"
                            checked="@(CurrentMode == CalendarMode.Month)"
                            @onchange="() => SetMode(CalendarMode.Month)"
-                           @ref="monthModeControl" />
-                    <span>This Month</span>
+                           />
+                    <span>Month</span>
                 </label>
             </fieldset>
         </header>
@@ -57,11 +57,7 @@
                     <span class="calendar-day-month">@ActiveDate.ToString("MMMM yyyy", CurrentCulture)</span>
                     @if (GetCompletedIncomeTotal(ActiveDate) is { } completedIncome)
                     {
-                        <span class="calendar-income-total income-completed">Completed income <strong>@FormatCurrency(completedIncome)</strong></span>
-                    }
-                    @if (GetPendingIncomeTotal(ActiveDate) is { } pendingIncome)
-                    {
-                        <span class="calendar-income-total income-pending">Pending income <strong>@FormatCurrency(pendingIncome)</strong></span>
+                        <span class="calendar-income-total income-completed">Confirmed income <strong>@FormatCurrency(completedIncome)</strong></span>
                     }
                 </button>
             </section>
@@ -84,11 +80,11 @@
                             <td>
                                 @if (date == ActiveDate)
                                 {
-                                    <button @ref="activeDateControl" class="calendar-day" type="button" aria-label="@AccessibleDateName(date)" aria-pressed="true" aria-current="@CurrentDateState(date)" tabindex="0" @onclick="() => SelectDateAsync(date, true)" @onkeydown="args => HandleGridKeyDown(date, args)" @onkeydown:preventDefault="true"><span>@date.Day</span>@if (GetCompletedIncomeTotal(date) is { } completedIncome) { <span class="calendar-income-total income-completed">Completed income <strong>@FormatCurrency(completedIncome)</strong></span> } @if (GetPendingIncomeTotal(date) is { } pendingIncome) { <span class="calendar-income-total income-pending">Pending income <strong>@FormatCurrency(pendingIncome)</strong></span> }</button>
+                                    <button @ref="activeDateControl" class="calendar-day" type="button" aria-label="@AccessibleDateName(date)" aria-pressed="true" aria-current="@CurrentDateState(date)" tabindex="0" @onclick="() => SelectDateAsync(date, true)" @onkeydown="args => HandleGridKeyDown(date, args)"><span>@date.Day</span>@if (GetCompletedIncomeTotal(date) is { } completedIncome) { <span class="calendar-income-total income-completed">Confirmed income <strong>@FormatCurrency(completedIncome)</strong></span> }</button>
                                 }
                                 else
                                 {
-                                    <button class="calendar-day" type="button" aria-label="@AccessibleDateName(date)" aria-pressed="false" aria-current="@CurrentDateState(date)" tabindex="-1" @onclick="() => SelectDateAsync(date, true)" @onkeydown="args => HandleGridKeyDown(date, args)" @onkeydown:preventDefault="true"><span>@date.Day</span>@if (GetCompletedIncomeTotal(date) is { } completedIncome) { <span class="calendar-income-total income-completed">Completed income <strong>@FormatCurrency(completedIncome)</strong></span> } @if (GetPendingIncomeTotal(date) is { } pendingIncome) { <span class="calendar-income-total income-pending">Pending income <strong>@FormatCurrency(pendingIncome)</strong></span> }</button>
+                                    <button class="calendar-day" type="button" aria-label="@AccessibleDateName(date)" aria-pressed="false" aria-current="@CurrentDateState(date)" tabindex="-1" @onclick="() => SelectDateAsync(date, true)" @onkeydown="args => HandleGridKeyDown(date, args)"><span>@date.Day</span>@if (GetCompletedIncomeTotal(date) is { } completedIncome) { <span class="calendar-income-total income-completed">Confirmed income <strong>@FormatCurrency(completedIncome)</strong></span> }</button>
                                 }
                             </td>
                         }
@@ -118,7 +114,7 @@
                                     <td>
                                         @if (day == ActiveDate)
                                         {
-                                            <button @ref="activeDateControl" class="calendar-day" type="button" aria-label="@AccessibleDateName(day)" aria-describedby="@(GetExpenseSummary(day) is null ? null : GetSummaryId(day))" aria-pressed="true" aria-current="@CurrentDateState(day)" tabindex="0" @onclick="() => SelectDateAsync(day, true)" @onkeydown="args => HandleGridKeyDown(day, args)" @onkeydown:preventDefault="true">
+                                            <button @ref="activeDateControl" class="calendar-day" type="button" aria-label="@AccessibleDateName(day)" aria-describedby="@(GetExpenseSummary(day) is null ? null : GetSummaryId(day))" aria-pressed="true" aria-current="@CurrentDateState(day)" tabindex="0" @onclick="() => SelectDateAsync(day, true)" @onkeydown="args => HandleGridKeyDown(day, args)">
                                                 <span class="calendar-day-date-number">@day.Day</span>
                                                 @if (GetExpenseSummary(day) is { } summary)
                                                 {
@@ -129,17 +125,13 @@
                                                 }
                                                 @if (GetCompletedIncomeTotal(day) is { } completedIncome)
                                                 {
-                                                    <span class="calendar-income-total income-completed">Completed income <strong>@FormatCurrency(completedIncome)</strong></span>
-                                                }
-                                                @if (GetPendingIncomeTotal(day) is { } pendingIncome)
-                                                {
-                                                    <span class="calendar-income-total income-pending">Pending income <strong>@FormatCurrency(pendingIncome)</strong></span>
+                                                    <span class="calendar-income-total income-completed">Confirmed income <strong>@FormatCurrency(completedIncome)</strong></span>
                                                 }
                                             </button>
                                         }
                                         else
                                         {
-                                            <button class="calendar-day" type="button" aria-label="@AccessibleDateName(day)" aria-describedby="@(GetExpenseSummary(day) is null ? null : GetSummaryId(day))" aria-pressed="false" aria-current="@CurrentDateState(day)" tabindex="-1" @onclick="() => SelectDateAsync(day, true)" @onkeydown="args => HandleGridKeyDown(day, args)" @onkeydown:preventDefault="true">
+                                            <button class="calendar-day" type="button" aria-label="@AccessibleDateName(day)" aria-describedby="@(GetExpenseSummary(day) is null ? null : GetSummaryId(day))" aria-pressed="false" aria-current="@CurrentDateState(day)" tabindex="-1" @onclick="() => SelectDateAsync(day, true)" @onkeydown="args => HandleGridKeyDown(day, args)">
                                                 <span class="calendar-day-date-number">@day.Day</span>
                                                 @if (GetExpenseSummary(day) is { } summary)
                                                 {
@@ -150,11 +142,7 @@
                                                 }
                                                 @if (GetCompletedIncomeTotal(day) is { } completedIncome)
                                                 {
-                                                    <span class="calendar-income-total income-completed">Completed income <strong>@FormatCurrency(completedIncome)</strong></span>
-                                                }
-                                                @if (GetPendingIncomeTotal(day) is { } pendingIncome)
-                                                {
-                                                    <span class="calendar-income-total income-pending">Pending income <strong>@FormatCurrency(pendingIncome)</strong></span>
+                                                    <span class="calendar-income-total income-completed">Confirmed income <strong>@FormatCurrency(completedIncome)</strong></span>
                                                 }
                                             </button>
                                         }
@@ -172,13 +160,15 @@
         }
 
         <div class="calendar-navigation" aria-label="Calendar period navigation">
-            <button type="button" disabled="@isMaterializing" @onclick="MaterializeActiveDateAsync">@(isMaterializing ? "Recording income" : "Record income for selected date")</button>
-            <button @ref="previousPeriodControl" type="button" aria-label="Previous period" title="Previous period" @onclick="() => MoveActiveDate(-1)">Previous</button>
+            <a class="content-link" href="@($"/months/{ActiveDate.Year}/{ActiveDate.Month}")">Plan and review this month</a>
+            <a class="content-link" href="@($"/income-receipts/{ActiveDate.Year}/{ActiveDate.Month}/{ActiveDate.Day}")">Confirm income received on selected date</a>
+            <button type="button" @onclick="GoToTodayAsync">Go to today</button>
+            <button type="button" aria-label="Previous period" title="Previous period" @onclick="() => MoveActiveDate(-1)">Previous</button>
             <button type="button" aria-label="Next period" title="Next period" @onclick="() => MoveActiveDate(1)">Next</button>
         </div>
-        @if (materializeStatus is not null)
+        @if (incomeLoadError)
         {
-            <p class="calendar-materialize-status" role="status" aria-live="polite">@materializeStatus</p>
+            <div role="alert"><p>Confirmed income is unavailable. Expense entry is still available.</p><button type="button" @onclick="LoadIncomeReceiptsAsync">Retry income</button></div>
         }
     </section>
 </main>

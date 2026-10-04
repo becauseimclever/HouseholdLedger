@@ -26,10 +26,27 @@ public sealed class ExpenseTransactionService(
         Guid accountId,
         decimal amount,
         ExpenseClassification classification,
+        CancellationToken cancellationToken = default) =>
+        await this.CreateAsync(ledgerDate, accountId, amount, classification, null, cancellationToken);
+
+    /// <summary>Creates one described expense for a selected date.</summary>
+    /// <param name="ledgerDate">The selected ledger date.</param>
+    /// <param name="accountId">The owning account identifier.</param>
+    /// <param name="amount">The positive amount.</param>
+    /// <param name="classification">The expense classification.</param>
+    /// <param name="description">The optional description.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The created expense.</returns>
+    public async Task<ExpenseTransactionDto> CreateAsync(
+        DateOnly ledgerDate,
+        Guid accountId,
+        decimal amount,
+        ExpenseClassification classification,
+        string? description,
         CancellationToken cancellationToken = default)
     {
         var account = await this.FindRequiredAccountAsync(accountId, cancellationToken);
-        var transaction = new ExpenseTransaction(Guid.NewGuid(), account.Id, ledgerDate, amount, classification);
+        var transaction = new ExpenseTransaction(Guid.NewGuid(), account.Id, ledgerDate, amount, classification, description: description);
         await repository.AddAsync(transaction, cancellationToken);
         return Map(transaction, account.Name);
     }
@@ -124,6 +141,25 @@ public sealed class ExpenseTransactionService(
         Guid accountId,
         decimal amount,
         ExpenseClassification classification,
+        CancellationToken cancellationToken = default) =>
+        await this.ReviseAsync(ledgerDate, transactionId, accountId, amount, classification, null, cancellationToken);
+
+    /// <summary>Revises the correctable details and optional description of an expense.</summary>
+    /// <param name="ledgerDate">The ledger date.</param>
+    /// <param name="transactionId">The transaction identifier.</param>
+    /// <param name="accountId">The owning account identifier.</param>
+    /// <param name="amount">The positive amount.</param>
+    /// <param name="classification">The expense classification.</param>
+    /// <param name="description">The optional replacement description.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The corrected expense, or null when absent.</returns>
+    public async Task<ExpenseTransactionDto?> ReviseAsync(
+        DateOnly ledgerDate,
+        Guid transactionId,
+        Guid accountId,
+        decimal amount,
+        ExpenseClassification classification,
+        string? description,
         CancellationToken cancellationToken = default)
     {
         var transaction = await repository.FindAsync(ledgerDate, transactionId, cancellationToken);
@@ -133,7 +169,7 @@ public sealed class ExpenseTransactionService(
         }
 
         var account = await this.FindRequiredAccountAsync(accountId, cancellationToken);
-        transaction.Revise(account.Id, amount, classification);
+        transaction.Revise(account.Id, amount, classification, description);
         await repository.UpdateAsync(transaction, cancellationToken);
         return Map(transaction, account.Name);
     }
@@ -164,7 +200,8 @@ public sealed class ExpenseTransactionService(
         accountName,
         transaction.Date,
         transaction.Amount,
-        transaction.Classification);
+        transaction.Classification,
+        transaction.Description);
 
     private async Task<Domain.Accounts.Account> FindRequiredAccountAsync(
         Guid accountId,

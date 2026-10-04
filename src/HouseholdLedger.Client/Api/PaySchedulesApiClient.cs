@@ -53,10 +53,6 @@ public sealed class PaySchedulesApiClient(HttpClient httpClient) : IPaySchedules
     }
 
     /// <inheritdoc/>
-    public async Task<IReadOnlyList<IncomeReceiptResponse>> MaterializeAsync(DateOnly payDate, CancellationToken cancellationToken) =>
-        await this.PostForReceiptsAsync($"api/v1/pay-schedules/materialize/{payDate:yyyy-MM-dd}", cancellationToken);
-
-    /// <inheritdoc/>
     public async Task<IReadOnlyList<IncomeReceiptResponse>> ListReceiptsAsync(DateOnly from, DateOnly endDate, CancellationToken cancellationToken) =>
         await httpClient.GetFromJsonAsync<IncomeReceiptResponse[]>(
             $"api/v1/pay-schedules/receipts?from={from:yyyy-MM-dd}&to={endDate:yyyy-MM-dd}",
@@ -73,12 +69,5 @@ public sealed class PaySchedulesApiClient(HttpClient httpClient) : IPaySchedules
 
         response.EnsureSuccessStatusCode();
         return true;
-    }
-
-    private async Task<IReadOnlyList<IncomeReceiptResponse>> PostForReceiptsAsync(string route, CancellationToken cancellationToken)
-    {
-        using var response = await httpClient.PostAsync(route, null, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<IncomeReceiptResponse[]>(cancellationToken) ?? [];
     }
 }

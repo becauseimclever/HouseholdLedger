@@ -32,9 +32,15 @@
             </div>
             <ul class="workspace-navigation-list @(navigationExpanded ? null : "workspace-navigation-rail-list")">
                 <li>
-                    <NavLink href="/" Match="NavLinkMatch.All" class="workspace-navigation-link" aria-label="Home" title="Home">
+                    <NavLink href="/" Match="NavLinkMatch.All" class="workspace-navigation-link" aria-label="Calendar" title="Calendar">
                         <span class="navigation-icon" aria-hidden="true"><Blazicons.Blazicon Svg="Blazicons.Lucide.CalendarDays" /></span>
-                        <span class="navigation-label">Home</span>
+                        <span class="navigation-label">Calendar</span>
+                    </NavLink>
+                </li>
+                <li>
+                    <NavLink href="@CurrentMonthPlanLink" Match="NavLinkMatch.All" class="workspace-navigation-link" aria-label="Plan and review this month" title="Plan and review">
+                        <span class="navigation-icon" aria-hidden="true"><Blazicons.Blazicon Svg="Blazicons.Lucide.PiggyBank" /></span>
+                        <span class="navigation-label">Plan and review</span>
                     </NavLink>
                 </li>
                 <li class="accounts-navigation-branch @(AccountRouteSelected ? "current-navigation-branch" : null)">

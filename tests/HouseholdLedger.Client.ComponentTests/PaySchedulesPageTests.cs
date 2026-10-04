@@ -27,6 +27,9 @@ public sealed class PaySchedulesPageTests
         Assert.Multiple(
             () => Assert.Equal("Checking", component.Find("select[id^='account-'] option[value='10000000-0000-0000-0000-000000000001']").TextContent),
             () => Assert.Equal("Allocated: $0.00 of USD", component.Find(".allocation-total").TextContent),
+            () => Assert.Contains("Optional expectation aids only", component.Markup, StringComparison.Ordinal),
+            () => Assert.Contains("never records received income", component.Markup, StringComparison.Ordinal),
+            () => Assert.Contains("not savings contributions", component.Markup, StringComparison.Ordinal),
             () => Assert.Equal(0, api.CreateCalls));
     }
 
@@ -125,8 +128,6 @@ public sealed class PaySchedulesPageTests
         public Task<IReadOnlyList<PayScheduleResponse>> ListAsync(CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<PayScheduleResponse>>(this.schedules);
 
         public Task<IReadOnlyList<IncomeReceiptResponse>> ListReceiptsAsync(DateOnly from, DateOnly endDate, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<IncomeReceiptResponse>>([]);
-
-        public Task<IReadOnlyList<IncomeReceiptResponse>> MaterializeAsync(DateOnly payDate, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<IncomeReceiptResponse>>([]);
 
         public Task<bool> PauseAsync(Guid scheduleId, CancellationToken cancellationToken)
         {

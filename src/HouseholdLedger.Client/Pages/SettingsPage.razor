@@ -12,6 +12,7 @@
 
     <section class="settings-section" aria-labelledby="money-display-heading">
         <h2 id="money-display-heading">Global money display</h2>
+        <p>Display currency changes formatting only. Stored amounts are not converted.</p>
 
         @if (CurrencyState.IsLoading && !CurrencyState.IsLoaded)
         {

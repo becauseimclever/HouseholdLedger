@@ -42,15 +42,17 @@ public sealed class WorkspaceShellTests
             () => Assert.Equal("Navigation", component.Find("#navigation-heading").TextContent),
             () => Assert.Equal("Inspector", component.Find("#inspector-heading").TextContent),
             () => Assert.Equal("No calendar item selected", component.Find(".inspector-empty-state").TextContent),
-            () => Assert.Equal(4, component.FindAll("#workspace-navigation a").Count),
-            () => Assert.Equal("Home", component.FindAll("#workspace-navigation .navigation-label")[0].TextContent),
+            () => Assert.Equal(5, component.FindAll("#workspace-navigation a").Count),
+            () => Assert.Equal("Calendar", component.FindAll("#workspace-navigation .navigation-label")[0].TextContent),
             () => Assert.Equal("/", component.FindAll("#workspace-navigation a")[0].GetAttribute("href")),
-            () => Assert.Equal("Accounts", component.FindAll("#workspace-navigation .navigation-label")[1].TextContent),
-            () => Assert.Equal("/accounts", component.FindAll("#workspace-navigation a")[1].GetAttribute("href")),
-            () => Assert.Equal("Pay schedules", component.FindAll("#workspace-navigation .navigation-label")[2].TextContent),
-            () => Assert.Equal("/pay-schedules", component.FindAll("#workspace-navigation a")[2].GetAttribute("href")),
-            () => Assert.Equal("Settings", component.FindAll("#workspace-navigation .navigation-label")[3].TextContent),
-            () => Assert.Equal("/settings", component.FindAll("#workspace-navigation a")[3].GetAttribute("href")),
+            () => Assert.Equal("Plan and review", component.FindAll("#workspace-navigation .navigation-label")[1].TextContent),
+            () => Assert.Equal("/months/2026/10", component.FindAll("#workspace-navigation a")[1].GetAttribute("href")),
+            () => Assert.Equal("Accounts", component.FindAll("#workspace-navigation .navigation-label")[2].TextContent),
+            () => Assert.Equal("/accounts", component.FindAll("#workspace-navigation a")[2].GetAttribute("href")),
+            () => Assert.Equal("Pay schedules", component.FindAll("#workspace-navigation .navigation-label")[3].TextContent),
+            () => Assert.Equal("/pay-schedules", component.FindAll("#workspace-navigation a")[3].GetAttribute("href")),
+            () => Assert.Equal("Settings", component.FindAll("#workspace-navigation .navigation-label")[4].TextContent),
+            () => Assert.Equal("/settings", component.FindAll("#workspace-navigation a")[4].GetAttribute("href")),
             () => Assert.Empty(component.FindAll(".workspace-toolbar button[aria-controls='workspace-navigation']")),
             () => Assert.Single(component.FindAll("#workspace-navigation button[aria-controls='workspace-navigation']")),
             () => Assert.Equal("button", navigationToggle.GetAttribute("type")),
@@ -69,7 +71,7 @@ public sealed class WorkspaceShellTests
             () => Assert.Contains("navigation-pane-collapsed", component.Find("#workspace-navigation").ClassList),
             () => Assert.Equal("Navigation", component.Find("#workspace-navigation").GetAttribute("aria-label")),
             () => Assert.Empty(component.FindAll("#navigation-heading")),
-            () => Assert.Equal(4, component.FindAll("#workspace-navigation a").Count),
+            () => Assert.Equal(5, component.FindAll("#workspace-navigation a").Count),
             () => Assert.All(component.FindAll("#workspace-navigation a"), link => Assert.NotNull(link.GetAttribute("aria-label"))),
             () => Assert.All(component.FindAll("#workspace-navigation .navigation-label"), label => Assert.Contains("navigation-label", label.ClassList)),
             () => Assert.Equal("false", navigationToggle.GetAttribute("aria-expanded")),
@@ -82,7 +84,7 @@ public sealed class WorkspaceShellTests
         Assert.Multiple(
             () => Assert.DoesNotContain("navigation-pane-collapsed", component.Find("#workspace-navigation").ClassList),
             () => Assert.Equal("Navigation", component.Find("#navigation-heading").TextContent),
-            () => Assert.Equal(4, component.FindAll("#workspace-navigation a").Count),
+            () => Assert.Equal(5, component.FindAll("#workspace-navigation a").Count),
             () => Assert.Equal("true", navigationToggle.GetAttribute("aria-expanded")),
             () => Assert.Equal("Collapse navigation", navigationToggle.GetAttribute("aria-label")));
 
@@ -98,7 +100,7 @@ public sealed class WorkspaceShellTests
             () => Assert.Equal("Expand inspector", inspectorToggle.GetAttribute("aria-label")));
     }
 
-    /// <summary>Verifies the workspace name is a native Home link with current-page semantics.</summary>
+    /// <summary>Verifies the workspace name is a native home link with current-page semantics.</summary>
     [Fact]
     public void WorkspaceNameLinksHomeAndExposesCurrentState()
     {
@@ -122,7 +124,7 @@ public sealed class WorkspaceShellTests
     /// <param name="route">The current route.</param>
     /// <param name="expectedLabel">The expected current navigation label.</param>
     [Theory]
-    [InlineData("/", "Home")]
+    [InlineData("/", "Calendar")]
     [InlineData("/accounts", "Accounts")]
     [InlineData("/accounts/10000000-0000-0000-0000-000000000001", "Household Checking")]
     public void NavigationExposesExactlyOneCurrentDestination(string route, string expectedLabel)
@@ -256,7 +258,7 @@ public sealed class WorkspaceShellTests
         Assert.Multiple(
             () => Assert.Equal("Try loading accounts again", retry.GetAttribute("aria-label")),
             () => Assert.Equal("Try loading accounts again", retry.GetAttribute("title")),
-            () => Assert.Equal(4, component.FindAll("#workspace-navigation a").Count));
+            () => Assert.Equal(5, component.FindAll("#workspace-navigation a").Count));
         retry.Click();
         component.WaitForAssertion(() => Assert.Equal(2, apiClient.Requests.Count));
 
@@ -305,8 +307,8 @@ public sealed class WorkspaceShellTests
         var disclosure = component.Find("button[aria-controls='accounts-navigation-list']");
 
         Assert.Multiple(
-            () => Assert.Equal(5, component.FindAll("#workspace-navigation a").Count),
-            () => Assert.Equal(5, component.FindAll("#workspace-navigation .navigation-icon").Count),
+            () => Assert.Equal(6, component.FindAll("#workspace-navigation a").Count),
+            () => Assert.Equal(6, component.FindAll("#workspace-navigation .navigation-icon").Count),
             () => Assert.Equal("true", disclosure.GetAttribute("aria-expanded")),
             () => Assert.Equal("Collapse accounts", disclosure.GetAttribute("aria-label")),
             () => Assert.Equal("Collapse accounts", disclosure.GetAttribute("title")),
@@ -338,18 +340,30 @@ public sealed class WorkspaceShellTests
         component.WaitForAssertion(() => Assert.Multiple(
             () => Assert.DoesNotContain("inspector-pane-collapsed", component.Find("#workspace-inspector").ClassList),
             () => Assert.Equal("true", component.Find("button[aria-controls='workspace-inspector']").GetAttribute("aria-expanded")),
-            () => Assert.Contains("navigation-pane-collapsed", component.Find("#workspace-navigation").ClassList)));
+            () => Assert.Contains("navigation-pane-collapsed", component.Find("#workspace-navigation").ClassList),
+            () => Assert.Equal("/months/2026/9", component.Find("#workspace-navigation a[aria-label='Plan and review this month']").GetAttribute("href"))));
     }
 
     private static void RegisterShellServices(BunitContext context, IAccountsApiClient accountsApiClient)
     {
         context.Services.AddScoped<AccountCatalogState>();
         context.Services.AddScoped<SelectedDateState>();
+        context.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+        context.Services.AddSingleton<IIncomeReceiptsApiClient>(new StubIncomeReceiptsApiClient());
         context.Services.AddSingleton(accountsApiClient);
         if (accountsApiClient is StubAccountsApiClient stub)
         {
             context.Services.AddSingleton(stub);
         }
+    }
+
+    private sealed class StubIncomeReceiptsApiClient : IIncomeReceiptsApiClient
+    {
+        public Task<IncomeReceiptResponse> ConfirmAsync(ConfirmIncomeReceiptRequest request, Guid requestId, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<IncomeReceiptResponse> ReviseAsync(Guid receiptId, ConfirmIncomeReceiptRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<TransactionMutationResult> RemoveAsync(Guid receiptId, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 
     private sealed class StubAccountsApiClient(IReadOnlyList<AccountResponse> accounts) : IAccountsApiClient

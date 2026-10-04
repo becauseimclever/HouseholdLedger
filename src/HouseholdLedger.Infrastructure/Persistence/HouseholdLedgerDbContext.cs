@@ -6,6 +6,7 @@ namespace HouseholdLedger.Infrastructure.Persistence;
 
 using HouseholdLedger.Domain.Accounts;
 using HouseholdLedger.Domain.Income;
+using HouseholdLedger.Domain.Planning;
 using HouseholdLedger.Domain.Settings;
 using HouseholdLedger.Domain.Transactions;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,16 @@ using Microsoft.EntityFrameworkCore;
 public sealed class HouseholdLedgerDbContext(DbContextOptions<HouseholdLedgerDbContext> options)
     : DbContext(options)
 {
+    private static readonly string[] BudgetPlanAmountColumns =
+    [
+        "expected_income",
+        "intended_savings",
+        "necessities",
+        "optional",
+        "culture",
+        "unexpected",
+    ];
+
     /// <summary>Gets the accounts.</summary>
     public DbSet<Account> Accounts => this.Set<Account>();
 
@@ -26,14 +37,35 @@ public sealed class HouseholdLedgerDbContext(DbContextOptions<HouseholdLedgerDbC
     /// <summary>Gets the singleton global settings.</summary>
     public DbSet<GlobalSettings> GlobalSettings => this.Set<GlobalSettings>();
 
+    internal DbSet<MonthlyBudgetPlanRecord> MonthlyBudgetPlanRecords => this.Set<MonthlyBudgetPlanRecord>();
+
+    internal DbSet<MonthlyReflectionRecord> MonthlyReflectionRecords => this.Set<MonthlyReflectionRecord>();
+
     internal DbSet<PayScheduleRecord> PayScheduleRecords => this.Set<PayScheduleRecord>();
 
     internal DbSet<IncomeReceiptRecord> IncomeReceiptRecords => this.Set<IncomeReceiptRecord>();
+
+    internal DbSet<IncomeReceiptRequestRecord> IncomeReceiptRequestRecords => this.Set<IncomeReceiptRequestRecord>();
 
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
+
+        var receiptRequest = modelBuilder.Entity<IncomeReceiptRequestRecord>();
+        receiptRequest.ToTable("income_receipt_requests");
+        receiptRequest.HasKey(item => item.RequestId).HasName("pk_income_receipt_requests");
+        receiptRequest.Property(item => item.RequestId).HasColumnName("request_id").ValueGeneratedNever();
+        receiptRequest.Property(item => item.ReceiptId).HasColumnName("receipt_id");
+        receiptRequest.Property(item => item.Payload).HasColumnName("payload").HasColumnType("text");
+
+        var reflection = modelBuilder.Entity<MonthlyReflectionRecord>();
+        reflection.ToTable("monthly_reflections");
+        reflection.HasKey(item => item.Month);
+        reflection.Property(item => item.Month).HasColumnName("month").HasColumnType("date").ValueGeneratedNever();
+        reflection.Property(item => item.WhatWorked).HasColumnName("what_worked").HasMaxLength(1000);
+        reflection.Property(item => item.NextMonthIntention).HasColumnName("next_month_intention").HasMaxLength(1000);
+        reflection.Property(item => item.LastRevisedAt).HasColumnName("last_revised_at").HasColumnType("timestamp with time zone");
 
         var account = modelBuilder.Entity<Account>();
         account.ToTable("accounts");
@@ -65,6 +97,7 @@ public sealed class HouseholdLedgerDbContext(DbContextOptions<HouseholdLedgerDbC
         transaction.Property(item => item.Date).HasColumnName("ledger_date").HasColumnType("date");
         transaction.Property(item => item.Amount).HasColumnName("amount").HasColumnType("numeric");
         transaction.Property(item => item.Classification).HasColumnName("classification").HasConversion<string>().HasMaxLength(32);
+        transaction.Property(item => item.Description).HasColumnName("description").HasMaxLength(200);
         transaction.Property(item => item.Sequence).HasColumnName("creation_sequence").ValueGeneratedOnAdd();
         transaction
             .HasOne<Account>()
@@ -100,6 +133,31 @@ public sealed class HouseholdLedgerDbContext(DbContextOptions<HouseholdLedgerDbC
                 theme => WorkbenchThemeCode.ToCode(theme),
                 value => WorkbenchThemeCode.Parse(value))
             .HasMaxLength(32);
+
+        var budgetPlan = modelBuilder.Entity<MonthlyBudgetPlanRecord>();
+        budgetPlan.ToTable(
+            "monthly_budget_plans",
+            tableBuilder =>
+            {
+                foreach (var amount in BudgetPlanAmountColumns)
+                {
+                    tableBuilder.HasCheckConstraint($"ck_monthly_budget_plans_{amount}_range", $"{amount} >= 0 AND {amount} <= {ExpenseTransaction.MaximumAmount}");
+                    tableBuilder.HasCheckConstraint($"ck_monthly_budget_plans_{amount}_scale", $"{amount} = round({amount}, 2)");
+                }
+
+                tableBuilder.HasCheckConstraint(
+                    "ck_monthly_budget_plans_reconciled",
+                    "expected_income = intended_savings + necessities + optional + culture + unexpected");
+            });
+        budgetPlan.HasKey(item => item.Month);
+        budgetPlan.Property(item => item.Month).HasColumnName("month").HasColumnType("date").ValueGeneratedNever();
+        budgetPlan.Property(item => item.ExpectedIncome).HasColumnName("expected_income").HasColumnType("numeric");
+        budgetPlan.Property(item => item.IntendedSavings).HasColumnName("intended_savings").HasColumnType("numeric");
+        budgetPlan.Property(item => item.Necessities).HasColumnName("necessities").HasColumnType("numeric");
+        budgetPlan.Property(item => item.Optional).HasColumnName("optional").HasColumnType("numeric");
+        budgetPlan.Property(item => item.Culture).HasColumnName("culture").HasColumnType("numeric");
+        budgetPlan.Property(item => item.Unexpected).HasColumnName("unexpected").HasColumnType("numeric");
+        budgetPlan.Property(item => item.LastRevisedAt).HasColumnName("last_revised_at").HasColumnType("timestamp with time zone");
 
         var paySchedule = modelBuilder.Entity<PayScheduleRecord>();
         paySchedule.ToTable(

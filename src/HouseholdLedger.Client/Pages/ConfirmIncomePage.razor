@@ -1,0 +1,80 @@
+@page "/income-receipts/{Year:int}/{Month:int}/{Day:int}"
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Routing
+
+<NavigationLock ConfirmExternalNavigation="@HasUnsavedChanges" OnBeforeInternalNavigation="ConfirmUnsavedNavigationAsync" />
+
+<PageTitle>Confirm received income</PageTitle>
+
+<main class="confirm-income-page">
+    <h1>Confirm received income</h1>
+    <p>Record money only after it is actually received. A schedule never confirms income for you.</p>
+    <a class="content-link" href="/">Calendar</a>
+    @if (isLoading)
+    {
+        <p role="status">Loading account destinations</p>
+    }
+    else if (accountsLoadError)
+    {
+        <div role="alert"><p>Accounts are unavailable. Income cannot be confirmed until existing accounts can be verified.</p><button type="button" @onclick="LoadAccountsAsync">Retry accounts</button></div>
+    }
+    else if (accounts.Count == 0)
+    {
+        <p>No accounts yet. <a class="content-link" href="/accounts">Add an account</a> before confirming income.</p>
+    }
+    else
+    {
+        @if (scheduleSuggestionError is not null)
+        {
+            <p role="alert">@scheduleSuggestionError</p>
+        }
+        @if (scheduleSuggestionStatus is not null)
+        {
+            <p role="status">@scheduleSuggestionStatus</p>
+        }
+        <form @onsubmit="ConfirmAsync" @onsubmit:preventDefault="true">
+            <fieldset disabled="@isSaving">
+                <legend>Actual receipt</legend>
+                <div class="receipt-field">
+                    <label for="received-date">Actual received date</label>
+                    <input id="received-date" type="date" max="@TodayText" value="@receivedDateText" @onchange="UpdateDate" aria-describedby="receipt-error" />
+                </div>
+                <div class="receipt-field">
+                    <label for="received-amount">Amount received (@CurrencyLabel)</label>
+                    <input id="received-amount" type="number" min="0.01" max="9999999999999999.99" step="0.01" inputmode="decimal" value="@amountText" @oninput="UpdateAmount" aria-describedby="receipt-error" />
+                </div>
+                <fieldset>
+                    <legend>Where the received money is held</legend>
+                    <p>Use existing account destinations. These are not spending classifications or savings contributions.</p>
+                    @foreach (var allocation in allocations)
+                    {
+                        <div class="allocation-row" @key="allocation.Id">
+                            <div class="receipt-field">
+                                <label for="@($"receipt-account-{allocation.Id}")">Account</label>
+                                <select id="@($"receipt-account-{allocation.Id}")" value="@allocation.AccountId" @onchange="args => UpdateAccount(allocation, args)" aria-describedby="receipt-error">
+                                    <option value="">Choose an account</option>
+                                    @foreach (var account in accounts) { <option value="@account.Id">@account.Name</option> }
+                                </select>
+                            </div>
+                            <div class="receipt-field">
+                                <label for="@($"receipt-allocation-{allocation.Id}")">Allocation amount (@CurrencyLabel)</label>
+                                <input id="@($"receipt-allocation-{allocation.Id}")" type="number" min="0.01" max="9999999999999999.99" step="0.01" inputmode="decimal" value="@allocation.AmountText" @oninput="args => UpdateAllocation(allocation, args)" aria-describedby="receipt-error" />
+                            </div>
+                            <button type="button" disabled="@(allocations.Count == 1)" @onclick="() => RemoveAllocation(allocation)" aria-label="Remove account allocation">Remove</button>
+                        </div>
+                    }
+                    <button type="button" @onclick="AddAllocation">Add allocation</button>
+                    <p role="status" aria-live="polite">@AllocationFeedback</p>
+                </fieldset>
+                <label class="confirmation-label"><input id="receipt-confirmation" type="checkbox" checked="@isConfirmed" @onchange="UpdateConfirmation" /> I confirm this money has actually been received on the date entered.</label>
+                <button type="submit" disabled="@(!isConfirmed || isSaving)">@(isSaving ? "Confirming income" : "Confirm received income")</button>
+            </fieldset>
+        </form>
+    }
+    <p id="receipt-error" role="alert">@error</p>
+    @if (status is not null)
+    {
+        <p role="status">@status</p>
+        <a class="content-link" href="@savedReviewLink">Review the receipt's month</a>
+    }
+</main>

@@ -26,6 +26,44 @@ public sealed class TransactionEndpointTests
     private static readonly Account PrimaryAccount = new(Guid.NewGuid(), "Household Checking");
     private static readonly Account SecondaryAccount = new(Guid.NewGuid(), "Cash Wallet");
 
+    /// <summary>Persists normalized descriptions through create, list, correction and clearing.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task DescriptionIsNormalizedCorrectableAndBounded()
+    {
+        await using var factory = new TransactionApiFactory();
+        using var client = ApiTestClient.Create(factory);
+        var cancellationToken = TestContext.Current.CancellationToken;
+        const string route = "/api/v1/days/2026-09-01/transactions";
+        using var create = await client.PostAsJsonAsync(
+            route,
+            new CreateExpenseTransactionRequest(PrimaryAccount.Id, 10m, "Necessities", "  Groceries  "),
+            cancellationToken);
+        var created = (await create.Content.ReadFromJsonAsync<ExpenseTransactionResponse>(cancellationToken))!;
+        Assert.Equal("Groceries", created.Description);
+        var listed = (await client.GetFromJsonAsync<ExpenseTransactionResponse[]>(route, cancellationToken))!;
+        Assert.Equal("Groceries", Assert.Single(listed).Description);
+        using var correction = await client.PutAsJsonAsync(
+            $"{route}/{created.Id}",
+            new UpdateExpenseTransactionRequest(PrimaryAccount.Id, 10m, "Necessities", "  Lunch  "),
+            cancellationToken);
+        var corrected = (await correction.Content.ReadFromJsonAsync<ExpenseTransactionResponse>(cancellationToken))!;
+        Assert.Equal("Lunch", corrected.Description);
+        using var invalid = await client.PutAsJsonAsync(
+            $"{route}/{created.Id}",
+            new UpdateExpenseTransactionRequest(SecondaryAccount.Id, 99m, "Culture", new string('x', 201)),
+            cancellationToken);
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        var unchanged = Assert.Single((await client.GetFromJsonAsync<ExpenseTransactionResponse[]>(route, cancellationToken))!);
+        Assert.Equal("Lunch", unchanged.Description);
+        Assert.Equal(10m, unchanged.Amount);
+        using var clear = await client.PutAsJsonAsync(
+            $"{route}/{created.Id}",
+            new UpdateExpenseTransactionRequest(PrimaryAccount.Id, 10m, "Necessities", "  "),
+            cancellationToken);
+        Assert.Null((await clear.Content.ReadFromJsonAsync<ExpenseTransactionResponse>(cancellationToken))!.Description);
+    }
+
     /// <summary>Verifies valid creation is persisted and returned by the selected-day read.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
@@ -308,7 +346,8 @@ public sealed class TransactionEndpointTests
                         transaction.AccountId == PrimaryAccount.Id ? PrimaryAccount.Name : SecondaryAccount.Name,
                         transaction.Date,
                         transaction.Amount,
-                        transaction.Classification))
+                        transaction.Classification,
+                        transaction.Description))
                     .ToArray());
         }
 
@@ -328,7 +367,8 @@ public sealed class TransactionEndpointTests
                         transaction.AccountId == PrimaryAccount.Id ? PrimaryAccount.Name : SecondaryAccount.Name,
                         transaction.Date,
                         transaction.Amount,
-                        transaction.Classification))
+                        transaction.Classification,
+                        transaction.Description))
                     .ToArray());
         }
 

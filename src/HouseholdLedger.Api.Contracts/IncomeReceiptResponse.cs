@@ -4,15 +4,15 @@
 
 namespace HouseholdLedger.Api.Contracts;
 
-/// <summary>Describes a materialized income receipt.</summary>
+/// <summary>Describes a confirmed income receipt.</summary>
 /// <param name="Id">The receipt identifier.</param>
-/// <param name="ScheduleId">The originating pay schedule identifier.</param>
+/// <param name="ScheduleId">The optional expectation schedule identifier.</param>
 /// <param name="PayDate">The receipt pay date.</param>
 /// <param name="NetIncome">The received net income.</param>
 /// <param name="Allocations">The immutable account allocation snapshot.</param>
 public sealed record IncomeReceiptResponse(
     Guid Id,
-    Guid ScheduleId,
+    Guid? ScheduleId,
     DateOnly PayDate,
     decimal NetIncome,
     IReadOnlyList<IncomeAllocationResponse> Allocations);

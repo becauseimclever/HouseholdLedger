@@ -108,6 +108,15 @@ internal sealed class W3cWebDriver : IAsyncDisposable
             cancellationToken);
     }
 
+    public async Task DismissAlertAsync(CancellationToken cancellationToken)
+    {
+        await this.SendAsync(
+            HttpMethod.Post,
+            $"/session/{this.SessionId}/alert/dismiss",
+            new { },
+            cancellationToken);
+    }
+
     public async Task<JsonElement> ExecuteScriptAsync(
         string script,
         IReadOnlyList<object>? arguments,

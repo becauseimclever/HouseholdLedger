@@ -13,10 +13,12 @@ namespace HouseholdLedger.Api.Contracts;
 /// <param name="Date">The ledger date.</param>
 /// <param name="Amount">The positive USD amount.</param>
 /// <param name="Classification">The Kakeibo-inspired classification.</param>
+/// <param name="Description">The optional normalized expense description.</param>
 public sealed record ExpenseTransactionResponse(
     Guid Id,
     Guid AccountId,
     string AccountName,
     DateOnly Date,
     decimal Amount,
-    string Classification);
+    string Classification,
+    string? Description = null);

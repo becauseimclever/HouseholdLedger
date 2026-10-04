@@ -129,57 +129,6 @@ public sealed class IncomeScheduleServiceTests
         Assert.Empty(repository.Schedules);
     }
 
-    /// <summary>Verifies retrying a due date returns exactly one durable receipt.</summary>
-    /// <returns>A task representing the asynchronous test.</returns>
-    [Fact]
-    public async Task MaterializeDueReceiptsIsIdempotentAndSnapshotsRevisionValues()
-    {
-        var account = new Account(Guid.NewGuid(), "Checking");
-        var repository = new StubIncomeScheduleRepository();
-        var service = new IncomeScheduleService(repository, new StubAccountRepository(account));
-        var schedule = await service.CreateAsync(
-            new IncomeScheduleCommand("Salary", new DateOnly(2026, 9, 15), PayPeriodCadence.Biweekly, 2500m, [new IncomeAllocationCommand(account.Id, 2500m)]),
-            TestContext.Current.CancellationToken);
-
-        var first = await service.MaterializeDueReceiptsAsync(new DateOnly(2026, 9, 15), TestContext.Current.CancellationToken);
-        await service.ReviseAsync(schedule.Id, new IncomeScheduleCommand("Salary", new DateOnly(2026, 9, 29), PayPeriodCadence.Biweekly, 3000m, [new IncomeAllocationCommand(account.Id, 3000m)]), TestContext.Current.CancellationToken);
-        var retry = await service.MaterializeDueReceiptsAsync(new DateOnly(2026, 9, 15), TestContext.Current.CancellationToken);
-        var revised = await service.MaterializeDueReceiptsAsync(new DateOnly(2026, 9, 29), TestContext.Current.CancellationToken);
-
-        Assert.Multiple(
-            () => Assert.Single(first),
-            () => Assert.Empty(retry),
-            () => Assert.Single(revised),
-            () => Assert.Equal(2, repository.Receipts.Count),
-            () => Assert.Equal(2500m, repository.Receipts.Single(receipt => receipt.PayDate == new DateOnly(2026, 9, 15)).NetIncome),
-            () => Assert.Equal(3000m, repository.Receipts.Single(receipt => receipt.PayDate == new DateOnly(2026, 9, 29)).NetIncome));
-    }
-
-    /// <summary>Verifies a resumed schedule does not create a receipt for a pay date missed while paused.</summary>
-    /// <returns>A task representing the asynchronous test.</returns>
-    [Fact]
-    public async Task ResumeDoesNotBackfillPayDatesMissedWhilePaused()
-    {
-        var account = new Account(Guid.NewGuid(), "Checking");
-        var repository = new StubIncomeScheduleRepository();
-        var service = new IncomeScheduleService(repository, new StubAccountRepository(account));
-        var schedule = await service.CreateAsync(
-            new IncomeScheduleCommand("Salary", new DateOnly(2026, 9, 15), PayPeriodCadence.Biweekly, 2500m, [new IncomeAllocationCommand(account.Id, 2500m)]),
-            TestContext.Current.CancellationToken);
-
-        await service.PauseAsync(schedule.Id, TestContext.Current.CancellationToken);
-        var paused = await service.MaterializeDueReceiptsAsync(new DateOnly(2026, 9, 15), TestContext.Current.CancellationToken);
-        await service.ResumeAsync(schedule.Id, new DateOnly(2026, 9, 16), TestContext.Current.CancellationToken);
-        var missed = await service.MaterializeDueReceiptsAsync(new DateOnly(2026, 9, 15), TestContext.Current.CancellationToken);
-        var next = await service.MaterializeDueReceiptsAsync(new DateOnly(2026, 9, 29), TestContext.Current.CancellationToken);
-
-        Assert.Multiple(
-            () => Assert.Empty(paused),
-            () => Assert.Empty(missed),
-            () => Assert.Single(next),
-            () => Assert.Single(repository.Receipts));
-    }
-
     private sealed class StubAccountRepository(params Account[] accounts) : IAccountRepository
     {
         public Task<Account?> FindAsync(Guid accountId, CancellationToken cancellationToken) => Task.FromResult(accounts.SingleOrDefault(account => account.Id == accountId));
@@ -221,18 +170,21 @@ public sealed class IncomeScheduleServiceTests
             return Task.FromResult<IReadOnlyList<IncomeReceipt>>(this.Receipts.Where(receipt => receipt.PayDate >= startDate && receipt.PayDate <= endDate).ToArray());
         }
 
+        public Task<IncomeReceipt?> FindReceiptAsync(Guid receiptId, CancellationToken cancellationToken) =>
+            Task.FromResult(this.Receipts.SingleOrDefault(receipt => receipt.Id == receiptId));
+
+        public Task AddReceiptAsync(IncomeReceipt receipt, CancellationToken cancellationToken)
+        {
+            this.Receipts.Add(receipt);
+            return Task.CompletedTask;
+        }
+
         public Task UpdateScheduleAsync(PaySchedule schedule, CancellationToken cancellationToken) => Task.CompletedTask;
 
-        public Task<IncomeReceipt?> GetOrAddReceiptAsync(IncomeReceipt receipt, CancellationToken cancellationToken)
-        {
-            var existing = this.Receipts.SingleOrDefault(item => item.ScheduleId == receipt.ScheduleId && item.PayDate == receipt.PayDate);
-            if (existing is not null)
-            {
-                return Task.FromResult<IncomeReceipt?>(null);
-            }
+        public Task<IncomeReceipt> ConfirmReceiptAsync(IncomeReceipt receipt, Guid? requestId, CancellationToken cancellationToken) => throw new NotSupportedException();
 
-            this.Receipts.Add(receipt);
-            return Task.FromResult<IncomeReceipt?>(receipt);
-        }
+        public Task<bool> UpdateReceiptAsync(IncomeReceipt receipt, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<bool> DeleteReceiptAsync(Guid receiptId, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 }

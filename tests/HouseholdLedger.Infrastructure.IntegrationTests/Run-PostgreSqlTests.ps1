@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
-    [string] $PostgresImage = "docker.io/library/postgres:18"
+    [string] $PostgresImage = "docker.io/library/postgres:18",
+    [ValidateSet("docker", "podman")]
+    [string] $ContainerCommand = "docker"
 )
 
 Set-StrictMode -Version Latest
@@ -13,8 +15,8 @@ $databaseUser = "householdledger_test"
 $databasePassword = [Guid]::NewGuid().ToString("N")
 $connectionVariable = "HOUSEHOLDLEDGER_TEST_POSTGRES_CONNECTION_STRING"
 
-if ($null -eq (Get-Command podman -ErrorAction SilentlyContinue)) {
-    throw "Podman is required to run the PostgreSQL integration tests."
+if ($null -eq (Get-Command $ContainerCommand -ErrorAction SilentlyContinue)) {
+    throw "$ContainerCommand is required to run the PostgreSQL integration tests."
 }
 
 $listener = [System.Net.Sockets.TcpListener]::new(
@@ -26,7 +28,7 @@ $listener.Stop()
 
 try {
     Write-Output "PostgreSQL allocation: image=$PostgresImage container=$containerName database=$databaseName port=$hostPort password=<redacted>"
-    & podman run --detach `
+    & $ContainerCommand run --detach `
         --name $containerName `
         --publish "127.0.0.1:${hostPort}:5432" `
         --env "POSTGRES_DB=$databaseName" `
@@ -34,12 +36,12 @@ try {
         --env "POSTGRES_PASSWORD=$databasePassword" `
         $PostgresImage | Out-Null
     if ($LASTEXITCODE -ne 0) {
-        throw "Podman failed to start the owned PostgreSQL container."
+        throw "$ContainerCommand failed to start the owned PostgreSQL container."
     }
 
     $ready = $false
     for ($attempt = 1; $attempt -le 60; $attempt++) {
-        & podman exec $containerName pg_isready --username $databaseUser --dbname $databaseName 2>$null | Out-Null
+        & $ContainerCommand exec $containerName pg_isready --username $databaseUser --dbname $databaseName 2>$null | Out-Null
         if ($LASTEXITCODE -eq 0) {
             $ready = $true
             break
@@ -65,9 +67,10 @@ try {
 }
 finally {
     [Environment]::SetEnvironmentVariable($connectionVariable, $null, "Process")
-    & podman container exists $containerName
-    if ($LASTEXITCODE -eq 0) {
-        & podman rm --force $containerName | Out-Null
+    $ownedContainer = & $ContainerCommand ps --all --filter "name=^/$containerName$" --format "{{.Names}}"
+    if ($LASTEXITCODE -ne 0) { throw "Could not inspect owned container cleanup." }
+    if ($ownedContainer -eq $containerName) {
+        & $ContainerCommand rm --force --volumes $containerName | Out-Null
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Failed to remove owned container $containerName."
         }
@@ -76,8 +79,9 @@ finally {
         }
     }
 
-    & podman container exists $containerName
-    if ($LASTEXITCODE -eq 0) {
+    $remainingContainer = & $ContainerCommand ps --all --filter "name=^/$containerName$" --format "{{.Names}}"
+    if ($LASTEXITCODE -ne 0) { throw "Could not verify owned container cleanup." }
+    if ($remainingContainer -eq $containerName) {
         Write-Error "Owned container $containerName is still present after cleanup."
     }
 }

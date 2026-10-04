@@ -58,18 +58,18 @@ public sealed class PaySchedule
     /// <summary>Gets the second configured monthly pay day for a semimonthly schedule.</summary>
     public int? SecondMonthlyPayDay { get; private set; }
 
-    /// <summary>Gets a value indicating whether future receipt creation is paused.</summary>
+    /// <summary>Gets a value indicating whether future schedule expectations are paused.</summary>
     public bool IsPaused { get; private set; }
 
-    /// <summary>Gets the earliest date on which a receipt may be materialized.</summary>
+    /// <summary>Gets the earliest date on which the schedule is eligible to suggest an expectation.</summary>
     public DateOnly ReceiptEligibleFrom { get; private set; }
 
-    /// <summary>Revises the values used for future income receipts.</summary>
+    /// <summary>Revises the values used for future income expectations.</summary>
     /// <param name="name">The user-visible schedule name.</param>
     /// <param name="firstPayDate">The first future pay date.</param>
     /// <param name="cadence">The recurrence cadence.</param>
-    /// <param name="netIncome">The positive net income for each future occurrence.</param>
-    /// <param name="allocations">The account allocations for each future occurrence.</param>
+    /// <param name="netIncome">The positive net income expected for each occurrence.</param>
+    /// <param name="allocations">The suggested account destinations for each occurrence.</param>
     /// <param name="secondMonthlyPayDay">The second monthly pay day for a semimonthly schedule.</param>
     public void Revise(
         string name,
@@ -80,13 +80,13 @@ public sealed class PaySchedule
         int? secondMonthlyPayDay = null) =>
         this.Apply(name, firstPayDate, cadence, netIncome, allocations, secondMonthlyPayDay);
 
-    /// <summary>Prevents future income receipt creation.</summary>
+    /// <summary>Pauses future schedule expectation suggestions.</summary>
     public void Pause() => this.IsPaused = true;
 
-    /// <summary>Allows future income receipt creation.</summary>
+    /// <summary>Resumes future schedule expectation suggestions.</summary>
     public void Resume() => this.IsPaused = false;
 
-    /// <summary>Allows future receipt creation without backfilling pay dates missed while paused.</summary>
+    /// <summary>Resumes expectation suggestions without restoring pay dates missed while paused.</summary>
     /// <param name="resumeDate">The date on which the schedule resumed.</param>
     public void Resume(DateOnly resumeDate)
     {
@@ -94,7 +94,7 @@ public sealed class PaySchedule
         this.ReceiptEligibleFrom = resumeDate > this.FirstPayDate ? resumeDate : this.FirstPayDate;
     }
 
-    /// <summary>Validates and applies schedule values used for future receipts.</summary>
+    /// <summary>Validates and applies schedule values used for future expectations.</summary>
     /// <param name="name">The user-visible schedule name.</param>
     /// <param name="firstPayDate">The first pay date.</param>
     /// <param name="cadence">The recurrence cadence.</param>

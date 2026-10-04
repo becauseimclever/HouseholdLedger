@@ -1,0 +1,53 @@
+@baseUrl = https://localhost:7241
+@receiptId = 00000000-0000-0000-0000-000000000001
+@accountId = 00000000-0000-0000-0000-000000000002
+
+### Explicit confirmation: reuse the requestId only when retrying this identical payload
+POST {{baseUrl}}/api/v1/income-receipts
+Content-Type: application/json
+
+{
+  "receivedDate": "2026-09-15",
+  "amount": 100,
+  "allocations": [{ "accountId": "{{accountId}}", "amount": 100 }],
+  "requestId": "24a64eac-0cb4-41fc-876b-96a6e8cd223f"
+}
+
+### Correct an actual receipt (use identifiers returned by the API)
+PUT {{baseUrl}}/api/v1/income-receipts/{{receiptId}}
+Content-Type: application/json
+
+{
+  "receivedDate": "2026-09-16",
+  "amount": 120,
+  "allocations": [{ "accountId": "{{accountId}}", "amount": 120 }]
+}
+
+### Delete a mistaken receipt
+DELETE {{baseUrl}}/api/v1/income-receipts/{{receiptId}}
+
+### Standalone reflection: 404 until first saved
+GET {{baseUrl}}/api/v1/months/2026/9/reflection
+
+### Save optional reflection independently of a plan
+PUT {{baseUrl}}/api/v1/months/2026/9/reflection
+Content-Type: application/json
+
+{
+  "whatWorked": "Cooking at home made necessities easier to plan.",
+  "nextMonthIntention": "Plan meals before shopping."
+}
+
+### Record an optionally described expense
+POST {{baseUrl}}/api/v1/days/2026-09-16/transactions
+Content-Type: application/json
+
+{
+  "accountId": "{{accountId}}",
+  "amount": 24.50,
+  "classification": "Necessities",
+  "description": "Groceries"
+}
+
+### Review signed cashflowDifference, not an account balance or realized savings
+GET {{baseUrl}}/api/v1/months/2026/9/budget-review

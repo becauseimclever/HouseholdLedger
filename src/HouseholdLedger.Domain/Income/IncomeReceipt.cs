@@ -4,18 +4,18 @@
 
 namespace HouseholdLedger.Domain.Income;
 
-/// <summary>Represents an immutable materialized income occurrence.</summary>
+/// <summary>Represents a confirmed income receipt with an immutable allocation snapshot.</summary>
 public sealed class IncomeReceipt
 {
     private readonly IReadOnlyList<IncomeAccountAllocation> allocations;
 
     /// <summary>Initializes a new instance of the <see cref="IncomeReceipt"/> class.</summary>
     /// <param name="id">The backend-generated receipt identifier.</param>
-    /// <param name="scheduleId">The originating pay schedule identifier.</param>
+    /// <param name="scheduleId">The optional expectation schedule identifier.</param>
     /// <param name="payDate">The calendar day income was received.</param>
     /// <param name="netIncome">The positive income amount received.</param>
     /// <param name="sourceAllocations">The immutable account-allocation snapshot.</param>
-    public IncomeReceipt(Guid id, Guid scheduleId, DateOnly payDate, decimal netIncome, IEnumerable<IncomeAccountAllocation> sourceAllocations)
+    public IncomeReceipt(Guid id, Guid? scheduleId, DateOnly payDate, decimal netIncome, IEnumerable<IncomeAccountAllocation> sourceAllocations)
     {
         if (id == Guid.Empty)
         {
@@ -24,7 +24,7 @@ public sealed class IncomeReceipt
 
         if (scheduleId == Guid.Empty)
         {
-            throw new ArgumentException("A pay schedule identifier is required.", nameof(scheduleId));
+            throw new ArgumentException("A pay schedule identifier, when supplied, cannot be empty.", nameof(scheduleId));
         }
 
         ArgumentNullException.ThrowIfNull(sourceAllocations);
@@ -33,6 +33,11 @@ public sealed class IncomeReceipt
         if (candidateAllocations.Length == 0)
         {
             throw new ArgumentException("At least one account allocation is required.", nameof(sourceAllocations));
+        }
+
+        if (candidateAllocations.Any(allocation => allocation is null))
+        {
+            throw new ArgumentException("Account allocations cannot contain null.", nameof(sourceAllocations));
         }
 
         if (candidateAllocations.GroupBy(allocation => allocation.AccountId).Any(group => group.Count() > 1))
@@ -56,7 +61,7 @@ public sealed class IncomeReceipt
     public Guid Id { get; }
 
     /// <summary>Gets the originating pay schedule identifier.</summary>
-    public Guid ScheduleId { get; }
+    public Guid? ScheduleId { get; }
 
     /// <summary>Gets the calendar day income was received.</summary>
     public DateOnly PayDate { get; }

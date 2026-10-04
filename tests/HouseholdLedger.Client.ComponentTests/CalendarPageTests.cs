@@ -23,6 +23,7 @@ using Xunit;
 public sealed class CalendarPageTests
 {
     private static readonly string[] MondayFirstGermanHeaders = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+    private static readonly string[] CalendarPresentationLabels = ["Day", "Week", "Month"];
 
     /// <summary>
     /// Verifies that the injected client-local date initializes the selected Month presentation.
@@ -47,13 +48,32 @@ public sealed class CalendarPageTests
             () => Assert.Equal("Calendar", component.Find("main.calendar-page h1").TextContent),
             () => Assert.Equal(3, modes.Count),
             () => Assert.Equal(1, modes.Count(mode => mode.HasAttribute("checked"))),
-            () => Assert.Equal("This Month", component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim()),
+            () => Assert.Equal("Month", component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim()),
+            () => Assert.Equal(CalendarPresentationLabels, modes.Select(mode => mode.ParentElement!.TextContent.Trim()).ToArray()),
             () => Assert.Single(component.FindAll("table.calendar-grid")),
             () => Assert.Equal(expectedDate.ToString("D", CultureInfo.CurrentCulture), selectedDate.GetAttribute("aria-label")),
             () => Assert.Equal("true", selectedDate.GetAttribute("aria-pressed")),
             () => Assert.Equal("date", selectedDate.GetAttribute("aria-current")),
             () => Assert.Equal("0", selectedDate.GetAttribute("tabindex")),
             () => Assert.Equal(expectedDate, selectedDateState.Value));
+    }
+
+    /// <summary>Verifies Go to today is independent of the Day, Week, and Month presentation controls.</summary>
+    [Fact]
+    public void GoToTodayRestoresTheInitialDateAndMonthPresentation()
+    {
+        using var context = new BunitContext();
+        var today = new DateOnly(2024, 2, 29);
+        var component = RenderCalendar(context, today);
+        var laterDate = new DateOnly(2024, 3, 10);
+        MovePeriod(component, "Next");
+        FindDateButton(component, laterDate).Click();
+        component.FindAll("button").Single(button => button.TextContent == "Go to today").Click();
+
+        Assert.Multiple(
+            () => Assert.Equal("Month", component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim()),
+            () => Assert.Equal(today.ToString("D", CultureInfo.CurrentCulture), component.Find(".calendar-day[aria-pressed='true']").GetAttribute("aria-label")),
+            () => Assert.Equal(today, context.Services.GetRequiredService<SelectedDateState>().Value));
     }
 
     /// <summary>
@@ -75,7 +95,7 @@ public sealed class CalendarPageTests
 
         Assert.Multiple(
             () => Assert.Single(component.FindAll("input[name='calendar-mode'][checked]")),
-            () => Assert.Equal("This Week", component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim()),
+            () => Assert.Equal("Week", component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim()),
             () => Assert.Contains(activeDate.ToString("D", CultureInfo.CurrentCulture), component.Find("table.calendar-grid").GetAttribute("aria-label"), StringComparison.Ordinal),
             () => Assert.Equal(7, component.FindAll("table.calendar-grid thead th[scope='col']").Count),
             () => Assert.Equal(7, component.FindAll("table.calendar-grid .calendar-day").Count),
@@ -86,7 +106,7 @@ public sealed class CalendarPageTests
 
         Assert.Multiple(
             () => Assert.Single(component.FindAll("input[name='calendar-mode'][checked]")),
-            () => Assert.Equal("This Month", component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim()),
+            () => Assert.Equal("Month", component.Find("input[name='calendar-mode'][checked]").ParentElement!.TextContent.Trim()),
             () => Assert.Equal("Month of February 2024", component.Find("table.calendar-grid").GetAttribute("aria-label")),
             () => Assert.Equal(7, component.FindAll("table.calendar-grid thead th[scope='col']").Count),
             () => Assert.Equal(29, component.FindAll("table.calendar-grid .calendar-day").Count),
@@ -119,9 +139,9 @@ public sealed class CalendarPageTests
             () => Assert.Equal(1, api.GetCallCount));
     }
 
-    /// <summary>Verifies completed receipts and future scheduled income have distinct calendar states.</summary>
+    /// <summary>Verifies only confirmed receipts appear, never scheduled expectations.</summary>
     [Fact]
-    public void MonthCellsDifferentiateCompletedAndPendingIncome()
+    public void MonthCellsShowConfirmedIncomeWithoutScheduledProjections()
     {
         using var context = new BunitContext();
         var date = new DateOnly(2026, 9, 13);
@@ -136,8 +156,11 @@ public sealed class CalendarPageTests
         var income = FindDateButton(component, new DateOnly(2026, 9, 15)).TextContent;
 
         Assert.Multiple(
-            () => Assert.Contains("Completed income $1,000.00", income, StringComparison.Ordinal),
-            () => Assert.Contains("Pending income $500.00", income, StringComparison.Ordinal));
+            () => Assert.Contains("Confirmed income $1,000.00", income, StringComparison.Ordinal),
+            () => Assert.DoesNotContain("Pending income", component.Markup, StringComparison.Ordinal),
+            () => Assert.DoesNotContain("$500.00", income, StringComparison.Ordinal),
+            () => Assert.Equal("/months/2026/9", component.Find("a[href='/months/2026/9']").GetAttribute("href")),
+            () => Assert.Equal("/income-receipts/2026/9/13", component.Find("a[href='/income-receipts/2026/9/13']").GetAttribute("href")));
     }
 
     /// <summary>Verifies a zero-expense date remains visually quiet.</summary>
@@ -242,7 +265,7 @@ public sealed class CalendarPageTests
     /// Verifies that direct and native keyboard activation select a single focused month date.
     /// </summary>
     [Fact]
-    public void MonthDatesSupportDirectEnterSpaceAndDirectionalSelection()
+    public void MonthDatesSupportPointerSelectionAndDirectionalArrowSelection()
     {
         using var context = new BunitContext();
         var component = RenderCalendar(context, new DateOnly(2024, 2, 29));
@@ -254,89 +277,65 @@ public sealed class CalendarPageTests
         AssertFocusWasRequested(context, focusRequestCount);
 
         focusRequestCount = GetFocusRequestCount(context);
-        FindDateButton(component, new DateOnly(2024, 2, 16)).KeyDown(new KeyboardEventArgs { Key = "Enter" });
+        FindDateButton(component, new DateOnly(2024, 2, 15)).KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
         AssertActiveDate(component, new DateOnly(2024, 2, 16));
         AssertFocusWasRequested(context, focusRequestCount);
 
         focusRequestCount = GetFocusRequestCount(context);
-        FindDateButton(component, new DateOnly(2024, 2, 17)).KeyDown(new KeyboardEventArgs { Key = " " });
-        AssertActiveDate(component, new DateOnly(2024, 2, 17));
+        FindDateButton(component, new DateOnly(2024, 2, 16)).KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
+        AssertActiveDate(component, new DateOnly(2024, 2, 15));
         AssertFocusWasRequested(context, focusRequestCount);
 
         focusRequestCount = GetFocusRequestCount(context);
-        FindDateButton(component, new DateOnly(2024, 2, 17)).KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
-        AssertActiveDate(component, new DateOnly(2024, 2, 18));
+        FindDateButton(component, new DateOnly(2024, 2, 15)).KeyDown(new KeyboardEventArgs { Key = "ArrowUp" });
+        AssertActiveDate(component, new DateOnly(2024, 2, 8));
         AssertFocusWasRequested(context, focusRequestCount);
 
         focusRequestCount = GetFocusRequestCount(context);
-        FindDateButton(component, new DateOnly(2024, 2, 18)).KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
-        AssertActiveDate(component, new DateOnly(2024, 2, 17));
-        AssertFocusWasRequested(context, focusRequestCount);
-
-        focusRequestCount = GetFocusRequestCount(context);
-        FindDateButton(component, new DateOnly(2024, 2, 17)).KeyDown(new KeyboardEventArgs { Key = "ArrowUp" });
-        AssertActiveDate(component, new DateOnly(2024, 2, 10));
-        AssertFocusWasRequested(context, focusRequestCount);
-
-        focusRequestCount = GetFocusRequestCount(context);
-        FindDateButton(component, new DateOnly(2024, 2, 10)).KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
-        AssertActiveDate(component, new DateOnly(2024, 2, 17));
+        FindDateButton(component, new DateOnly(2024, 2, 8)).KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+        AssertActiveDate(component, new DateOnly(2024, 2, 15));
         AssertFocusWasRequested(context, focusRequestCount);
     }
 
     /// <summary>
-    /// Verifies chronological Tab and Shift+Tab selection, including automatic month changes.
+    /// Verifies Tab and Shift+Tab leave date selection management to the browser.
     /// </summary>
     [Fact]
-    public void MonthTabTraversalMovesSelectionInChronologicalOrderAcrossMonthBoundary()
+    public void MonthTabKeysDoNotChangeSelectionOrRequestManagedFocus()
     {
         using var context = new BunitContext();
         var component = RenderCalendar(context, new DateOnly(2024, 1, 30));
         SelectMode(component, 2);
 
         FindDateButton(component, new DateOnly(2024, 1, 30)).KeyDown(new KeyboardEventArgs { Key = "Tab" });
-        AssertActiveDate(component, new DateOnly(2024, 1, 31));
-
-        FindDateButton(component, new DateOnly(2024, 1, 31)).KeyDown(new KeyboardEventArgs { Key = "ArrowRight" });
-        AssertActiveDate(component, new DateOnly(2024, 2, 1));
-        Assert.Equal("February 2024", component.Find("#calendar-period-heading").TextContent);
-
-        FindDateButton(component, new DateOnly(2024, 2, 1)).KeyDown(new KeyboardEventArgs { Key = "ArrowLeft" });
-        AssertActiveDate(component, new DateOnly(2024, 1, 31));
-
-        FindDateButton(component, new DateOnly(2024, 1, 31)).KeyDown(new KeyboardEventArgs { Key = "Tab", ShiftKey = true });
-        AssertActiveDate(component, new DateOnly(2024, 1, 30));
+        FindDateButton(component, new DateOnly(2024, 1, 30)).KeyDown(new KeyboardEventArgs { Key = "Tab", ShiftKey = true });
+        Assert.Multiple(
+            () => AssertActiveDate(component, new DateOnly(2024, 1, 30)),
+            () => Assert.Equal("January 2024", component.Find("#calendar-period-heading").TextContent),
+            () => Assert.Empty(context.JSInterop.Invocations));
     }
 
     /// <summary>
-    /// Verifies chronological Tab and directional movement in the culture-derived weekly grid.
+    /// Verifies the weekly grid allows normal sequential navigation without changing its selection.
     /// </summary>
     [Fact]
-    public void WeekGridTabAndArrowsMoveTheSelectedDateAndContainingWeek()
+    public void WeekGridTabDoesNotChangeTheSelectedDateOrContainingWeek()
     {
         using var context = new BunitContext();
         var component = RenderCalendar(context, new DateOnly(2024, 2, 29));
         SelectMode(component, 1);
 
         FindDateButton(component, new DateOnly(2024, 2, 29)).KeyDown(new KeyboardEventArgs { Key = "Tab" });
-        AssertActiveDate(component, new DateOnly(2024, 3, 1));
-
-        FindDateButton(component, new DateOnly(2024, 3, 1)).KeyDown(new KeyboardEventArgs { Key = "Tab", ShiftKey = true });
+        FindDateButton(component, new DateOnly(2024, 2, 29)).KeyDown(new KeyboardEventArgs { Key = "Tab", ShiftKey = true });
         AssertActiveDate(component, new DateOnly(2024, 2, 29));
-
-        FindDateButton(component, new DateOnly(2024, 2, 29)).KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
-        AssertActiveDate(component, new DateOnly(2024, 3, 7));
-        Assert.Contains(new DateOnly(2024, 3, 7).ToString("D", CultureInfo.CurrentCulture), component.Find("table.calendar-grid").GetAttribute("aria-label"), StringComparison.Ordinal);
-
-        FindDateButton(component, new DateOnly(2024, 3, 7)).KeyDown(new KeyboardEventArgs { Key = "ArrowUp" });
-        AssertActiveDate(component, new DateOnly(2024, 2, 29));
+        Assert.Contains(new DateOnly(2024, 2, 29).ToString("D", CultureInfo.CurrentCulture), component.Find("table.calendar-grid").GetAttribute("aria-label"), StringComparison.Ordinal);
     }
 
     /// <summary>
     /// Verifies that Shift+Tab from the first weekly date leaves the grid without changing its selection or period.
     /// </summary>
     [Fact]
-    public void WeekGridFirstDateShiftTabLeavesToTheActiveModeWithoutChangingTheDateOrPeriod()
+    public void WeekGridFirstDateShiftTabDoesNotRequestManagedFocus()
     {
         using var context = new BunitContext();
         var activeDate = new DateOnly(2024, 2, 29);
@@ -350,14 +349,14 @@ public sealed class CalendarPageTests
         Assert.Multiple(
             () => AssertActiveDate(component, activeDate),
             () => Assert.Equal(weekLabel, component.Find("table.calendar-grid").GetAttribute("aria-label")),
-            () => Assert.Contains(context.JSInterop.Invocations, invocation => invocation.Identifier == "Blazor._internal.domWrapper.focus"));
+            () => Assert.Empty(context.JSInterop.Invocations));
     }
 
     /// <summary>
     /// Verifies that Tab from each final grid date leaves to period navigation without changing the selected date or period.
     /// </summary>
     [Fact]
-    public void GridLastDateTabLeavesToPreviousPeriodNavigationWithoutChangingTheDateOrPeriod()
+    public void GridLastDateTabDoesNotRequestManagedFocus()
     {
         using var context = new BunitContext();
         var weekActiveDate = new DateOnly(2024, 2, 29);
@@ -370,19 +369,17 @@ public sealed class CalendarPageTests
         Assert.Multiple(
             () => AssertActiveDate(component, weekActiveDate),
             () => Assert.Equal(weekLabel, component.Find("table.calendar-grid").GetAttribute("aria-label")),
-            () => AssertFocusWasRequested(context));
+            () => Assert.Empty(context.JSInterop.Invocations));
 
         var monthActiveDate = new DateOnly(2024, 2, 29);
         SelectMode(component, 2);
         var monthLabel = component.Find("table.calendar-grid").GetAttribute("aria-label");
-        var focusRequestCount = GetFocusRequestCount(context);
-
         FindDateButton(component, monthActiveDate).KeyDown(new KeyboardEventArgs { Key = "Tab" });
 
         Assert.Multiple(
             () => AssertActiveDate(component, monthActiveDate),
             () => Assert.Equal(monthLabel, component.Find("table.calendar-grid").GetAttribute("aria-label")),
-            () => AssertFocusWasRequested(context, focusRequestCount));
+            () => Assert.Empty(context.JSInterop.Invocations));
     }
 
     /// <summary>
@@ -628,8 +625,6 @@ public sealed class CalendarPageTests
         public Task<IReadOnlyList<PayScheduleResponse>> ListAsync(CancellationToken cancellationToken) => Task.FromResult(schedules);
 
         public Task<IReadOnlyList<IncomeReceiptResponse>> ListReceiptsAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<IncomeReceiptResponse>>(receipts.Where(receipt => receipt.PayDate >= from && receipt.PayDate <= to).ToArray());
-
-        public Task<IReadOnlyList<IncomeReceiptResponse>> MaterializeAsync(DateOnly payDate, CancellationToken cancellationToken) => throw new NotSupportedException();
 
         public Task<bool> PauseAsync(Guid scheduleId, CancellationToken cancellationToken) => throw new NotSupportedException();
 

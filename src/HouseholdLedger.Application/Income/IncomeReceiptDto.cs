@@ -4,7 +4,7 @@
 
 namespace HouseholdLedger.Application.Income;
 
-/// <summary>Represents an immutable materialized income receipt returned by an Application read use case.</summary>
+/// <summary>Represents a user-confirmed income receipt returned by an Application read use case.</summary>
 /// <param name="Id">The stable receipt identifier.</param>
 /// <param name="ScheduleId">The originating pay schedule identifier.</param>
 /// <param name="PayDate">The calendar date on which income was received.</param>
@@ -12,7 +12,7 @@ namespace HouseholdLedger.Application.Income;
 /// <param name="Allocations">The immutable account allocation snapshot.</param>
 public sealed record IncomeReceiptDto(
     Guid Id,
-    Guid ScheduleId,
+    Guid? ScheduleId,
     DateOnly PayDate,
     decimal NetIncome,
     IReadOnlyList<IncomeAllocationDto> Allocations);

@@ -8,8 +8,12 @@ const string frontendCorsPolicy = "Frontend";
 var connectionString = builder.Configuration.GetConnectionString("HouseholdLedger");
 if (!string.IsNullOrWhiteSpace(connectionString) && HasUsableConnectionStringSyntax(connectionString))
 {
+    builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddScoped<HouseholdLedger.Application.Accounts.AccountService>();
     builder.Services.AddScoped<HouseholdLedger.Application.Income.IncomeScheduleService>();
+    builder.Services.AddScoped<HouseholdLedger.Application.Income.IncomeReceiptService>();
+    builder.Services.AddScoped<HouseholdLedger.Application.Planning.MonthlyBudgetPlanService>();
+    builder.Services.AddScoped<HouseholdLedger.Application.Planning.MonthlyReflectionService>();
     builder.Services.AddScoped<HouseholdLedger.Application.Settings.GlobalSettingsService>();
     builder.Services.AddScoped<HouseholdLedger.Application.Transactions.ExpenseTransactionService>();
     builder.Services.AddHouseholdLedgerInfrastructure(connectionString);

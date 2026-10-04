@@ -8,7 +8,8 @@ This guide prepares a contributor to build and run HouseholdLedger locally.
   same 10.0.3xx feature band.
 - PowerShell 7 for the commands below.
 - A trusted ASP.NET Core development certificate for local HTTPS.
-- Podman only when running the PostgreSQL integration tests.
+- Docker (or Podman using the integration runner's `-ContainerCommand podman`)
+  when running disposable PostgreSQL tests.
 - The verified user-local Firefox 153.0.1 Windows x64 en-US EME-free and
   geckodriver 0.37.1 Windows x64 runtime only when running browser E2E tests.
 
@@ -59,10 +60,9 @@ tests do not update the artifact.
 ## Run the Application
 
 The API hosts the Blazor WebAssembly client and serves the API from the same
-origin. Configure the permanent manual-development PostgreSQL connection through
-ASP.NET Core user secrets. Enter the complete connection string at the masked
-prompt; for the shared local database its non-secret fields are `Host=PiDB`,
-`Port=5432`, `Database=BudgetV2`, and `Username=BudgetApp`.
+origin. Configure a dedicated manual-development PostgreSQL connection through
+ASP.NET Core user secrets. Enter its complete connection string at the masked
+prompt.
 
 ```powershell
 $connectionString = Read-Host "PostgreSQL connection string" -MaskInput
@@ -74,8 +74,8 @@ Remove-Variable connectionString
 Do not commit the password or connection string to an appsettings file, script,
 `.env` file, or browser-delivered configuration.
 
-For a new empty database, explicitly apply migrations and add the canonical
-three-account, seven-transaction development fixture once:
+For a new empty database, the following optional initializer applies migrations
+and adds the canonical three-account, seven-transaction fixture:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = "Development"
@@ -84,8 +84,17 @@ dotnet run --project src/HouseholdLedger.Api -- `
 ```
 
 The initializer exits after completion. It refuses to add data when either
-accounts or transactions already exist, and normal API startup never migrates,
-resets, or seeds the database. After the one-time initialization, run the API:
+accounts or transactions already exist. Do not use it for a fresh manual setup
+walkthrough or an existing ledger: apply schema migrations explicitly instead.
+Normal API startup never migrates, resets, or seeds the database.
+
+The EF design-time factory reads `ConnectionStrings__HouseholdLedger`, not API
+User Secrets. Privately supply that process-scoped value, build Infrastructure,
+then use the installed EF tool's `database update` against Infrastructure.
+Do not echo the value or put it in a script or committed configuration. Clear
+the environment variable after the migration.
+
+Once the schema is current, run the API:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = "Development"
@@ -94,7 +103,8 @@ dotnet run --project src/HouseholdLedger.Api --no-build
 ```
 
 Open `https://localhost:7241`. The shell should show the current calendar period
-and persisted fixture data. Verify the API independently at
+and your persisted data (or an empty ledger if no fixture was added).
+Verify the API independently at
 `https://localhost:7241/api/v1/health`. Its generated OpenAPI document is at
 `https://localhost:7241/openapi/v1.json`.
 

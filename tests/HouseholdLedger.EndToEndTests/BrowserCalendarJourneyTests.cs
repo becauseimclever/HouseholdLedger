@@ -18,7 +18,7 @@ using Xunit.Sdk;
 /// Verifies the desktop calendar workspace through its single hosted API URL.
 /// </summary>
 [Collection("End-to-end process resources")]
-public sealed class BrowserCalendarJourneyTests
+public sealed partial class BrowserCalendarJourneyTests
 {
     private const string ApiArtifactEnvironmentVariable = "HOUSEHOLDLEDGER_API_ARTIFACT";
     private const string FirefoxEnvironmentVariable = "HOUSEHOLDLEDGER_FIREFOX_BINARY";
@@ -376,7 +376,7 @@ public sealed class BrowserCalendarJourneyTests
         var initialMonth = await GetCalendarStateAsync(browser, cancellationToken);
         Assert.Multiple(
             () => Assert.Equal(3, initialMonth.GetProperty("modeCount").GetInt32()),
-            () => Assert.Equal("This Month", initialMonth.GetProperty("activeMode").GetString()),
+            () => Assert.Equal("Month", initialMonth.GetProperty("activeMode").GetString()),
             () => Assert.Equal(1, initialMonth.GetProperty("gridCount").GetInt32()),
             () => Assert.Equal(1, initialMonth.GetProperty("selectedCount").GetInt32()),
             () => Assert.Equal(1, initialMonth.GetProperty("tabStopCount").GetInt32()),
@@ -387,7 +387,7 @@ public sealed class BrowserCalendarJourneyTests
         await ClickCalendarControlAsync(browser, "fieldset.calendar-mode-picker label:nth-of-type(2) input", cancellationToken);
         var week = await GetCalendarStateAsync(browser, cancellationToken);
         Assert.Multiple(
-            () => Assert.Equal("This Week", week.GetProperty("activeMode").GetString()),
+            () => Assert.Equal("Week", week.GetProperty("activeMode").GetString()),
             () => Assert.Equal(1, week.GetProperty("gridCount").GetInt32()),
             () => Assert.Equal(7, week.GetProperty("weekdayCount").GetInt32()),
             () => Assert.Equal(7, week.GetProperty("dayCount").GetInt32()),
@@ -397,7 +397,7 @@ public sealed class BrowserCalendarJourneyTests
         await ClickCalendarControlAsync(browser, "fieldset.calendar-mode-picker label:nth-of-type(3) input", cancellationToken);
         var month = await GetCalendarStateAsync(browser, cancellationToken);
         Assert.Multiple(
-            () => Assert.Equal("This Month", month.GetProperty("activeMode").GetString()),
+            () => Assert.Equal("Month", month.GetProperty("activeMode").GetString()),
             () => Assert.Equal(1, month.GetProperty("gridCount").GetInt32()),
             () => Assert.Equal(7, month.GetProperty("weekdayCount").GetInt32()),
             () => Assert.True(month.GetProperty("dayCount").GetInt32() >= 28),
@@ -503,7 +503,7 @@ public sealed class BrowserCalendarJourneyTests
         Assert.Multiple(
             () => Assert.Equal("/", homeNavigation.GetProperty("path").GetString()),
             () => Assert.Equal(1, homeNavigation.GetProperty("currentCount").GetInt32()),
-            () => Assert.Equal("Home", homeNavigation.GetProperty("currentLabel").GetString()));
+            () => Assert.Equal("Calendar", homeNavigation.GetProperty("currentLabel").GetString()));
     }
 
     private static async Task AssertAccountNavigationAsync(
@@ -543,7 +543,7 @@ public sealed class BrowserCalendarJourneyTests
             "const name = arguments[0]; const link = [...document.querySelectorAll('.account-navigation-link')].find(item => item.getAttribute('aria-label') === name); if (!link) throw new Error(`Missing navigation account ${name}`); const path = link.getAttribute('href'); link.click(); return path;",
             [accountName],
             cancellationToken)).GetString();
-        await WaitForTextAsync(browser, "#account-history-heading", accountName, cancellationToken);
+        await WaitForTextAsync(browser, "#account-history-heading", "Expense history", cancellationToken);
         await WaitForTextAsync(
             browser,
             ".account-history .history-state",
@@ -759,7 +759,8 @@ public sealed class BrowserCalendarJourneyTests
         await browser.ClickAsync(accountsLink, cancellationToken);
         await WaitForHeadingAsync(browser, "Accounts", cancellationToken);
         await ClickAccountLinkAsync(browser, accountName, cancellationToken);
-        await WaitForTextAsync(browser, "#account-history-heading", accountName, cancellationToken);
+        await WaitForTextAsync(browser, "#account-history-heading", "Expense history", cancellationToken);
+        await WaitForTextAsync(browser, ".account-history tbody", "$19.75", cancellationToken);
         var populated = await browser.ExecuteScriptAsync(
             "const selected = document.querySelector(\"article.account-card a[aria-current='page']\"); const rows = [...document.querySelectorAll('.account-history tbody tr')]; return { path: location.pathname, selected: selected?.textContent?.trim() ?? '', rows: rows.length, row: rows[0]?.textContent ?? '', scrollWidth: document.documentElement.scrollWidth, width: window.innerWidth };",
             null,
@@ -788,7 +789,8 @@ public sealed class BrowserCalendarJourneyTests
             () => Assert.True(empty.GetProperty("scrollWidth").GetInt32() <= empty.GetProperty("width").GetInt32()));
 
         await browser.ExecuteScriptAsync("history.back();", null, cancellationToken);
-        await WaitForTextAsync(browser, "#account-history-heading", accountName, cancellationToken);
+        await WaitForTextAsync(browser, "#account-history-heading", "Expense history", cancellationToken);
+        await WaitForTextAsync(browser, "article.account-card", accountName, cancellationToken);
         var selectedAfterBack = await browser.ExecuteScriptAsync(
             "return document.querySelector(\"article.account-card a[aria-current='page']\")?.textContent?.trim() ?? '';",
             null,
@@ -812,8 +814,21 @@ public sealed class BrowserCalendarJourneyTests
         string accountName,
         CancellationToken cancellationToken)
     {
+        var cardExists = await browser.ExecuteScriptAsync(
+            "return [...document.querySelectorAll('article.account-card a')].some(item => item.textContent.trim() === arguments[0]);",
+            [accountName],
+            cancellationToken);
+        if (!cardExists.GetBoolean())
+        {
+            await browser.ExecuteScriptAsync(
+                "const toggle = document.querySelector(\"button[aria-controls='accounts-navigation-list']\"); if (toggle.getAttribute('aria-expanded') !== 'true') toggle.click();",
+                null,
+                cancellationToken);
+            await WaitForTextAsync(browser, "#accounts-navigation-list", accountName, cancellationToken);
+        }
+
         await browser.ExecuteScriptAsync(
-            "const name = arguments[0]; const link = [...document.querySelectorAll('article.account-card a')].find(item => item.textContent.trim() === name); if (!link) throw new Error(`Missing account ${name}`); link.click();",
+            "const name = arguments[0]; const link = [...document.querySelectorAll('article.account-card a, .account-navigation-link')].find(item => item.textContent.trim() === name || item.getAttribute('aria-label') === name); if (!link) throw new Error(`Missing account ${name}`); link.click();",
             [accountName],
             cancellationToken);
     }
@@ -1035,7 +1050,7 @@ public sealed class BrowserCalendarJourneyTests
     {
         Assert.False(state.GetProperty("navigation").GetProperty("hidden").GetBoolean());
         Assert.True(state.GetProperty("navigation").GetProperty("collapsed").GetBoolean());
-        Assert.Equal(3, state.GetProperty("primaryNavigationDestinationCount").GetInt32());
+        Assert.Equal(5, state.GetProperty("primaryNavigationDestinationCount").GetInt32());
         Assert.False(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean());
         Assert.Equal("Expand navigation", state.GetProperty("navigationToggle").GetProperty("label").GetString());
         Assert.False(state.GetProperty("inspector").GetProperty("hidden").GetBoolean());
@@ -1047,7 +1062,7 @@ public sealed class BrowserCalendarJourneyTests
     {
         Assert.False(state.GetProperty("navigation").GetProperty("hidden").GetBoolean());
         Assert.True(state.GetProperty("navigation").GetProperty("collapsed").GetBoolean());
-        Assert.Equal(3, state.GetProperty("primaryNavigationDestinationCount").GetInt32());
+        Assert.Equal(5, state.GetProperty("primaryNavigationDestinationCount").GetInt32());
         Assert.False(state.GetProperty("inspector").GetProperty("hidden").GetBoolean());
         Assert.True(state.GetProperty("inspector").GetProperty("collapsed").GetBoolean());
         Assert.False(state.GetProperty("navigationToggle").GetProperty("expanded").GetBoolean());
@@ -1077,9 +1092,9 @@ public sealed class BrowserCalendarJourneyTests
             () => Assert.Equal(1, state.GetProperty("mainCount").GetInt32()),
             () => Assert.Equal(1, state.GetProperty("headingCount").GetInt32()),
             () => Assert.Equal("Calendar", state.GetProperty("heading").GetString()),
-            () => Assert.Equal(3, state.GetProperty("primaryNavigationDestinationCount").GetInt32()),
+            () => Assert.Equal(5, state.GetProperty("primaryNavigationDestinationCount").GetInt32()),
             () => Assert.Equal(1, state.GetProperty("currentNavigationCount").GetInt32()),
-            () => Assert.Equal("Home", state.GetProperty("currentNavigationLabel").GetString()),
+            () => Assert.Equal("Calendar", state.GetProperty("currentNavigationLabel").GetString()),
             () => Assert.Contains("Expenses in USD", state.GetProperty("inspectorText").GetString(), StringComparison.Ordinal));
     }
 

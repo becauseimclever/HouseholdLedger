@@ -114,7 +114,7 @@ public sealed class AccountsPageTests
 
     /// <summary>Verifies route selection and accessible transaction table content.</summary>
     [Fact]
-    public void SelectedAccountRendersCurrentCardAndCompleteHistory()
+    public void SelectedAccountShowsFocusedCardAndClearlyNamedExpenseHistory()
     {
         using var context = new BunitContext();
         context.Services.AddScoped<AccountCatalogState>();
@@ -122,7 +122,7 @@ public sealed class AccountsPageTests
         var history = new AccountTransactionHistoryResponse(
             account,
             [
-                new(Guid.NewGuid(), account.Id, account.Name, new DateOnly(2026, 9, 30), 40m, "Unexpected"),
+                new(Guid.NewGuid(), account.Id, account.Name, new DateOnly(2026, 9, 30), 40m, "Unexpected", "Urgent car repair"),
                 new(Guid.NewGuid(), account.Id, account.Name, new DateOnly(2026, 9, 3), 6.50m, "Optional"),
             ]);
         context.Services.AddSingleton<IAccountsApiClient>(new StubAccountsApiClient([account]));
@@ -133,12 +133,15 @@ public sealed class AccountsPageTests
         component.WaitForAssertion(() => Assert.Multiple(
             () => Assert.Equal("page", component.Find("article.account-card a").GetAttribute("aria-current")),
             () => Assert.Equal("Selected", component.Find(".selected-account-marker").TextContent),
-            () => Assert.Equal(account.Name, component.Find("#account-history-heading").TextContent),
+            () => Assert.Equal("Expense history", component.Find("#account-history-heading").TextContent),
+            () => Assert.Contains("not an account balance", component.Find(".account-history").TextContent, StringComparison.Ordinal),
             () => Assert.Equal(2, component.FindAll("tbody tr").Count),
             () => Assert.Equal("Sep 30, 2026", component.FindAll("tbody tr")[0].Children[0].TextContent),
             () => Assert.Equal("$40.00", component.FindAll("tbody tr")[0].Children[1].TextContent),
             () => Assert.Equal("Unexpected", component.FindAll("tbody tr")[0].Children[2].TextContent),
-            () => Assert.Equal($"Transactions for {account.Name}", component.Find("caption").TextContent)));
+            () => Assert.Equal("Urgent car repair", component.FindAll("tbody tr")[0].Children[3].TextContent),
+            () => Assert.Equal($"Expense history for {account.Name}", component.Find("caption").TextContent),
+            () => Assert.Single(component.FindAll(".account-card:not(.new-account-card)"))));
     }
 
     /// <summary>Verifies an existing history view responds to the shared display-currency state.</summary>
@@ -223,12 +226,12 @@ public sealed class AccountsPageTests
         component.WaitForAssertion(() => Assert.Equal(2, historyClient.Requests.Count));
         historyClient.Requests[1].Completion.SetResult(new AccountTransactionHistoryResponse(second, []));
         await component.InvokeAsync(() => Task.CompletedTask);
-        component.WaitForAssertion(() => Assert.Equal(second.Name, component.Find("#account-history-heading").TextContent));
+        component.WaitForAssertion(() => Assert.Equal("Expense history", component.Find("#account-history-heading").TextContent));
 
         historyClient.Requests[0].Completion.SetResult(new AccountTransactionHistoryResponse(first, []));
         await component.InvokeAsync(() => Task.CompletedTask);
 
-        component.WaitForAssertion(() => Assert.Equal(second.Name, component.Find("#account-history-heading").TextContent));
+        component.WaitForAssertion(() => Assert.Equal("Expense history", component.Find("#account-history-heading").TextContent));
     }
 
     /// <summary>Verifies URL criteria restore the form, reach the API, and report a filtered result count.</summary>

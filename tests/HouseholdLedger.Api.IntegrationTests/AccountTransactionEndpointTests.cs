@@ -24,6 +24,19 @@ public sealed class AccountTransactionEndpointTests
     private static readonly Account Checking = new(Guid.Parse("10000000-0000-0000-0000-000000000001"), "Household Checking");
     private static readonly Account Savings = new(Guid.Parse("10000000-0000-0000-0000-000000000003"), "Rainy Day Savings");
 
+    /// <summary>Returns normalized descriptions in history and matches them with case-insensitive search.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task HistorySearchMatchesExpenseDescription()
+    {
+        await using var factory = new AccountTransactionApiFactory();
+        using var client = ApiTestClient.Create(factory);
+        var history = (await client.GetFromJsonAsync<AccountTransactionHistoryResponse>(
+            $"/api/v1/accounts/{Checking.Id}/transactions?search=concert",
+            TestContext.Current.CancellationToken))!;
+        Assert.Equal("Concert tickets", Assert.Single(history.Transactions).Description);
+    }
+
     /// <summary>Verifies populated, empty, and missing histories have distinct responses.</summary>
     /// <returns>A task representing the test.</returns>
     [Fact]
@@ -151,7 +164,7 @@ public sealed class AccountTransactionEndpointTests
     {
         private static readonly IReadOnlyList<ExpenseTransaction> Transactions =
         [
-            new(Guid.NewGuid(), Checking.Id, new DateOnly(2026, 9, 3), 14m, ExpenseClassification.Culture, 3),
+            new(Guid.NewGuid(), Checking.Id, new DateOnly(2026, 9, 3), 14m, ExpenseClassification.Culture, 3, "Concert tickets"),
             new(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 10, 1), 9.75m, ExpenseClassification.Culture, 7),
             new(Guid.NewGuid(), Checking.Id, new DateOnly(2026, 9, 3), 6.50m, ExpenseClassification.Optional, 4),
             new(Guid.NewGuid(), Checking.Id, new DateOnly(2026, 9, 30), 40m, ExpenseClassification.Unexpected, 6),
@@ -187,6 +200,7 @@ public sealed class AccountTransactionEndpointTests
                     .Where(transaction => criteria.MaximumAmount is null || transaction.Amount <= criteria.MaximumAmount)
                     .Where(transaction => search is null
                         || transaction.Classification.ToString().Contains(search, StringComparison.OrdinalIgnoreCase)
+                        || (transaction.Description?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)
                         || transaction.Date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture).Contains(search, StringComparison.OrdinalIgnoreCase)
                         || transaction.Amount.ToString(System.Globalization.CultureInfo.InvariantCulture).Contains(search, StringComparison.OrdinalIgnoreCase))
                     .OrderByDescending(transaction => transaction.Date)
@@ -197,7 +211,8 @@ public sealed class AccountTransactionEndpointTests
                         Checking.Name,
                         transaction.Date,
                         transaction.Amount,
-                        transaction.Classification))
+                        transaction.Classification,
+                        transaction.Description))
                     .ToArray());
         }
 

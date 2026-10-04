@@ -2,9 +2,10 @@
 
 ## Status
 
-Status: Proposed.
+Status: Complete.
 
 - Planned: 2026-09-14.
+- Approved: 2026-10-04.
 - Depends on the account catalog and account detail history routes.
 
 ## Outcome
@@ -33,6 +34,8 @@ card and its detail without also rendering cards for every other account.
   all cards and an account-detail route shows only the selected card.
 - Existing direct-link, unavailable, and stale-response tests continue to cover
   account-detail state integrity.
+- The 148-test Client suite and isolated Firefox desktop/mobile journey passed.
+  The fresh-setup journey verified a single account card in the detail DOM.
 
 ## Definition of Done
 

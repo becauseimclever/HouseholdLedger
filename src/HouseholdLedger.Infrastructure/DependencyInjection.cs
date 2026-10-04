@@ -6,6 +6,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 
 using HouseholdLedger.Application.Accounts;
 using HouseholdLedger.Application.Income;
+using HouseholdLedger.Application.Planning;
 using HouseholdLedger.Application.Settings;
 using HouseholdLedger.Application.Transactions;
 using HouseholdLedger.Infrastructure.Persistence;
@@ -35,6 +36,8 @@ public static class DependencyInjection
         services.AddScoped<IExpenseTransactionRepository, ExpenseTransactionRepository>();
         services.AddScoped<IGlobalSettingsRepository, GlobalSettingsRepository>();
         services.AddScoped<IIncomeScheduleRepository, IncomeScheduleRepository>();
+        services.AddScoped<IMonthlyBudgetPlanRepository, MonthlyBudgetPlanRepository>();
+        services.AddScoped<IMonthlyReflectionRepository, MonthlyReflectionRepository>();
 
         return services;
     }

@@ -39,6 +39,9 @@ public static class Program
         builder.Services.AddScoped<IGlobalSettingsApiClient, GlobalSettingsApiClient>();
         builder.Services.AddScoped<IHealthApiClient, HealthApiClient>();
         builder.Services.AddScoped<IMonthlyExpenseSummaryApiClient, MonthlyExpenseSummaryApiClient>();
+        builder.Services.AddScoped<IMonthlyBudgetApiClient, MonthlyBudgetApiClient>();
+        builder.Services.AddScoped<IMonthlyReflectionApiClient, MonthlyReflectionApiClient>();
+        builder.Services.AddScoped<IIncomeReceiptsApiClient, IncomeReceiptsApiClient>();
         builder.Services.AddScoped<IPaySchedulesApiClient, PaySchedulesApiClient>();
         builder.Services.AddScoped<ITransactionsApiClient, TransactionsApiClient>();
         builder.Services.AddScoped<AccountCatalogState>();

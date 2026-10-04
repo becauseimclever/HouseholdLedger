@@ -369,6 +369,396 @@
         }
       }
     },
+    "/api/v1/income-receipts": {
+      "post": {
+        "tags": [
+          "IncomeReceipts"
+        ],
+        "summary": "Confirms that income was received and records its actual destinations.",
+        "requestBody": {
+          "description": "The cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmIncomeReceiptRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmIncomeReceiptRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmIncomeReceiptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomeReceiptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/income-receipts/{receiptId}": {
+      "put": {
+        "tags": [
+          "IncomeReceipts"
+        ],
+        "summary": "Corrects a confirmed receipt's actual date, amount and destinations.",
+        "parameters": [
+          {
+            "name": "receiptId",
+            "in": "path",
+            "description": "The receipt identifier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIncomeReceiptRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIncomeReceiptRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIncomeReceiptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomeReceiptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "IncomeReceipts"
+        ],
+        "summary": "Deletes a mistaken confirmed receipt and its account allocations.",
+        "parameters": [
+          {
+            "name": "receiptId",
+            "in": "path",
+            "description": "The receipt identifier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "IncomeReceipts"
+        ],
+        "summary": "Gets a confirmed income receipt.",
+        "parameters": [
+          {
+            "name": "receiptId",
+            "in": "path",
+            "description": "The receipt identifier.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomeReceiptResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/months/{year}/{month}/budget-plan": {
+      "get": {
+        "tags": [
+          "MonthlyBudgetPlan"
+        ],
+        "summary": "Gets the saved plan for a calendar month.",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "description": "The calendar year.",
+            "required": true,
+            "schema": {
+              "maximum": 9999,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "description": "The calendar month.",
+            "required": true,
+            "schema": {
+              "maximum": 12,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthlyBudgetPlanResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "MonthlyBudgetPlan"
+        ],
+        "summary": "Creates or deliberately revises the plan for a calendar month.",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "description": "The calendar year.",
+            "required": true,
+            "schema": {
+              "maximum": 9999,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "description": "The calendar month.",
+            "required": true,
+            "schema": {
+              "maximum": 12,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonthlyBudgetPlanRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonthlyBudgetPlanRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonthlyBudgetPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthlyBudgetPlanResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/months/{year}/{month}/budget-review": {
+      "get": {
+        "tags": [
+          "MonthlyBudgetPlan"
+        ],
+        "summary": "Reviews a month using its saved intention and actual ledger activity.",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "description": "The calendar year.",
+            "required": true,
+            "schema": {
+              "maximum": 9999,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "description": "The calendar month.",
+            "required": true,
+            "schema": {
+              "maximum": 12,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The actual-versus-plan review.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthlyBudgetReviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/months/{year}/{month}/expense-summary": {
       "get": {
         "tags": [
@@ -413,6 +803,141 @@
                   "items": {
                     "$ref": "#/components/schemas/DailyExpenseSummaryResponse"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/months/{year}/{month}/reflection": {
+      "get": {
+        "tags": [
+          "MonthlyReflection"
+        ],
+        "summary": "Gets a month's saved reflection.",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "description": "The calendar year.",
+            "required": true,
+            "schema": {
+              "maximum": 9999,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "description": "The calendar month.",
+            "required": true,
+            "schema": {
+              "maximum": 12,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthlyReflectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "MonthlyReflection"
+        ],
+        "summary": "Creates or replaces a month's optional reflection.",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "description": "The calendar year.",
+            "required": true,
+            "schema": {
+              "maximum": 9999,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "month",
+            "in": "path",
+            "description": "The calendar month.",
+            "required": true,
+            "schema": {
+              "maximum": 12,
+              "minimum": 1,
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "The cancellation token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonthlyReflectionRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonthlyReflectionRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/MonthlyReflectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthlyReflectionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -610,7 +1135,7 @@
         "tags": [
           "PaySchedules"
         ],
-        "summary": "Lists materialized income receipts in an inclusive calendar range.",
+        "summary": "Lists user-confirmed income receipts in an inclusive calendar range.",
         "parameters": [
           {
             "name": "from",
@@ -698,7 +1223,7 @@
         "tags": [
           "PaySchedules"
         ],
-        "summary": "Resumes one recurring income pay schedule without backfilling missed receipts.",
+        "summary": "Resumes future income expectation suggestions without restoring missed dates.",
         "parameters": [
           {
             "name": "scheduleId",
@@ -738,51 +1263,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/pay-schedules/materialize/{payDate}": {
-      "post": {
-        "tags": [
-          "PaySchedules"
-        ],
-        "summary": "Materializes active pay schedules that are due on a selected date.",
-        "parameters": [
-          {
-            "name": "payDate",
-            "in": "path",
-            "description": "The date for which due receipts are materialized.",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/IncomeReceiptResponse"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1069,6 +1549,46 @@
         },
         "description": "Represents one account and its complete transaction history."
       },
+      "ConfirmIncomeReceiptRequest": {
+        "required": [
+          "receivedDate",
+          "amount",
+          "allocations"
+        ],
+        "type": "object",
+        "properties": {
+          "receivedDate": {
+            "type": "string",
+            "description": "The actual date the income was received.",
+            "format": "date"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The positive amount received.",
+            "format": "double"
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomeAllocationRequest"
+            },
+            "description": "The actual accounts holding the receipt."
+          },
+          "requestId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "An optional client-generated retry token; reuse only for the identical confirmation.",
+            "format": "uuid"
+          }
+        },
+        "description": "Records income the user confirms was actually received."
+      },
       "CreateAccountRequest": {
         "required": [
           "name"
@@ -1107,6 +1627,13 @@
           "classification": {
             "type": "string",
             "description": "The Kakeibo-inspired classification."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "An optional expense description, at most 200 characters after trimming."
           }
         },
         "description": "Requests creation of one expense for a route-selected date."
@@ -1239,6 +1766,13 @@
           "classification": {
             "type": "string",
             "description": "The Kakeibo-inspired classification."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The optional normalized expense description."
           }
         },
         "description": "Describes one persisted USD expense."
@@ -1338,8 +1872,11 @@
             "format": "uuid"
           },
           "scheduleId": {
-            "type": "string",
-            "description": "The originating pay schedule identifier.",
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The optional expectation schedule identifier.",
             "format": "uuid"
           },
           "payDate": {
@@ -1364,7 +1901,350 @@
             "description": "The immutable account allocation snapshot."
           }
         },
-        "description": "Describes a materialized income receipt."
+        "description": "Describes a confirmed income receipt."
+      },
+      "MonthlyBudgetPlanRequest": {
+        "required": [
+          "expectedIncome",
+          "intendedSavings",
+          "necessities",
+          "optional",
+          "culture",
+          "unexpected"
+        ],
+        "type": "object",
+        "properties": {
+          "expectedIncome": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Expected take-home income.",
+            "format": "double"
+          },
+          "intendedSavings": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The amount the user intends to save.",
+            "format": "double"
+          },
+          "necessities": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Planned Necessities spending.",
+            "format": "double"
+          },
+          "optional": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Planned Optional spending.",
+            "format": "double"
+          },
+          "culture": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Planned Culture spending.",
+            "format": "double"
+          },
+          "unexpected": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Planned Unexpected spending.",
+            "format": "double"
+          }
+        },
+        "description": "Supplies the user-entered amounts for one calendar month's budget plan."
+      },
+      "MonthlyBudgetPlanResponse": {
+        "required": [
+          "year",
+          "month",
+          "expectedIncome",
+          "intendedSavings",
+          "necessities",
+          "optional",
+          "culture",
+          "unexpected",
+          "lastRevisedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "year": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The calendar year.",
+            "format": "int32"
+          },
+          "month": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The calendar month.",
+            "format": "int32"
+          },
+          "expectedIncome": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Expected take-home income.",
+            "format": "double"
+          },
+          "intendedSavings": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The intended savings amount.",
+            "format": "double"
+          },
+          "necessities": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Planned Necessities spending.",
+            "format": "double"
+          },
+          "optional": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Planned Optional spending.",
+            "format": "double"
+          },
+          "culture": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Planned Culture spending.",
+            "format": "double"
+          },
+          "unexpected": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Planned Unexpected spending.",
+            "format": "double"
+          },
+          "lastRevisedAt": {
+            "type": "string",
+            "description": "When the plan was last saved.",
+            "format": "date-time"
+          }
+        },
+        "description": "Describes a saved monthly plan."
+      },
+      "MonthlyBudgetReviewResponse": {
+        "required": [
+          "expectedIncome",
+          "intendedSavings",
+          "actualIncome",
+          "incomeVariance",
+          "unallocatedRemainder",
+          "lastRevisedAt",
+          "classifications"
+        ],
+        "type": "object",
+        "properties": {
+          "expectedIncome": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "description": "Expected income, or null when no plan exists.",
+            "format": "double"
+          },
+          "intendedSavings": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "description": "Intended savings, or null when no plan exists.",
+            "format": "double"
+          },
+          "actualIncome": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Income explicitly confirmed as received.",
+            "format": "double"
+          },
+          "incomeVariance": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "description": "Actual minus expected income, or null when no plan exists.",
+            "format": "double"
+          },
+          "unallocatedRemainder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Positive confirmed income remaining after recorded expenses.",
+            "format": "double"
+          },
+          "lastRevisedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the plan was last saved, or null when no plan exists.",
+            "format": "date-time"
+          },
+          "classifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MonthlyClassificationReviewResponse"
+            },
+            "description": "Planned and actual spending comparisons."
+          },
+          "cashflowDifference": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Signed confirmed income minus recorded expenses; not a balance or savings claim.",
+            "format": "double",
+            "default": 0
+          }
+        },
+        "description": "Summarizes saved monthly intentions and authoritative ledger actuals."
+      },
+      "MonthlyClassificationReviewResponse": {
+        "required": [
+          "classification",
+          "plannedAmount",
+          "actualAmount",
+          "variance"
+        ],
+        "type": "object",
+        "properties": {
+          "classification": {
+            "type": "string",
+            "description": "The existing Kakeibo-inspired classification name."
+          },
+          "plannedAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The amount planned, or zero when no plan exists.",
+            "format": "double"
+          },
+          "actualAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The amount of persisted expenses.",
+            "format": "double"
+          },
+          "variance": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "Actual minus planned spending.",
+            "format": "double"
+          }
+        },
+        "description": "Compares planned spending to recorded spending for a classification."
+      },
+      "MonthlyReflectionRequest": {
+        "type": "object",
+        "properties": {
+          "whatWorked": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional observations, at most 1000 characters after trimming."
+          },
+          "nextMonthIntention": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional next-month intention, at most 1000 characters after trimming."
+          }
+        },
+        "description": "Replaces a standalone monthly reflection; both fields are optional."
+      },
+      "MonthlyReflectionResponse": {
+        "required": [
+          "whatWorked",
+          "nextMonthIntention",
+          "lastRevisedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "whatWorked": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional normalized observations about what worked."
+          },
+          "nextMonthIntention": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The optional normalized next-month intention."
+          },
+          "lastRevisedAt": {
+            "type": "string",
+            "description": "The last save time.",
+            "format": "date-time"
+          }
+        },
+        "description": "Describes a saved standalone monthly reflection."
       },
       "PayPeriodCadence": {
         "type": "integer",
@@ -1429,7 +2309,7 @@
           },
           "isPaused": {
             "type": "boolean",
-            "description": "Whether future receipt creation is paused."
+            "description": "Whether future schedule expectations are paused."
           }
         },
         "description": "Describes a recurring income pay schedule."
@@ -1480,7 +2360,7 @@
         "properties": {
           "resumeDate": {
             "type": "string",
-            "description": "The date from which future receipts are eligible.",
+            "description": "The date from which future schedule expectations are eligible.",
             "format": "date"
           }
         },
@@ -1563,6 +2443,13 @@
           "classification": {
             "type": "string",
             "description": "The replacement Kakeibo-inspired classification."
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "The optional replacement description, at most 200 characters after trimming."
           }
         },
         "description": "Requests correction of one expense without changing its ledger date."
@@ -1582,6 +2469,38 @@
           }
         },
         "description": "Supplies an update to the global application settings."
+      },
+      "UpdateIncomeReceiptRequest": {
+        "required": [
+          "receivedDate",
+          "amount",
+          "allocations"
+        ],
+        "type": "object",
+        "properties": {
+          "receivedDate": {
+            "type": "string",
+            "description": "The actual past or current receipt date.",
+            "format": "date"
+          },
+          "amount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "The positive amount received.",
+            "format": "double"
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncomeAllocationRequest"
+            },
+            "description": "The corrected account destinations, totaling the amount."
+          }
+        },
+        "description": "Corrects an explicitly confirmed income receipt."
       },
       "UpdateThemeRequest": {
         "required": [
@@ -1662,7 +2581,16 @@
       "name": "Health"
     },
     {
+      "name": "IncomeReceipts"
+    },
+    {
+      "name": "MonthlyBudgetPlan"
+    },
+    {
       "name": "MonthlyExpenseSummary"
+    },
+    {
+      "name": "MonthlyReflection"
     },
     {
       "name": "PaySchedules"

@@ -5,6 +5,7 @@
 namespace HouseholdLedger.Client.Pages;
 
 using System.Globalization;
+using System.Text.Json;
 
 using HouseholdLedger.Api.Contracts;
 using HouseholdLedger.Client.Api;
@@ -23,20 +24,13 @@ public partial class CalendarPage : ComponentBase, IDisposable
         new Dictionary<DateOnly, DailyExpenseSummaryResponse>();
 
     private IReadOnlyDictionary<DateOnly, decimal> completedIncomeTotals = new Dictionary<DateOnly, decimal>();
-    private IReadOnlyDictionary<DateOnly, decimal> pendingIncomeTotals = new Dictionary<DateOnly, decimal>();
-
     private CancellationTokenSource? summaryRequestCancellation;
     private CancellationTokenSource? receiptsRequestCancellation;
-    private bool isMaterializing;
-    private string? materializeStatus;
+    private bool incomeLoadError;
 
     private DateOnly currentDate;
     private ElementReference activeDateControl;
-    private ElementReference monthModeControl;
     private FocusTarget pendingFocus;
-    private ElementReference previousPeriodControl;
-    private ElementReference todayModeControl;
-    private ElementReference weekModeControl;
 
     private enum CalendarMode
     {
@@ -49,8 +43,6 @@ public partial class CalendarPage : ComponentBase, IDisposable
     {
         None,
         ActiveDate,
-        ActiveMode,
-        PreviousPeriod,
     }
 
     private static CultureInfo CurrentCulture => CultureInfo.CurrentCulture;
@@ -118,6 +110,7 @@ public partial class CalendarPage : ComponentBase, IDisposable
     public void Dispose()
     {
         this.SelectedDate.TransactionsChanged -= this.OnTransactionsChanged;
+        this.SelectedDate.IncomeReceiptsChanged -= this.OnIncomeReceiptsChanged;
         if (this.DisplayCurrency is not null)
         {
             this.DisplayCurrency.Changed -= this.RefreshCurrency;
@@ -144,6 +137,7 @@ public partial class CalendarPage : ComponentBase, IDisposable
         }
 
         this.SelectedDate.TransactionsChanged += this.OnTransactionsChanged;
+        this.SelectedDate.IncomeReceiptsChanged += this.OnIncomeReceiptsChanged;
         this.SelectedDate.Select(this.currentDate);
         await this.LoadExpenseSummariesAsync();
         await this.LoadIncomeReceiptsAsync();
@@ -158,12 +152,6 @@ public partial class CalendarPage : ComponentBase, IDisposable
         {
             case FocusTarget.ActiveDate:
                 await this.activeDateControl.FocusAsync();
-                break;
-            case FocusTarget.ActiveMode:
-                await this.GetActiveModeControl().FocusAsync();
-                break;
-            case FocusTarget.PreviousPeriod:
-                await this.previousPeriodControl.FocusAsync();
                 break;
         }
 
@@ -181,60 +169,6 @@ public partial class CalendarPage : ComponentBase, IDisposable
 
     private static string GetSummaryId(DateOnly date) => $"expense-summary-{date:yyyyMMdd}";
 
-    private static Dictionary<DateOnly, decimal> GetPendingIncomeTotals(
-        IReadOnlyList<PayScheduleResponse> schedules,
-        IReadOnlyList<IncomeReceiptResponse> receipts,
-        DateOnly from,
-        DateOnly to,
-        DateOnly currentDate)
-    {
-        var receiptKeys = receipts.Select(receipt => (receipt.ScheduleId, receipt.PayDate)).ToHashSet();
-        return schedules.Where(schedule => !schedule.IsPaused)
-            .SelectMany(schedule => GetDuePayDates(schedule, from, to)
-                .Where(payDate => payDate >= currentDate && !receiptKeys.Contains((schedule.Id, payDate)))
-                .Select(payDate => (payDate, schedule.NetIncome)))
-            .GroupBy(item => item.payDate)
-            .ToDictionary(group => group.Key, group => group.Sum(item => item.NetIncome));
-    }
-
-    private static IEnumerable<DateOnly> GetDuePayDates(PayScheduleResponse schedule, DateOnly from, DateOnly to)
-    {
-        var intervalDays = schedule.Cadence switch
-        {
-            PayPeriodCadence.Weekly => 7,
-            PayPeriodCadence.Biweekly => 14,
-            PayPeriodCadence.FourWeekly => 28,
-            _ => 0,
-        };
-        if (intervalDays > 0)
-        {
-            for (var payDate = schedule.FirstPayDate; payDate <= to; payDate = payDate.AddDays(intervalDays))
-            {
-                if (payDate >= from)
-                {
-                    yield return payDate;
-                }
-            }
-
-            yield break;
-        }
-
-        var payDays = schedule.Cadence == PayPeriodCadence.Semimonthly
-            ? new[] { schedule.FirstPayDate.Day, schedule.SecondMonthlyPayDay!.Value }
-            : new[] { schedule.FirstPayDate.Day };
-        for (var month = new DateOnly(schedule.FirstPayDate.Year, schedule.FirstPayDate.Month, 1); month <= to; month = month.AddMonths(1))
-        {
-            foreach (var payDay in payDays.Distinct().Order())
-            {
-                var payDate = new DateOnly(month.Year, month.Month, Math.Min(payDay, DateTime.DaysInMonth(month.Year, month.Month)));
-                if (payDate >= schedule.FirstPayDate && payDate >= from && payDate <= to)
-                {
-                    yield return payDate;
-                }
-            }
-        }
-    }
-
     private string FormatCurrency(decimal amount) => MoneyFormatter.Format(
         amount,
         this.DisplayCurrency?.CurrentCode ?? MoneyFormatter.DefaultCurrencyCode);
@@ -242,14 +176,6 @@ public partial class CalendarPage : ComponentBase, IDisposable
     private void RefreshCurrency() => _ = this.InvokeAsync(this.StateHasChanged);
 
     private string? CurrentDateState(DateOnly date) => date == this.currentDate ? "date" : null;
-
-    private ElementReference GetActiveModeControl() => this.CurrentMode switch
-    {
-        CalendarMode.Today => this.todayModeControl,
-        CalendarMode.Week => this.weekModeControl,
-        CalendarMode.Month => this.monthModeControl,
-        _ => throw new InvalidOperationException("The calendar mode is not supported."),
-    };
 
     private List<IReadOnlyList<DateOnly?>> GetMonthWeeks()
     {
@@ -283,8 +209,6 @@ public partial class CalendarPage : ComponentBase, IDisposable
 
     private decimal? GetCompletedIncomeTotal(DateOnly date) => this.completedIncomeTotals.GetValueOrDefault(date) is var total && total > 0 ? total : null;
 
-    private decimal? GetPendingIncomeTotal(DateOnly date) => this.pendingIncomeTotals.GetValueOrDefault(date) is var total && total > 0 ? total : null;
-
     private (DateOnly From, DateOnly To) GetReceiptRange() => this.CurrentMode switch
     {
         CalendarMode.Today => (this.ActiveDate, this.ActiveDate),
@@ -300,7 +224,7 @@ public partial class CalendarPage : ComponentBase, IDisposable
         if (paySchedulesApi is null)
         {
             this.completedIncomeTotals = new Dictionary<DateOnly, decimal>();
-            this.pendingIncomeTotals = new Dictionary<DateOnly, decimal>();
+            this.incomeLoadError = true;
             return;
         }
 
@@ -309,26 +233,26 @@ public partial class CalendarPage : ComponentBase, IDisposable
         var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(this.lifetimeCancellation.Token);
         this.receiptsRequestCancellation = requestCancellation;
         this.completedIncomeTotals = new Dictionary<DateOnly, decimal>();
-        this.pendingIncomeTotals = new Dictionary<DateOnly, decimal>();
+        this.incomeLoadError = false;
 
         try
         {
-            var receiptsTask = paySchedulesApi.ListReceiptsAsync(from, to, requestCancellation.Token);
-            var schedulesTask = paySchedulesApi.ListAsync(requestCancellation.Token);
-            await Task.WhenAll(receiptsTask, schedulesTask);
+            var receipts = await paySchedulesApi.ListReceiptsAsync(from, to, requestCancellation.Token);
             if (!requestCancellation.IsCancellationRequested && this.GetReceiptRange() == (from, to))
             {
-                var receipts = await receiptsTask;
                 this.completedIncomeTotals = receipts.GroupBy(receipt => receipt.PayDate)
                     .ToDictionary(group => group.Key, group => group.Sum(receipt => receipt.NetIncome));
-                this.pendingIncomeTotals = GetPendingIncomeTotals(await schedulesTask, receipts, from, to, this.currentDate);
             }
         }
         catch (OperationCanceledException) when (requestCancellation.IsCancellationRequested)
         {
         }
-        catch (HttpRequestException)
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or OperationCanceledException)
         {
+            if (!requestCancellation.IsCancellationRequested && this.GetReceiptRange() == (from, to))
+            {
+                this.incomeLoadError = true;
+            }
         }
         finally
         {
@@ -392,11 +316,6 @@ public partial class CalendarPage : ComponentBase, IDisposable
     {
         switch (args.Key)
         {
-            case "Enter":
-            case " ":
-            case "Spacebar":
-                await this.SelectDateAsync(date, true);
-                break;
             case "ArrowLeft":
                 await this.SelectDateAsync(date.AddDays(-1), true);
                 break;
@@ -409,25 +328,8 @@ public partial class CalendarPage : ComponentBase, IDisposable
             case "ArrowDown":
                 await this.SelectDateAsync(date.AddDays(7), true);
                 break;
-            case "Tab" when args.ShiftKey && date == this.GetFirstDisplayedDate():
-                this.pendingFocus = FocusTarget.ActiveMode;
-                break;
-            case "Tab" when !args.ShiftKey && date == this.GetLastDisplayedDate():
-                this.pendingFocus = FocusTarget.PreviousPeriod;
-                break;
-            case "Tab":
-                await this.SelectDateAsync(date.AddDays(args.ShiftKey ? -1 : 1), true);
-                break;
         }
     }
-
-    private DateOnly GetFirstDisplayedDate() => this.CurrentMode == CalendarMode.Week
-        ? this.WeekDates[0]
-        : new DateOnly(this.ActiveDate.Year, this.ActiveDate.Month, 1);
-
-    private DateOnly GetLastDisplayedDate() => this.CurrentMode == CalendarMode.Week
-        ? this.WeekDates[^1]
-        : new DateOnly(this.ActiveDate.Year, this.ActiveDate.Month, 1).AddMonths(1).AddDays(-1);
 
     private async Task MoveActiveDate(int direction)
     {
@@ -440,6 +342,18 @@ public partial class CalendarPage : ComponentBase, IDisposable
         };
 
         await this.SelectDateAsync(targetDate, true);
+    }
+
+    private async Task GoToTodayAsync()
+    {
+        this.currentDate = DateOnly.FromDateTime(this.Clock.GetLocalNow().DateTime);
+        var monthChanged = this.ActiveDate.Year != this.currentDate.Year || this.ActiveDate.Month != this.currentDate.Month;
+        this.CurrentMode = CalendarMode.Month;
+        await this.SelectDateAsync(this.currentDate, false);
+        if (!monthChanged)
+        {
+            await this.LoadExpenseSummariesAsync();
+        }
     }
 
     private void OnTransactionsChanged(DateOnly ledgerDate)
@@ -482,30 +396,12 @@ public partial class CalendarPage : ComponentBase, IDisposable
         await this.LoadIncomeReceiptsAsync();
     }
 
-    private async Task MaterializeActiveDateAsync()
+    private void OnIncomeReceiptsChanged(DateOnly date)
     {
-        var paySchedulesApi = this.Services.GetService(typeof(IPaySchedulesApiClient)) as IPaySchedulesApiClient;
-        if (paySchedulesApi is null)
+        var (from, to) = this.GetReceiptRange();
+        if (date >= from && date <= to)
         {
-            return;
-        }
-
-        this.isMaterializing = true;
-        this.materializeStatus = null;
-        try
-        {
-            var receipts = await paySchedulesApi.MaterializeAsync(this.ActiveDate, this.lifetimeCancellation.Token);
-            await this.LoadIncomeReceiptsAsync();
-            this.SelectedDate.Select(this.ActiveDate);
-            this.materializeStatus = receipts.Count == 0 ? "No receipts were due on this date." : $"Recorded {receipts.Count} income {(receipts.Count == 1 ? "receipt" : "receipts")}.";
-        }
-        catch (HttpRequestException)
-        {
-            this.materializeStatus = "Income receipts could not be recorded.";
-        }
-        finally
-        {
-            this.isMaterializing = false;
+            _ = this.InvokeAsync(this.LoadIncomeReceiptsAsync);
         }
     }
 }

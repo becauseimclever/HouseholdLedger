@@ -10,4 +10,5 @@ namespace HouseholdLedger.Api.Contracts;
 /// <param name="AccountId">The replacement owning account identifier.</param>
 /// <param name="Amount">The replacement positive USD amount.</param>
 /// <param name="Classification">The replacement Kakeibo-inspired classification.</param>
-public sealed record UpdateExpenseTransactionRequest(Guid AccountId, decimal Amount, string Classification);
+/// <param name="Description">The optional replacement description, at most 200 characters after trimming.</param>
+public sealed record UpdateExpenseTransactionRequest(Guid AccountId, decimal Amount, string Classification, string? Description = null);

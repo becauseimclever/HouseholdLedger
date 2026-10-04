@@ -6,6 +6,8 @@
 
 <main class="pay-schedules-page" aria-labelledby="pay-schedules-heading">
     <h1 id="pay-schedules-heading">Pay schedules</h1>
+    <p>Optional expectation aids only. Creating, revising or resuming a schedule never records received income or changes your monthly plan. Confirm money separately after it is actually received.</p>
+    <a class="content-link" href="/">Open the calendar to plan a month or confirm income</a>
 
     @if (isLoading)
     {
@@ -59,12 +61,12 @@
                         </div>
                     }
                     <div class="schedule-field">
-                        <label for="schedule-net-income">Net income (@CurrentCurrencyLabel)</label>
+                        <label for="schedule-net-income">Expected take-home income (@CurrentCurrencyLabel)</label>
                         <input id="schedule-net-income" name="netIncome" type="number" min="0.01" step="0.01" inputmode="decimal" value="@netIncomeText" @onchange="UpdateNetIncome" aria-invalid="@(netIncomeError is null ? "false" : "true")" />
                         @if (netIncomeError is not null) { <p class="field-error">@netIncomeError</p> }
                     </div>
                     <fieldset class="allocation-fields">
-                        <legend>Account allocations</legend>
+                        <legend>Suggested account destinations (not savings contributions)</legend>
                         @for (var index = 0; index < allocations.Count; index++)
                         {
                             var allocation = allocations[index];
@@ -105,7 +107,7 @@
                     @foreach (var schedule in schedules)
                     {
                         <li class="schedule-item">
-                            <div class="schedule-summary"><h3>@schedule.Name</h3><p>@(schedule.IsPaused ? "Paused" : "Active") · @GetCadenceLabel(schedule.Cadence)</p><p>Next or first date: @GetNextPayDate(schedule).ToString("D", CurrentCulture)</p><p>@FormatCurrency(schedule.NetIncome) · @GetAllocationSummary(schedule)</p></div>
+                            <div class="schedule-summary"><h3>@schedule.Name</h3><p>@(schedule.IsPaused ? "Paused" : "Active") · @GetCadenceLabel(schedule.Cadence)</p><p>First expected date: @GetNextPayDate(schedule).ToString("D", CurrentCulture)</p><p>Expected: @FormatCurrency(schedule.NetIncome) · @GetAllocationSummary(schedule)</p></div>
                             <div class="schedule-actions">
                                 <button class="secondary-action" type="button" @onclick="() => BeginEdit(schedule)">Edit</button>
                                 @if (schedule.IsPaused)

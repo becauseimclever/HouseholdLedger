@@ -19,6 +19,49 @@ public sealed class ApiContractTests
     private static readonly string[] RequiredHealthProperties = ["status"];
     private static readonly JsonSerializerOptions WebJsonOptions = new(JsonSerializerDefaults.Web);
 
+    /// <summary>Preserves existing positional construction while exposing optional recovery fields.</summary>
+    [Fact]
+    public void RecoveryContractsPreserveOptionalFieldsAndSignedCashflow()
+    {
+        var accountId = Guid.NewGuid();
+        var request = new ConfirmIncomeReceiptRequest(new DateOnly(2026, 9, 15), 100m, [new IncomeAllocationRequest(accountId, 100m)]);
+        Assert.Null(request.RequestId);
+        var token = Guid.NewGuid();
+        var confirmation = JsonSerializer.Deserialize<ConfirmIncomeReceiptRequest>(
+            JsonSerializer.Serialize(request with { RequestId = token }, WebJsonOptions),
+            WebJsonOptions)!;
+        Assert.Equal(token, confirmation.RequestId);
+        Assert.Null(new CreateExpenseTransactionRequest(accountId, 10m, "Necessities").Description);
+        Assert.Null(new UpdateExpenseTransactionRequest(accountId, 10m, "Necessities").Description);
+        var review = new MonthlyBudgetReviewResponse(null, null, 100m, null, 0m, null, [], -50m);
+        var json = JsonSerializer.Serialize(review, WebJsonOptions);
+        Assert.Equal(-50m, JsonSerializer.Deserialize<MonthlyBudgetReviewResponse>(json, WebJsonOptions)!.CashflowDifference);
+        Assert.Null(new MonthlyReflectionRequest().WhatWorked);
+        var reflection = new MonthlyReflectionResponse(null, "Plan meals", DateTimeOffset.UtcNow);
+        Assert.Equal(reflection, JsonSerializer.Deserialize<MonthlyReflectionResponse>(JsonSerializer.Serialize(reflection, WebJsonOptions), WebJsonOptions));
+    }
+
+    /// <summary>Describes correction, removal, retry conflicts and standalone reflection in the checked OpenAPI artifact.</summary>
+    /// <returns>A task representing the test.</returns>
+    [Fact]
+    public async Task CheckedOpenApiDescribesLedgerRecovery()
+    {
+        using var document = JsonDocument.Parse(await File.ReadAllTextAsync(GetOpenApiArtifactPath(), TestContext.Current.CancellationToken));
+        var paths = document.RootElement.GetProperty("paths");
+        var receipt = paths.GetProperty("/api/v1/income-receipts/{receiptId}");
+        Assert.True(receipt.TryGetProperty("put", out _));
+        Assert.True(receipt.TryGetProperty("delete", out _));
+        var confirmation = paths.GetProperty("/api/v1/income-receipts").GetProperty("post").GetProperty("responses");
+        Assert.True(confirmation.TryGetProperty("409", out _));
+        var reflection = paths.GetProperty("/api/v1/months/{year}/{month}/reflection");
+        Assert.True(reflection.TryGetProperty("get", out _));
+        Assert.True(reflection.TryGetProperty("put", out _));
+        var schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
+        Assert.True(schemas.GetProperty("ConfirmIncomeReceiptRequest").GetProperty("properties").TryGetProperty("requestId", out _));
+        Assert.True(schemas.GetProperty("ExpenseTransactionResponse").GetProperty("properties").TryGetProperty("description", out _));
+        Assert.True(schemas.GetProperty("MonthlyBudgetReviewResponse").GetProperty("properties").TryGetProperty("cashflowDifference", out _));
+    }
+
     /// <summary>
     /// Verifies that the checked OpenAPI document describes the health transport contract.
     /// </summary>
@@ -234,7 +277,7 @@ public sealed class ApiContractTests
                 parameter => Assert.False(parameter.TryGetProperty("required", out _))));
     }
 
-    /// <summary>Verifies the checked contract describes pay schedule mutation and materialization.</summary>
+    /// <summary>Verifies the checked contract describes pay schedules and explicit receipt confirmation.</summary>
     [Fact]
     public void CheckedOpenApiDescribesPayScheduleMutationContract()
     {
@@ -256,21 +299,19 @@ public sealed class ApiContractTests
         var resume = root.GetProperty("paths")
             .GetProperty("/api/v1/pay-schedules/{scheduleId}/resume")
             .GetProperty("post");
-        var materialize = root.GetProperty("paths")
-            .GetProperty("/api/v1/pay-schedules/materialize/{payDate}")
-            .GetProperty("post");
+        var paths = root.GetProperty("paths");
+        var confirmReceipt = paths.GetProperty("/api/v1/income-receipts").GetProperty("post");
         var createRequestReference = create.GetProperty("requestBody")
             .GetProperty("content")
             .GetProperty("application/json")
             .GetProperty("schema")
             .GetProperty("$ref")
             .GetString();
-        var receiptResponseReference = materialize.GetProperty("responses")
-            .GetProperty("200")
+        var receiptResponseReference = confirmReceipt.GetProperty("responses")
+            .GetProperty("201")
             .GetProperty("content")
             .GetProperty("application/json")
             .GetProperty("schema")
-            .GetProperty("items")
             .GetProperty("$ref")
             .GetString();
         var listResponseReference = list.GetProperty("responses")
@@ -314,6 +355,62 @@ public sealed class ApiContractTests
             () => Assert.True(revise.GetProperty("responses").TryGetProperty("404", out _)),
             () => Assert.True(pause.GetProperty("responses").TryGetProperty("204", out _)),
             () => Assert.True(resume.GetProperty("responses").TryGetProperty("204", out _)),
+            () => Assert.False(paths.TryGetProperty("/api/v1/pay-schedules/materialize/{payDate}", out _)),
+            () => Assert.True(confirmReceipt.GetProperty("responses").TryGetProperty("400", out _)),
+            () => Assert.Equal("#/components/schemas/IncomeReceiptResponse", receiptResponseReference));
+    }
+
+    /// <summary>Verifies the checked contract exposes monthly intentions and explicit receipt confirmation.</summary>
+    [Fact]
+    public void CheckedOpenApiDescribesMonthlyIntentionAndConfirmedReceiptContract()
+    {
+        using var document = LoadOpenApiJsonDocument();
+        var paths = document.RootElement.GetProperty("paths");
+        var plan = paths.GetProperty("/api/v1/months/{year}/{month}/budget-plan");
+        var save = plan.GetProperty("put");
+        var review = paths.GetProperty("/api/v1/months/{year}/{month}/budget-review").GetProperty("get");
+        var confirmReceipt = paths.GetProperty("/api/v1/income-receipts").GetProperty("post");
+
+        var requestReference = save.GetProperty("requestBody")
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+        var planResponseReference = save.GetProperty("responses")
+            .GetProperty("200")
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+        var reviewResponseReference = review.GetProperty("responses")
+            .GetProperty("200")
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+        var receiptRequestReference = confirmReceipt.GetProperty("requestBody")
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+        var receiptResponseReference = confirmReceipt.GetProperty("responses")
+            .GetProperty("201")
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema")
+            .GetProperty("$ref")
+            .GetString();
+
+        Assert.Multiple(
+            () => Assert.Equal("#/components/schemas/MonthlyBudgetPlanRequest", requestReference),
+            () => Assert.Equal("#/components/schemas/MonthlyBudgetPlanResponse", planResponseReference),
+            () => Assert.True(plan.GetProperty("get").GetProperty("responses").TryGetProperty("404", out _)),
+            () => Assert.Equal("#/components/schemas/MonthlyBudgetReviewResponse", reviewResponseReference),
+            () => Assert.Equal("#/components/schemas/ConfirmIncomeReceiptRequest", receiptRequestReference),
             () => Assert.Equal("#/components/schemas/IncomeReceiptResponse", receiptResponseReference));
     }
 

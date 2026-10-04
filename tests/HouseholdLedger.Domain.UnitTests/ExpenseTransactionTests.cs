@@ -12,6 +12,28 @@ using Xunit;
 /// </summary>
 public sealed class ExpenseTransactionTests
 {
+    /// <summary>Normalizes descriptions and rejects oversized corrections without mutation.</summary>
+    [Fact]
+    public void DescriptionIsOptionalNormalizedAndBounded()
+    {
+        var transaction = new ExpenseTransaction(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            new DateOnly(2026, 9, 1),
+            10m,
+            ExpenseClassification.Necessities,
+            description: "  groceries  ");
+        Assert.Equal("groceries", transaction.Description);
+        Assert.Throws<ArgumentException>(() =>
+            transaction.Revise(Guid.NewGuid(), 20m, ExpenseClassification.Culture, new string('x', 201)));
+        Assert.Equal("groceries", transaction.Description);
+        Assert.Equal(10m, transaction.Amount);
+        transaction.Revise(transaction.AccountId, 10m, ExpenseClassification.Necessities, new string('x', 200));
+        Assert.Equal(200, transaction.Description!.Length);
+        transaction.Revise(transaction.AccountId, 10m, ExpenseClassification.Necessities, " \t ");
+        Assert.Null(transaction.Description);
+    }
+
     /// <summary>Verifies that approved values create a transaction.</summary>
     [Fact]
     public void ConstructorAcceptsApprovedValues()

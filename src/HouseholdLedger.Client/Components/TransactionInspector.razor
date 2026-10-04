@@ -21,43 +21,91 @@ else
             }
             else if (incomeLoadError)
             {
-                <p class="transaction-error" role="alert">Income details are unavailable.</p>
+                <div role="alert"><p class="transaction-error">Income details are unavailable.</p><button class="secondary-action" type="button" @onclick="RetryIncomeAsync">Retry income</button></div>
             }
             else
             {
-                <section class="income-state" aria-labelledby="completed-income-heading">
-                    <h5 id="completed-income-heading">Completed income</h5>
-                    @if (incomeReceipts.Count == 0)
-                    {
-                        <p>No completed income recorded for this day.</p>
-                    }
-                    else
-                    {
+                @if (incomeReceipts.Count > 0)
+                {
+                    <section class="income-state" aria-labelledby="completed-income-heading">
+                        <h5 id="completed-income-heading">Confirmed income</h5>
                         <ol class="income-receipt-list">
                             @foreach (var receipt in incomeReceipts)
                             {
-                                <li><strong>@GetScheduleName(receipt.ScheduleId)</strong><span>@MoneyFormatter.Format(receipt.NetIncome, CurrentCurrencyCode)</span><ul>@foreach (var allocation in receipt.Allocations) { <li>@GetAccountName(allocation.AccountId): @MoneyFormatter.Format(allocation.Amount, CurrentCurrencyCode)</li> }</ul></li>
+                                <li>
+                                    @if (editingReceiptId == receipt.Id)
+                                    {
+                                        <form class="income-edit-form" @onsubmit="ReviseIncomeAsync" @onsubmit:preventDefault="true" aria-label="Correct confirmed income">
+                                            <label for="@GetElementId("income-date", receipt.Id)">Actual received date</label>
+                                            <input id="@GetElementId("income-date", receipt.Id)" type="date" max="@TodayText" value="@receiptEditDateText" @onchange="UpdateReceiptDate" />
+                                            <label for="@GetElementId("income-amount", receipt.Id)">Amount received (@CurrentCurrencyLabel)</label>
+                                            <input id="@GetElementId("income-amount", receipt.Id)" type="text" inputmode="decimal" value="@receiptEditAmountText" @oninput="UpdateReceiptAmount" />
+                                            @foreach (var allocation in receiptEditAllocations)
+                                            {
+                                                <div class="receipt-edit-allocation" @key="allocation.Id">
+                                                    <label for="@GetElementId("income-account", allocation.Id)">Account</label>
+                                                    <select id="@GetElementId("income-account", allocation.Id)" value="@allocation.AccountId" @onchange="args => UpdateReceiptAccount(allocation, args)">
+                                                        <option value="">Choose an account</option>
+                                                        @foreach (var account in accounts) { <option value="@account.Id">@account.Name</option> }
+                                                    </select>
+                                                    <label for="@GetElementId("income-allocation", allocation.Id)">Allocation amount (@CurrentCurrencyLabel)</label>
+                                                    <input id="@GetElementId("income-allocation", allocation.Id)" type="text" inputmode="decimal" value="@allocation.AmountText" @oninput="args => UpdateReceiptAllocation(allocation, args)" />
+                                                    <button type="button" disabled="@(receiptEditAllocations.Count == 1 || isMutating)" @onclick="() => RemoveReceiptAllocation(allocation)">Remove allocation</button>
+                                                </div>
+                                            }
+                                            <button type="button" disabled="@isMutating" @onclick="AddReceiptAllocation">Add allocation</button>
+                                            @if (incomeMutationError is not null) { <p class="transaction-error" role="alert">@incomeMutationError</p> }
+                                            <div class="transaction-actions">
+                                                <button type="submit" disabled="@isMutating">@(isMutating ? "Saving correction" : "Save correction")</button>
+                                                <button class="secondary-action" type="button" disabled="@isMutating" @onclick="CancelReceiptEdit">Cancel</button>
+                                            </div>
+                                        </form>
+                                    }
+                                    else if (removingIncomeReceiptId == receipt.Id)
+                                    {
+                                        <div class="transaction-confirmation" role="group" aria-labelledby="@GetElementId("remove-income-heading", receipt.Id)">
+                                            <p id="@GetElementId("remove-income-heading", receipt.Id)">Remove this confirmed income receipt of @MoneyFormatter.Format(receipt.NetIncome, CurrentCurrencyCode)? This changes recorded actual income.</p>
+                                            <div class="transaction-actions">
+                                                <button class="danger-action" type="button" disabled="@isMutating" @onclick="ConfirmRemoveIncomeAsync">@(isMutating ? "Removing" : "Remove receipt")</button>
+                                                <button class="secondary-action" type="button" disabled="@isMutating" @onclick="CancelRemoveIncome">Cancel</button>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <strong>@GetScheduleName(receipt.ScheduleId)</strong>
+                                        <span>@MoneyFormatter.Format(receipt.NetIncome, CurrentCurrencyCode)</span>
+                                        <ul>@foreach (var allocation in receipt.Allocations) { <li>@GetAccountName(allocation.AccountId): @MoneyFormatter.Format(allocation.Amount, CurrentCurrencyCode)</li> }</ul>
+                                        <div class="transaction-actions">
+                                            <button class="secondary-action" type="button" disabled="@isMutating" @onclick="() => BeginReceiptEdit(receipt)">Correct</button>
+                                            <button class="secondary-action" type="button" disabled="@isMutating" @onclick="() => BeginRemoveIncome(receipt.Id)">Remove</button>
+                                        </div>
+                                    }
+                                </li>
                             }
                         </ol>
-                    }
-                </section>
-                <section class="income-state" aria-labelledby="pending-income-heading">
-                    <h5 id="pending-income-heading">Pending income</h5>
-                    @if (pendingIncome.Count == 0)
-                    {
-                        <p>No pending income for this day.</p>
-                    }
-                    else
-                    {
+                    </section>
+                }
+                @if (pendingIncome.Count > 0)
+                {
+                    <details class="income-state pending-income-state">
+                        <summary>Scheduled expectations (not received)</summary>
                         <ol class="income-receipt-list pending-income-list">
                             @foreach (var income in pendingIncome)
                             {
-                                <li><strong>@income.Name</strong><span>@MoneyFormatter.Format(income.NetIncome, CurrentCurrencyCode)</span><ul>@foreach (var allocation in income.Allocations) { <li>@GetAccountName(allocation.AccountId): @MoneyFormatter.Format(allocation.Amount, CurrentCurrencyCode)</li> }</ul></li>
+                                <li>
+                                    <strong>@income.Name</strong><span>@MoneyFormatter.Format(income.NetIncome, CurrentCurrencyCode)</span>
+                                    <ul>@foreach (var allocation in income.Allocations) { <li>@GetAccountName(allocation.AccountId): @MoneyFormatter.Format(allocation.Amount, CurrentCurrencyCode)</li> }</ul>
+                                    <a class="content-link" href="@($"/income-receipts/{selectedDate.Year}/{selectedDate.Month}/{selectedDate.Day}?scheduleId={income.Id}")">Use schedule as receipt suggestion</a>
+                                </li>
                             }
                         </ol>
-                    }
-                </section>
+                    </details>
+                }
+                <p>Schedules never record receipts. Account destinations are not savings contributions.</p>
             }
+            <a class="content-link" href="@($"/income-receipts/{selectedDate.Year}/{selectedDate.Month}/{selectedDate.Day}")">Confirm actual received income</a>
+            @if (incomeMutationStatus is not null) { <p role="status">@incomeMutationStatus</p> }
         </section>
 
         @if (isLoadingAccounts)
@@ -115,6 +163,14 @@ else
                     {
                         <p id="transaction-classification-error" class="transaction-error">@classificationError</p>
                     }
+                    <p>Examples: Necessities for groceries or utilities; Optional for convenience purchases; Culture for books or events; Unexpected for unplanned urgent costs.</p>
+                </div>
+
+                <div class="transaction-field">
+                    <label for="transaction-description">Description (optional)</label>
+                    <input id="transaction-description" name="description" maxlength="200" autocomplete="off" value="@descriptionText" @oninput="UpdateDescription" aria-invalid="@(descriptionError is null ? "false" : "true")" aria-describedby="transaction-description-help transaction-description-error" />
+                    <small id="transaction-description-help">Up to 200 characters.</small>
+                    @if (descriptionError is not null) { <p id="transaction-description-error" class="transaction-error">@descriptionError</p> }
                 </div>
 
                 <button type="submit" disabled="@isSaving">@(isSaving ? "Saving" : "Save expense")</button>
@@ -178,6 +234,12 @@ else
                                             <p class="transaction-error">@editClassificationError</p>
                                         }
                                     </div>
+                                    <div class="transaction-field">
+                                        <label for="@GetElementId("edit-description", transaction.Id)">Description (optional)</label>
+                                        <input id="@GetElementId("edit-description", transaction.Id)" maxlength="200" autocomplete="off" value="@editDescriptionText" @oninput="UpdateEditDescription" aria-invalid="@(editDescriptionError is null ? "false" : "true")" aria-describedby="@GetElementId("edit-description-help", transaction.Id) @GetElementId("edit-description-error", transaction.Id)" />
+                                        <small id="@GetElementId("edit-description-help", transaction.Id)">Up to 200 characters.</small>
+                                        @if (editDescriptionError is not null) { <p id="@GetElementId("edit-description-error", transaction.Id)" class="transaction-error">@editDescriptionError</p> }
+                                    </div>
                                     <div class="transaction-actions">
                                         <button type="submit" disabled="@isMutating">@(isMutating ? "Saving changes" : "Save changes")</button>
                                         <button class="secondary-action" type="button" disabled="@isMutating" @onclick="CancelEdit">Cancel</button>
@@ -197,7 +259,7 @@ else
                             else
                             {
                                 <div class="transaction-summary">
-                                    <span><span>@transaction.Classification</span><small>@transaction.AccountName</small></span>
+                                    <span><span>@transaction.Classification</span><small>@transaction.AccountName</small>@if (!string.IsNullOrWhiteSpace(transaction.Description)) { <small>@transaction.Description</small> }</span>
                                     <strong>@MoneyFormatter.Format(transaction.Amount, CurrentCurrencyCode)</strong>
                                 </div>
                                 <div class="transaction-actions">
