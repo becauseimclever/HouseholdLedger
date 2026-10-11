@@ -1,4 +1,4 @@
-﻿// <copyright file="20260907191945_EnforceExpenseTransactionIntegrity.cs" company="HouseholdLedger">
+// <copyright file="20260907191945_EnforceExpenseTransactionIntegrity.cs" company="HouseholdLedger">
 // Copyright (c) HouseholdLedger. All rights reserved.
 // </copyright>
 

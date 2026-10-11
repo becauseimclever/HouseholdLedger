@@ -29,8 +29,13 @@ as historical product, acceptance, and decision records.
 | [022](022-collapse-and-reveal-the-inspector-pane.md) | Complete | Added inspector collapse and selected-date automatic reveal. |
 | [023](023-navigate-from-the-collapsed-icon-rail.md) | Complete | Preserved complete destination navigation in the collapsed rail. |
 | [024](024-plan-and-review-a-month-with-intention.md) | Complete | Reconcile monthly intention and compare it with deliberately confirmed income and recorded expenses. |
+| [025](025-align-account-subnavigation.md) | Complete | Align expanded account navigation with its parent destination. |
 | [026](026-minimize-empty-day-inspector.md) | Complete (refined) | Focus empty days on recording actions without empty income detail. |
 | [027](027-focus-account-detail-gallery.md) | Complete | Show only the selected account card on account detail routes. |
+| [028](028-top-align-collapsed-workspace-navigation.md) | Complete | Keep collapsed workspace-navigation destinations at the top of the rail. |
+| [030](030-normalize-calendar-journey-line-endings.md) | Complete | Restore formatting-gate compliance for the calendar browser journey source. |
+| [031](031-normalize-generated-migration-encoding.md) | Complete | Restore formatting-gate compliance for generated migration source encodings. |
+| [032](032-complete-selected-date-inspector-test-fixture.md) | Complete | Restore the selected-date inspector component behavior proof. |
 | [033](033-correct-confirmed-income.md) | Complete | Correct or remove receipts and retry confirmation without duplicate records. |
 | [034](034-reflect-on-a-month.md) | Complete | Save what worked and one intention for next month. |
 | [035](035-reach-monthly-intention-easily.md) | Complete | Make monthly planning reachable with predictable navigation and protected drafts. |

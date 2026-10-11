@@ -1,4 +1,4 @@
-﻿// <copyright file="20260906132640_AddGlobalSettings.cs" company="HouseholdLedger">
+// <copyright file="20260906132640_AddGlobalSettings.cs" company="HouseholdLedger">
 // Copyright (c) HouseholdLedger. All rights reserved.
 // </copyright>
 

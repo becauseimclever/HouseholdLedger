@@ -2,10 +2,16 @@
 
 ## Status
 
-Status: Proposed.
+Status: Complete.
 
 - Planned: 2026-09-14.
+- Implemented: 2026-10-11.
 - Found by the production-readiness Client component-test gate.
+- The selected-date test now supplies a fixed October 11, 2026 clock, asserts
+  the initial month link deterministically, then proves the selected date
+  expands the inspector without expanding collapsed navigation.
+- The isolated test passed (1 total), and the full Client component suite
+  passed (148 total).
 
 ## Outcome
 
@@ -30,9 +36,8 @@ a collapsed inspector without reopening collapsed workspace navigation.
 
 ## Validation
 
-- Run `SelectedDateAutomaticallyRevealsCollapsedInspector` in isolation.
-- Run the full Client component-test project to prove the shared fixture change
-  does not regress other component tests.
+- `SelectedDateAutomaticallyRevealsCollapsedInspector` passed in isolation.
+- The full Client component-test project passed (148 tests).
 
 ## Definition of Done
 

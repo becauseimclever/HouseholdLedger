@@ -2,10 +2,13 @@
 
 ## Status
 
-Status: Proposed.
+Status: Complete.
 
 - Planned: 2026-09-14.
+- Implemented: 2026-10-11.
 - Found by the production-readiness formatting gate.
+- Focused formatting verification passed for `BrowserCalendarJourneyTests.cs`.
+- Normalization changed its line endings to CRLF without changing test logic.
 
 ## Outcome
 
@@ -29,9 +32,10 @@ diagnostics in the calendar browser-journey source.
 
 ## Validation
 
-- Run focused formatting verification for `BrowserCalendarJourneyTests.cs`.
-- Review the normalization diff to confirm it contains no semantic source
-  change.
+- Focused formatting verification for `BrowserCalendarJourneyTests.cs` passed.
+- The normalized diff was reviewed with carriage-return differences ignored;
+  only the separately implemented Feature 025/028 browser assertions differ
+  semantically from the baseline.
 
 ## Definition of Done
 

@@ -2,9 +2,11 @@
 
 ## Status
 
-Status: Proposed.
+Status: Deferred.
 
 - Planned: 2026-09-14.
+- Deferred: 2026-10-11 at maintainer direction; performance-test work is
+  intentionally skipped for now.
 - Depends on the production API host, PostgreSQL persistence boundary, and
   calendar and account user workflows.
 - Ideology review, 2026-10-04: defer broad implementation until an observed

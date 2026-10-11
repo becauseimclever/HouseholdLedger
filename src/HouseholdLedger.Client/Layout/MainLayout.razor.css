@@ -117,7 +117,7 @@
     display: flex;
     min-height: 0;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     padding: 0.5rem;
 }
 
@@ -304,7 +304,7 @@
 .account-navigation-list {
     display: grid;
     margin: 0.25rem 0 0;
-    padding: 0 0 0 1rem;
+    padding: 0;
     list-style: none;
     gap: 0.25rem;
 }
@@ -482,7 +482,6 @@
     }
 
     .navigation-pane-collapsed {
-        justify-content: flex-end;
         border-bottom: 0.0625rem solid var(--hl-border-default);
     }
 

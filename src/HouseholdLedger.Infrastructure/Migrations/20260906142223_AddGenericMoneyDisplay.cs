@@ -1,4 +1,4 @@
-﻿// <copyright file="20260906142223_AddGenericMoneyDisplay.cs" company="HouseholdLedger">
+// <copyright file="20260906142223_AddGenericMoneyDisplay.cs" company="HouseholdLedger">
 // Copyright (c) HouseholdLedger. All rights reserved.
 // </copyright>
 

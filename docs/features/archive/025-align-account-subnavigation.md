@@ -2,10 +2,18 @@
 
 ## Status
 
-Status: Proposed.
+Status: Complete.
 
 - Planned: 2026-09-14.
+- Implemented: 2026-10-11.
 - Depends on Feature 014's workspace navigation and account catalog routes.
+- Blazor Client component tests passed (148 total), covering the existing
+  navigation, route-current, disclosure, loading, error, and empty-state
+  behavior.
+- The isolated Firefox browser journey passed (1 passed, 0 failed, 0 skipped).
+  At desktop and narrow viewports, expanded account links aligned with the
+  Accounts destination within one CSS pixel without page-level horizontal
+  overflow.
 
 ## Outcome
 
@@ -30,10 +38,10 @@ left indent.
 
 ## Validation
 
-- Client component tests verify expanded account links align with their parent
-  destination and retain route and disclosure behavior.
-- Focused responsive browser checks confirm the navigation remains operable
-  without overflow.
+- Client component tests preserve route, disclosure, loading, error, and
+  empty-state behavior.
+- The browser geometry check verifies alignment and no horizontal overflow at
+  1440px and 500px viewports.
 
 ## Definition of Done
 

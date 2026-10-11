@@ -329,9 +329,15 @@ public sealed class WorkspaceShellTests
     public void SelectedDateAutomaticallyRevealsCollapsedInspector()
     {
         using var context = new BunitContext();
-        RegisterShellServices(context, new StubAccountsApiClient([]));
+        RegisterShellServices(
+            context,
+            new StubAccountsApiClient([]),
+            new FixedTimeProvider(new DateOnly(2026, 10, 11)));
         context.Services.AddSingleton<ITransactionsApiClient>(new StubTransactionsApiClient());
         var component = context.Render<MainLayout>();
+        Assert.Equal(
+            "/months/2026/10",
+            component.Find("#workspace-navigation a[aria-label='Plan and review this month']").GetAttribute("href"));
         component.Find("button[aria-controls='workspace-navigation']").Click();
         component.Find("button[aria-controls='workspace-inspector']").Click();
 
@@ -344,17 +350,27 @@ public sealed class WorkspaceShellTests
             () => Assert.Equal("/months/2026/9", component.Find("#workspace-navigation a[aria-label='Plan and review this month']").GetAttribute("href"))));
     }
 
-    private static void RegisterShellServices(BunitContext context, IAccountsApiClient accountsApiClient)
+    private static void RegisterShellServices(
+        BunitContext context,
+        IAccountsApiClient accountsApiClient,
+        TimeProvider? clock = null)
     {
         context.Services.AddScoped<AccountCatalogState>();
         context.Services.AddScoped<SelectedDateState>();
-        context.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+        context.Services.AddSingleton(clock ?? TimeProvider.System);
         context.Services.AddSingleton<IIncomeReceiptsApiClient>(new StubIncomeReceiptsApiClient());
         context.Services.AddSingleton(accountsApiClient);
         if (accountsApiClient is StubAccountsApiClient stub)
         {
             context.Services.AddSingleton(stub);
         }
+    }
+
+    private sealed class FixedTimeProvider(DateOnly date) : TimeProvider
+    {
+        public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
+
+        public override DateTimeOffset GetUtcNow() => new(date.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
     }
 
     private sealed class StubIncomeReceiptsApiClient : IIncomeReceiptsApiClient

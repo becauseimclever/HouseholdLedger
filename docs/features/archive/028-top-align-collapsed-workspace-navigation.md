@@ -2,10 +2,16 @@
 
 ## Status
 
-Status: Proposed.
+Status: Complete.
 
 - Planned: 2026-09-14.
+- Implemented: 2026-10-11.
 - Depends on Feature 014's workspace navigation and collapse behavior.
+- Blazor Client component tests passed (148 total), covering collapse
+  semantics, destination labels, route state, and account disclosure behavior.
+- The isolated Firefox browser journey passed (1 passed, 0 failed, 0 skipped).
+  The collapsed control and first destination were top-aligned at desktop and
+  narrow viewports, with no page-level horizontal overflow.
 
 ## Outcome
 
@@ -32,9 +38,9 @@ vertical center.
 
 - Client component tests cover collapse semantics, destination labels, route
   state, and account disclosure behavior.
-- A focused browser geometry check verifies the collapsed rail is top-aligned
-  at the supported desktop viewport; responsive checks preserve narrow layout
-  behavior and no horizontal overflow.
+- The browser geometry check verifies the collapsed control and first
+  destination are top-aligned at 1440px and 500px viewports, with no
+  page-level horizontal overflow.
 
 ## Definition of Done
 

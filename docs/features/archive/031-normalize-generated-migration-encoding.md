@@ -2,10 +2,22 @@
 
 ## Status
 
-Status: Proposed.
+Status: Complete.
 
 - Planned: 2026-09-14.
+- Implemented: 2026-10-11.
 - Found by the production-readiness formatting gate.
+- Removed UTF-8 BOMs from the five formatter-identified migration sources:
+  `20260906132640_AddGlobalSettings.cs`,
+  `20260906142223_AddGenericMoneyDisplay.cs`,
+  `20260906151001_AddWorkbenchTheme.cs`,
+  `20260907191945_EnforceExpenseTransactionIntegrity.cs`, and
+  `20260913042440_AddIncomeSchedules.cs`.
+- The formatter's whitespace-only diagnostics in
+  `20260913042440_AddIncomeSchedules.cs` were corrected; focused formatting
+  verification passed for all five files and the Feature 030 source.
+- Infrastructure Release build passed with zero warnings and errors.
+- Isolated PostgreSQL integration tests passed (9 total, 0 skipped).
 
 ## Outcome
 
@@ -30,12 +42,12 @@ diagnostics in the formatter-identified generated migration files.
 
 ## Validation
 
-- Retain the formatter output identifying the affected files before
-  normalization.
-- Run focused formatter verification and the existing Infrastructure
-  integration coverage after normalization.
-- Review the normalization diff to confirm that it contains no migration-model
-  or operation change.
+- The initial formatter output identified five `CHARSET` diagnostics and
+  whitespace diagnostics in `20260913042440_AddIncomeSchedules.cs`.
+- Focused formatting verification, Infrastructure Release build, and all
+  isolated PostgreSQL integration tests passed after normalization.
+- The migration diff was reviewed ignoring whitespace; no migration operation,
+  model, or schema change remains.
 
 ## Definition of Done
 

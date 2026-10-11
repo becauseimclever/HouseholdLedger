@@ -8,12 +8,7 @@ decisions and acceptance boundaries; historical audits remain under
 
 | Feature | Status | Outcome |
 | --- | --- | --- |
-| [025](025-align-account-subnavigation.md) | Proposed | Align expanded account navigation with its parent destination. |
-| [028](028-top-align-collapsed-workspace-navigation.md) | Proposed | Keep collapsed workspace-navigation destinations at the top of the rail. |
-| [029](029-establish-performance-benchmark-suite.md) | Proposed | Measure and protect production performance and memory efficiency with repeatable benchmarks. |
-| [030](030-normalize-calendar-journey-line-endings.md) | Proposed | Restore formatting-gate compliance for the calendar browser journey source. |
-| [031](031-normalize-generated-migration-encoding.md) | Proposed | Restore formatting-gate compliance for generated migration source encodings. |
-| [032](032-complete-selected-date-inspector-test-fixture.md) | Proposed | Restore the selected-date inspector component behavior proof. |
+| [029](029-establish-performance-benchmark-suite.md) | Deferred | Measure and protect production performance and memory efficiency with repeatable benchmarks. |
 
 [Completed Feature 024](archive/024-plan-and-review-a-month-with-intention.md)
 centers a deliberate monthly plan and review. Schedules may help
@@ -24,9 +19,8 @@ of that behavior before saving.
 
 ## Archive
 
-[Archived Features](archive/README.md) contains the closed or complete
-specifications for Features 001 through 024, 026-027, and 033-037. Archived
-documents are retained as historical records without placeholder files.
+[Archived Features](archive/README.md) contains completed or superseded
+specifications that are no longer active roadmap work.
 
 ## Ideology Audit: Remaining Roadmap (2026-10-04)
 
