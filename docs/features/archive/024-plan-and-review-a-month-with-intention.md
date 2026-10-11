@@ -177,9 +177,9 @@ authoritative actual income and expenses with clear, honest labels.
 
 ## Dependencies
 
-- [Feature 010](archive/010-calendar-daily-expense-amounts.md) supplies the
+- [Feature 010](010-calendar-daily-expense-amounts.md) supplies the
   calendar date-range and refresh foundations.
-- [Feature 012](archive/012-require-an-account-for-every-transaction.md)
+- [Feature 012](012-require-an-account-for-every-transaction.md)
   supplies the authoritative account catalog and account identifiers.
-- [Features 016 and 017](archive/016-configure-global-display-currency.md)
+- [Features 016 and 017](016-configure-global-display-currency.md)
   supply shared formatting-only money presentation.

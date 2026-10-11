@@ -7,6 +7,10 @@ Status: Proposed.
 - Planned: 2026-09-14.
 - Depends on the production API host, PostgreSQL persistence boundary, and
   calendar and account user workflows.
+- Ideology review, 2026-10-04: defer broad implementation until an observed
+  performance problem or release requirement justifies it. Prefer one measured
+  recording/review bottleneck as the first slice; the contract below remains a
+  proposal, not a gate for ordinary feature delivery.
 
 ## Outcome
 
@@ -22,8 +26,9 @@ It uses deterministic representative fixtures, explicit warm-up, recorded
 runtime and machine characteristics, and a fresh result directory per run.
 
 - Benchmarks cover the calendar range read, selected-day inspector read,
-  account detail/history read, expense creation, pay-schedule receipt
-  materialization, and hosted Client startup.
+  account expense-history read, expense creation, explicitly confirmed income
+  recording, monthly plan/review, and hosted Client startup. Schedule expectation
+  queries must never materialize receipts as part of a measurement.
 - Results record latency percentiles, throughput where applicable, managed
   allocations per operation, process working set, garbage-collection activity,
   and published artifact size.
