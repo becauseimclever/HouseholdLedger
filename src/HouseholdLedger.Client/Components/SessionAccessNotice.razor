@@ -1,0 +1,16 @@
+@if (Access.FailureStatus is not null)
+{
+    <section class="session-access-notice" role="alert" aria-labelledby="session-access-heading">
+        <h2 id="session-access-heading">Sign-in required</h2>
+        @if (Access.FailureStatus == System.Net.HttpStatusCode.Forbidden)
+        {
+            <p>This identity does not have access to the household ledger. Sign in with the configured owner account.</p>
+        }
+        else
+        {
+            <p>Your session has ended or you are signed out. Sign in to continue.</p>
+        }
+        <p>Your requests are not automatically resubmitted. Copy any unsaved work before leaving this page.</p>
+        <a href="/auth/login" target="_top" class="session-sign-in-link">Sign in</a>
+    </section>
+}

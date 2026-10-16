@@ -36,15 +36,19 @@ The [Delivery Plan](delivery-plan.md) defines the first deployable baseline and
 subsequent testable slices. After that baseline is verified, each PR must keep
 `main` deployable: build and relevant tests pass, existing workflows still work,
 persisted data remains compatible, and the documented deployment still starts.
-Repository rules must require PRs and applicable checks; this guide is not
-evidence that those remote protections have been configured.
+The `main` branch protection was enabled and verified on October 16, 2026:
+PRs, up-to-date required checks, and resolved conversations are required,
+including for administrators. Force pushes and branch deletion are blocked.
+Mandatory reviewer approvals are zero for the solo-maintainer workflow; this
+does not bypass the PR or check requirements. See the
+[verification evidence](delivery-plan.md#implementation-and-evidence).
 
 Run `pwsh scripts\ci\Test-PullRequest.ps1` for the local resource-free PR gate.
 The [workflow](../../.github/workflows/pull-request.yml) exposes
 `Build and resource-free tests` and `PostgreSQL migrations and persistence`.
 The latter also validates the deployment image; the former verifies a fresh
-published HTTP host. Require both checks once the workflow has run and remote
-rules have been explicitly authorized. The workflow does not publish images
+published HTTP host. Both checks are required by the active protection.
+The workflow does not publish images
 or deploy the application.
 
 Keep each PR independently safe to merge. If an outcome needs several PRs,

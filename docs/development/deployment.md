@@ -73,6 +73,13 @@ the mutation; it does not retry financial writes. The session/sign-out page
 submits a verified POST. Logout ends the local ledger session, not the
 Authentik session; signing in again may reuse the provider's existing session.
 
+If an already-loaded browser receives 401 or 403, it shows a sign-in notice
+instead of automatically navigating or replaying requests. Pending edits in an
+existing workspace remain available to copy before signing in; clicking Sign in
+performs a full-document navigation. An unauthorized initial settings load shows
+recovery without mounting the protected workspace. These responses indicate lost
+access, not a server-side 500; other HTTP failures retain their existing handling.
+
 This slice authenticates the hosted browser client. It does not introduce
 machine bearer credentials or cross-origin cookie sessions. Future mobile/MCP
 adapters need an explicit authentication design while reusing backend use cases;
@@ -171,8 +178,10 @@ authenticate against the placeholder issuer.
 
 Before marking B04 verified, also record:
 
-- Required PR/check rules enabled and the actual remote CI result, including
-  proof that a failed check blocks merging. No remote rules are changed by scripts.
+- Required PR/check rules and remote CI evidence are recorded in the
+  [delivery plan](delivery-plan.md#implementation-and-evidence), including the
+  completed failed-check merge-block probe. No remote rules are changed by
+  deployment scripts; future PRs must still pass their own required checks.
 - Real Authentik owner login, rejection of a different account, keyboard logout
   and sign-in, and creation/correction/refresh of persistent calendar activity
   through the assembled production deployment.
@@ -184,6 +193,8 @@ The signed-token OIDC middleware fixture and Development browser regression are
 valuable separate evidence, but neither replaces the real production login
 journey.
 
-The additional legacy notices browser journey is currently failing and is
-recorded separately in the [local verification results](delivery-plan.md#implementation-and-evidence).
-Do not interpret the passing focused checks as a fully green system suite.
+The repaired notices journey and the other three system/browser cases pass
+using separate disposable database runs, as recorded in the
+[local verification results](delivery-plan.md#implementation-and-evidence).
+The fresh-setup journey must run separately from cases that leave ledger data.
+These Development browser checks do not replace production acceptance.

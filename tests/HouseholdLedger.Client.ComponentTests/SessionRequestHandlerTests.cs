@@ -7,6 +7,7 @@ namespace HouseholdLedger.Client.ComponentTests;
 using System.Net;
 using System.Net.Http.Json;
 using HouseholdLedger.Client.Api;
+using HouseholdLedger.Client.State;
 using Xunit;
 
 /// <summary>Verifies browser writes use the host's session verification token.</summary>
@@ -20,7 +21,7 @@ public sealed class SessionRequestHandlerTests
     public async Task WritesFetchTokenWithoutRetryingTheWrite()
     {
         using var transport = new RecordingHandler();
-        using var handler = new SessionRequestHandler(transport);
+        using var handler = new SessionRequestHandler(transport, new SessionAccessState());
         using var client = new HttpClient(handler) { BaseAddress = new Uri("https://ledger.example") };
         using var read = await client.GetAsync("/api/v1/accounts", TestContext.Current.CancellationToken);
         using var write = await client.PostAsync("/api/v1/accounts", null, TestContext.Current.CancellationToken);
@@ -38,7 +39,7 @@ public sealed class SessionRequestHandlerTests
     public async Task MissingSessionStopsWrite(HttpStatusCode status, string? token)
     {
         using var transport = new FailedSessionHandler(status, token);
-        using var handler = new SessionRequestHandler(transport);
+        using var handler = new SessionRequestHandler(transport, new SessionAccessState());
         using var client = new HttpClient(handler) { BaseAddress = new Uri("https://ledger.example") };
         await Assert.ThrowsAsync<HttpRequestException>(
             () => client.PostAsync("/api/v1/accounts", null, TestContext.Current.CancellationToken));
@@ -55,11 +56,59 @@ public sealed class SessionRequestHandlerTests
     public async Task InvalidSessionStopsWrite(string body)
     {
         using var transport = new InvalidSessionHandler(body);
-        using var handler = new SessionRequestHandler(transport);
+        using var handler = new SessionRequestHandler(transport, new SessionAccessState());
         using var client = new HttpClient(handler) { BaseAddress = new Uri("https://ledger.example") };
         await Assert.ThrowsAsync<HttpRequestException>(
             () => client.PostAsync("/api/v1/accounts", null, TestContext.Current.CancellationToken));
         Assert.Equal(1, transport.CallCount);
+    }
+
+    /// <summary>Verifies lost access is surfaced for reads, token fetches, and mutations without retries.</summary>
+    /// <param name="write">Whether the operation mutates data.</param>
+    /// <param name="rejectToken">Whether token acquisition fails before dispatch.</param>
+    /// <param name="status">The authorization failure.</param>
+    /// <returns>The asynchronous test.</returns>
+    [Theory]
+    [InlineData(false, false, HttpStatusCode.Unauthorized)]
+    [InlineData(false, false, HttpStatusCode.Forbidden)]
+    [InlineData(true, true, HttpStatusCode.Unauthorized)]
+    [InlineData(true, true, HttpStatusCode.Forbidden)]
+    [InlineData(true, false, HttpStatusCode.Unauthorized)]
+    [InlineData(true, false, HttpStatusCode.Forbidden)]
+    public async Task LostAccessOffersRecoveryWithoutRetry(bool write, bool rejectToken, HttpStatusCode status)
+    {
+        var access = new SessionAccessState();
+        using var transport = new RejectedRequestHandler(status, rejectToken);
+        using var handler = new SessionRequestHandler(transport, access);
+        using var client = new HttpClient(handler) { BaseAddress = new Uri("https://ledger.example") };
+        if (write && rejectToken)
+        {
+            await Assert.ThrowsAsync<HttpRequestException>(
+                () => client.PostAsync("/api/v1/accounts", null, TestContext.Current.CancellationToken));
+        }
+        else
+        {
+            using var response = write
+                ? await client.PostAsync("/api/v1/accounts", null, TestContext.Current.CancellationToken)
+                : await client.GetAsync("/api/v1/accounts", TestContext.Current.CancellationToken);
+            Assert.Equal(status, response.StatusCode);
+        }
+
+        Assert.Equal(status, access.FailureStatus);
+        Assert.Equal(write && !rejectToken ? 2 : 1, transport.CallCount);
+    }
+
+    private sealed class RejectedRequestHandler(HttpStatusCode status, bool rejectToken) : HttpMessageHandler
+    {
+        public int CallCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            this.CallCount++;
+            return Task.FromResult(request.RequestUri!.AbsolutePath == "/auth/session" && !rejectToken
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new HostedSession(true, "verification")) }
+                : new HttpResponseMessage(status));
+        }
     }
 
     private sealed class InvalidSessionHandler(string body) : HttpMessageHandler

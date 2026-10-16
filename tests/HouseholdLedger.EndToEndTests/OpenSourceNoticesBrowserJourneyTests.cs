@@ -58,7 +58,6 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
         int? firefoxProcessId = null;
 
         Directory.CreateDirectory(profilePath);
-        Directory.CreateDirectory(inputs.OutputDirectory);
 
         try
         {
@@ -121,7 +120,6 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
             }
 
             DeleteDirectory(Path.GetDirectoryName(profilePath)!);
-            DeleteDirectory(inputs.OutputDirectory);
             AssertPortsReleased(inputs.ApiPort, driverPort);
         }
     }
@@ -187,10 +185,18 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
         Uri apiOrigin,
         CancellationToken cancellationToken)
     {
+        while (!(await browser.ExecuteScriptAsync(
+            "return Boolean(document.querySelector('.calendar-surface') && document.querySelector('#workspace-navigation') && document.querySelector('#workspace-inspector'));",
+            null,
+            cancellationToken)).GetBoolean())
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+        }
+
         var state = await browser.ExecuteScriptAsync(
             "const rectangle = element => { const box = element?.getBoundingClientRect(); return box ? { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height } : null; };"
-            + " const navigation = document.querySelector('#workspace-navigation'); const calendar = document.querySelector('#calendar-workspace'); const main = document.querySelector('main.calendar-page'); const inspector = document.querySelector('#workspace-inspector');"
-            + " return { origin: location.origin, width: innerWidth, height: innerHeight, scrollWidth: document.documentElement.scrollWidth, mainCount: document.querySelectorAll('main.calendar-page').length, headingCount: document.querySelectorAll('main.calendar-page h1').length, heading: main?.querySelector('h1')?.textContent?.trim(), navigationDestinationCount: navigation?.querySelectorAll('a, button').length ?? -1, navigation: rectangle(navigation), calendar: rectangle(calendar), inspector: rectangle(inspector) };",
+            + " const navigation = document.querySelector('#workspace-navigation'); const calendar = document.querySelector('.calendar-surface'); const main = document.querySelector('main.calendar-page'); const inspector = document.querySelector('#workspace-inspector');"
+            + " return { origin: location.origin, width: innerWidth, height: innerHeight, scrollWidth: document.documentElement.scrollWidth, mainCount: document.querySelectorAll('main.calendar-page').length, headingCount: document.querySelectorAll('main.calendar-page h1').length, heading: main?.querySelector('h1')?.textContent?.trim(), calendarNavigationCount: navigation?.querySelectorAll('a[href=\"/\"]').length ?? -1, noticesInPrimaryNavigation: navigation?.querySelectorAll('a[href=\"/open-source-notices\"]').length ?? -1, navigation: rectangle(navigation), calendar: rectangle(calendar), inspector: rectangle(inspector) };",
             null,
             cancellationToken);
 
@@ -205,7 +211,8 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
             () => Assert.Equal(1, state.GetProperty("mainCount").GetInt32()),
             () => Assert.Equal(1, state.GetProperty("headingCount").GetInt32()),
             () => Assert.Equal("Calendar", state.GetProperty("heading").GetString()),
-            () => Assert.Equal(0, state.GetProperty("navigationDestinationCount").GetInt32()),
+            () => Assert.Equal(1, state.GetProperty("calendarNavigationCount").GetInt32()),
+            () => Assert.Equal(0, state.GetProperty("noticesInPrimaryNavigation").GetInt32()),
             () => Assert.True(navigation.GetProperty("right").GetDouble() <= calendar.GetProperty("left").GetDouble()),
             () => Assert.True(calendar.GetProperty("right").GetDouble() <= inspector.GetProperty("left").GetDouble()));
     }
@@ -214,7 +221,7 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
     {
         var link = await browser.FindElementAsync(".workspace-auxiliary-link", cancellationToken);
         var beforeActivation = await browser.ExecuteScriptAsync(
-            "const link = document.querySelector('.workspace-auxiliary-link'); const grid = document.querySelector('.workspace-grid'); const navigation = document.querySelector('#workspace-navigation'); link?.focus(); const linkBox = link?.getBoundingClientRect(); const gridBox = grid?.getBoundingClientRect(); const style = link ? getComputedStyle(link) : null; return { linkCount: document.querySelectorAll('.workspace-auxiliary-link').length, isNativeAnchor: link?.tagName === 'A', href: link?.getAttribute('href'), isFocused: document.activeElement === link, outlineStyle: style?.outlineStyle, current: link?.getAttribute('aria-current'), primaryLinkCount: navigation?.querySelectorAll('a').length ?? -1, belowGrid: (linkBox?.top ?? 0) >= (gridBox?.bottom ?? Number.POSITIVE_INFINITY), position: style?.position };",
+            "const link = document.querySelector('.workspace-auxiliary-link'); const grid = document.querySelector('.workspace-grid'); const navigation = document.querySelector('#workspace-navigation'); link?.focus(); const linkBox = link?.getBoundingClientRect(); const gridBox = grid?.getBoundingClientRect(); const style = link ? getComputedStyle(link) : null; return { linkCount: document.querySelectorAll('.workspace-auxiliary-link').length, isNativeAnchor: link?.tagName === 'A', href: link?.getAttribute('href'), isFocused: document.activeElement === link, outlineStyle: style?.outlineStyle, current: link?.getAttribute('aria-current'), noticesInPrimaryNavigation: navigation?.querySelectorAll('a[href=\"/open-source-notices\"]').length ?? -1, belowGrid: (linkBox?.top ?? 0) >= (gridBox?.bottom ?? Number.POSITIVE_INFINITY), position: style?.position };",
             null,
             cancellationToken);
 
@@ -225,7 +232,7 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
             () => Assert.True(beforeActivation.GetProperty("isFocused").GetBoolean()),
             () => Assert.Equal("solid", beforeActivation.GetProperty("outlineStyle").GetString()),
             () => Assert.Equal(JsonValueKind.Null, beforeActivation.GetProperty("current").ValueKind),
-            () => Assert.Equal(0, beforeActivation.GetProperty("primaryLinkCount").GetInt32()),
+            () => Assert.Equal(0, beforeActivation.GetProperty("noticesInPrimaryNavigation").GetInt32()),
             () => Assert.True(beforeActivation.GetProperty("belowGrid").GetBoolean()),
             () => Assert.NotEqual("absolute", beforeActivation.GetProperty("position").GetString()),
             () => Assert.NotEqual("fixed", beforeActivation.GetProperty("position").GetString()));
@@ -262,12 +269,22 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
 
     private static Process StartApi(string assemblyPath, Uri origin)
     {
+        var connection = Environment.GetEnvironmentVariable("HOUSEHOLDLEDGER_E2E_POSTGRES_CONNECTION_STRING");
+        if (string.IsNullOrWhiteSpace(connection))
+        {
+            throw new XunitException("The notices journey requires the runner's disposable PostgreSQL connection.");
+        }
+
         var startInfo = CreateStartInfo(FindDotNetHost(), Path.GetDirectoryName(assemblyPath)!);
         startInfo.ArgumentList.Add(assemblyPath);
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
         startInfo.Environment["DOTNET_ENVIRONMENT"] = "Development";
+        startInfo.Environment["Authentication__Authority"] = string.Empty;
+        startInfo.Environment["Authentication__ClientSecretFile"] = string.Empty;
+        startInfo.Environment["ConnectionStrings__HouseholdLedgerFile"] = string.Empty;
+        startInfo.Environment["DataProtection__KeyPath"] = string.Empty;
         startInfo.Environment["ASPNETCORE_URLS"] = origin.AbsoluteUri;
-        startInfo.Environment["ConnectionStrings__HouseholdLedger"] = string.Empty;
+        startInfo.Environment["ConnectionStrings__HouseholdLedger"] = connection;
         return StartProcess(startInfo);
     }
 
@@ -292,6 +309,7 @@ public sealed class OpenSourceNoticesBrowserJourneyTests
             RedirectStandardError = true,
             CreateNoWindow = true,
         };
+        startInfo.Environment.Clear();
         CopyEnvironmentVariable(startInfo, "SystemRoot");
         CopyEnvironmentVariable(startInfo, "WINDIR");
         CopyEnvironmentVariable(startInfo, "DOTNET_ROOT");

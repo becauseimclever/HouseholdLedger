@@ -48,8 +48,12 @@ runtime is not available.
 For B01-B04, use `pwsh scripts\ci\Test-PullRequest.ps1` for the resource-free
 Release gate and contract comparison. The
 [local baseline evidence](delivery-plan.md#implementation-and-evidence) records
-passing focused system/browser checks and the still-failing legacy notices
-journey separately; no full-suite or real Authentik login pass is claimed.
+passing system/browser checks, including the repaired notices journey.
+All four cases pass across separate disposable runs: HTTP/workspace/notices
+together, then fresh setup alone because it requires an empty database. Follow
+the [split-run commands](../../tests/HouseholdLedger.EndToEndTests/FreshSetupRegression.md).
+This is not an order-independent shared-database suite or a production
+Authentik login pass.
 
 The test does not discover an arbitrary build artifact. Set
 `HOUSEHOLDLEDGER_API_ARTIFACT` to the normalized absolute path of a freshly

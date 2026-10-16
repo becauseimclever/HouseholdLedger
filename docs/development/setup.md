@@ -118,6 +118,46 @@ For a separately hosted custom frontend, configure an explicit
 the API origin. The API does not enable a wildcard origin. Browser-delivered
 configuration is public and must never contain credentials or secrets.
 
+### Local Authentik Sign-In
+
+For manual sign-in testing at `https://localhost:7241`, add the exact **Strict**
+redirect URI `https://localhost:7241/signin-oidc` to the confidential Authentik
+provider. Keep any production redirect URI as a separate entry. Use the
+per-provider issuer mode described in [Self-Hosted Deployment](deployment.md).
+Local HTTPS needs a trusted development certificate.
+
+The ignored root `.env.local.ps1` can set process-scoped host configuration
+using the existing `Authentication:*` settings and file-based secrets. It is
+local operator configuration, not a checked-in template or automatic startup
+hook. Before using a prepared local copy:
+
+- Set the exact owner OIDC `sub` in the script. A username or email is not a
+  substitute. Match its client ID and issuer to the Authentik provider.
+- Replace `secrets\local-auth\oidc-client-secret` with only the client secret.
+- Edit `secrets\local-auth\connection-string` with the complete Npgsql connection
+  for a dedicated manual-test database. The placeholder does not create a
+  PostgreSQL service or database; use an existing local test server.
+- Restrict access to the ignored secret directory, which also holds local
+  Data Protection keys. Do not paste these files into chat or command output.
+
+Run from the repository root in a dedicated PowerShell terminal:
+
+```powershell
+& .\.env.local.ps1
+dotnet run --project src\HouseholdLedger.Api --no-launch-profile
+```
+
+If that dedicated database needs schema updates, run the same command with
+`-- --migrate-database` first. Review the database target before migrating;
+normal startup never migrates. Then open `https://localhost:7241/auth/login`.
+This is the API-hosted WASM client; no separate frontend host is needed.
+Close the terminal afterward to discard its process-scoped configuration.
+Do not use this terminal or database for automated mutation tests.
+
+Development still enforces authentication when the authority is configured.
+This setup does not change DNS, production proxy settings, or Authentik
+configuration, and does not automatically start PostgreSQL.
+
 ## Publish the Hosted Application
 
 Publish the API project to produce the deployable application:

@@ -6,10 +6,12 @@ namespace HouseholdLedger.Client.Api;
 
 using System.Net.Http.Json;
 using System.Text.Json;
+using HouseholdLedger.Client.State;
 
 /// <summary>Adds framework session verification to hosted browser writes without retrying mutations.</summary>
 /// <param name="innerHandler">The HTTP transport.</param>
-public sealed class SessionRequestHandler(HttpMessageHandler innerHandler) : DelegatingHandler(innerHandler)
+/// <param name="access">The shared session-access notification state.</param>
+public sealed class SessionRequestHandler(HttpMessageHandler innerHandler, SessionAccessState access) : DelegatingHandler(innerHandler)
 {
     /// <inheritdoc/>
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -18,6 +20,7 @@ public sealed class SessionRequestHandler(HttpMessageHandler innerHandler) : Del
         {
             using var sessionRequest = new HttpRequestMessage(HttpMethod.Get, new Uri(request.RequestUri!, "/auth/session"));
             using var sessionResponse = await base.SendAsync(sessionRequest, cancellationToken);
+            access.ObserveResponse(sessionResponse.StatusCode);
             sessionResponse.EnsureSuccessStatusCode();
             HostedSession session;
             try
@@ -41,6 +44,8 @@ public sealed class SessionRequestHandler(HttpMessageHandler innerHandler) : Del
             }
         }
 
-        return await base.SendAsync(request, cancellationToken);
+        var response = await base.SendAsync(request, cancellationToken);
+        access.ObserveResponse(response.StatusCode);
+        return response;
     }
 }

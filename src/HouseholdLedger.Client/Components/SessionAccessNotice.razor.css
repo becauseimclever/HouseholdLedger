@@ -1,0 +1,6 @@
+.session-access-notice {
+    margin: 1rem;
+    padding: 1rem;
+    border: 0.0625rem solid var(--hl-border-warning);
+    background: var(--hl-status-warning-background);
+}

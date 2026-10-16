@@ -17,6 +17,9 @@ public partial class App : ComponentBase, IDisposable
     [Inject]
     private GlobalSettingsState GlobalSettings { get; set; } = null!;
 
+    [Inject]
+    private SessionAccessState SessionAccess { get; set; } = null!;
+
     /// <summary>Gets or sets the JavaScript runtime.</summary>
     [Inject]
     private IJSRuntime JavaScript { get; set; } = null!;

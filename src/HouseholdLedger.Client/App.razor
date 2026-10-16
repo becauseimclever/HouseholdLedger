@@ -1,8 +1,10 @@
-@if (!GlobalSettings.IsLoaded && !GlobalSettings.LoadFailed)
+<HouseholdLedger.Client.Components.SessionAccessNotice />
+
+@if (!GlobalSettings.IsLoaded && !GlobalSettings.LoadFailed && SessionAccess.FailureStatus is null)
 {
 	<div class="boot-status" role="status" aria-live="polite">Loading Household Ledger...</div>
 }
-else
+else if (GlobalSettings.IsLoaded || SessionAccess.FailureStatus is null)
 {
 	<CascadingValue Value="GlobalSettings">
 		<HouseholdLedger.Client.Routes />

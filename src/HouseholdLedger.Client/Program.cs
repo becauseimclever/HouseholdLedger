@@ -28,7 +28,10 @@ public static class Program
 
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
-        builder.Services.AddScoped(serviceProvider => new HttpClient(new SessionRequestHandler(new HttpClientHandler()))
+        builder.Services.AddScoped<SessionAccessState>();
+        builder.Services.AddScoped(serviceProvider => new HttpClient(new SessionRequestHandler(
+            new HttpClientHandler(),
+            serviceProvider.GetRequiredService<SessionAccessState>()))
         {
             BaseAddress = ApiConfiguration.GetBaseAddress(
                 builder.Configuration,

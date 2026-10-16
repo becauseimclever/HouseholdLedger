@@ -52,10 +52,10 @@ all fit on the minimum host without evidence.
 
 | Slice | Local implementation | Acceptance still outstanding |
 | --- | --- | --- |
-| B01 | PR workflow, locked restore/build, resource-free suites, contract comparison, provider/container checks, and published HTTP smoke | Remote CI execution, deliberately failing-check proof, and authorized configuration/verification of required PR/check rules |
+| B01 | PR workflow, locked restore/build, resource-free suites, contract comparison, provider/container checks, published HTTP smoke, successful remote baseline CI, and verified required PR/check protection with a failed-check probe | None for the bootstrap governance slice; subsequent code changes still require their own PR checks |
 | B02 | Non-root AMD64/ARM64 image, PostgreSQL/key volumes, secret-file configuration, explicit migration/readiness, replacement and dump/restore smoke | Physical Pi 4 2 GB qualification and recorded service topology |
-| B03 | Owner-only OIDC code/PKCE session, issuer/subject authorization, antiforgery, sign-out, signed-token middleware and component tests | Real Authentik owner/non-owner login and production browser acceptance |
-| B04 | Container persistence/restore proof, production HTTP boundary smoke, and existing workflow browser regression | Combined authenticated production calendar journey, minimum-host/browser qualification, operator restore proof, and B01 remote controls |
+| B03 | Owner-only OIDC code/PKCE session, issuer/subject authorization, antiforgery, sign-out, signed-token middleware and component tests; user-reported real Authentik owner login, unauthorized-user rejection, and logout locally; post-logout recovery notice observed in shared browser | Complete production browser acceptance; a fresh sign-in round trip from the recovery link has not been independently observed |
+| B04 | Container persistence/restore proof, production HTTP boundary smoke, existing workflow browser regression, and verified B01 remote controls | Combined authenticated production calendar journey, minimum-host/browser qualification, and operator restore proof |
 
 See [Self-Hosted Deployment](deployment.md) for runnable operations and exact
 evidence boundaries. The browser workflow regression deliberately runs in
@@ -68,21 +68,59 @@ Local verification for this implementation:
 | Check | Result |
 | --- | --- |
 | Release build and scoped C# formatting | Passed; build has zero warnings/errors |
-| Resource-free PR gate | 297 passed: 37 Domain, 33 Application, 11 Contracts, 158 Client, 58 API |
+| Resource-free PR gate | 308 passed: 37 Domain, 33 Application, 11 Contracts, 169 Client, 58 API |
 | Isolated PostgreSQL provider/migration tests | 9 passed, none skipped |
 | Published Production HTTP boundary | 1 passed |
-| Firefox workflow and desktop/mobile workspace journeys | 2 passed in disposable database runs |
+| Published HTTP smoke and Firefox browser journeys | All four cases passed across two disposable database runs: HTTP/workspace/notices together (3), then fresh setup alone (1) |
 | AMD64 and emulated ARM64 container smoke | Both passed migration, strict-host readiness, owner gate, replacement persistence, and dump/restore |
 | OpenAPI comparison, locked restore, resolved-package vulnerability check, Compose structure | Passed; no reported vulnerable resolved packages |
-| Additional legacy notices browser journey | Failed; not included in the passing browser count |
+| Open-source notices browser journey | Passed after repairing its database configuration, stale selectors, settled-layout wait, and shared-output cleanup |
 
-The notices journey still starts without the database required for initial
-settings, and its shared output cleanup prevents a subsequent case from using
-that directory in a combined run. A diagnostic attempt with the disposable
-database also exposed assumptions about empty transactions and settled
-workspace state. Those older test-harness changes were not retained in this
-baseline implementation. This regression gap remains open; the successful
-calendar checks do not imply a completely green E2E suite.
+On October 16, 2026, remote baseline
+[CI run 38845674849](https://github.com/becauseimclever/HouseholdLedger/actions/runs/38845674849)
+passed both jobs for bootstrap commit `a67822e`. Authorized classic protection
+on `main` now requires PRs, both named GitHub Actions checks, an up-to-date
+branch, and resolved conversations, including for administrators. Force pushes
+and branch deletion are disabled; required approvals are zero for the solo
+maintainer. Ready-for-review, conflict-free
+[probe PR #2](https://github.com/becauseimclever/HouseholdLedger/pull/2)
+intentionally failed `Build and resource-free tests` while the PostgreSQL check
+passed in [run 38853034049](https://github.com/becauseimclever/HouseholdLedger/actions/runs/38853034049).
+GitHub reported its merge state as `BLOCKED`. The PR was closed without merging
+and its temporary remote branch was deleted. The later local recovery and test
+repairs are not included in that remote baseline CI result.
+
+On October 15, 2026, the user reported successful real Authentik owner login
+and calendar access in the local Development host, followed by creation of a
+calendar entry that remained visible after a page refresh. This is manual,
+user-reported local acceptance evidence, not an independently observed browser
+test or production deployment proof. The user subsequently reported that an
+unauthorized user could not access the application, corrections persisted after
+refresh, and logout worked. Attempting to view the application after logout
+reportedly showed an application error. Supplied server logs show protected API
+requests correctly returning 401, not a server-side 500. The frontend now offers
+an explicit full-document sign-in link on 401/403 without replaying requests or
+automatically discarding pending work; initial unauthorized settings loads do
+not mount protected pages. The updated Client suite passed 169 tests and the
+hosted Release build passed with zero warnings/errors. The user subsequently
+reported validation complete, and inspection of the shared local browser showed
+the expected "Sign-in required" alert, signed-out explanation, no-replay warning,
+and `/auth/login` link instead of a loading screen or application-error banner.
+Earlier console errors remain in the browser's event history; this snapshot
+does not establish a clean navigation history or independently verify a fresh
+sign-in round trip through that link. Production deployment acceptance is deferred
+at the user's direction; it is not waived or considered passed. No financial
+entry details are retained in this record.
+
+The repaired notices journey uses the runner's disposable database, an isolated
+child-process environment, current semantic navigation assertions, and a wait
+for the calendar layout before measuring it. Individual cases no longer delete
+the runner-owned shared output root. A combined four-case run still failed
+because the fresh-setup journey requires an empty database and the workspace
+journey leaves accounts behind. All four cases subsequently passed using the
+documented split in [Fresh Setup Regression](../../tests/HouseholdLedger.EndToEndTests/FreshSetupRegression.md):
+three shared-safe cases together, then fresh setup in a separate database.
+This is not a claim of order-independent execution against one shared database.
 
 ## Reliable Everyday Recording
 

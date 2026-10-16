@@ -30,6 +30,25 @@ trusted ASP.NET HTTPS development certificate, and approved local Firefox
 The generic browser runner still defaults to the original workspace journey;
 use the dedicated runner for this fresh-database journey.
 
+To cover all four system/browser cases, run the three shared-safe cases together,
+then run fresh setup in a separate invocation with its own empty database:
+
+```powershell
+& tests\HouseholdLedger.EndToEndTests\Run-FreshSetupBrowserRegression.ps1 `
+  -TestFilter "FullyQualifiedName!~FreshSetupPersistsAccountsAndExpectationsAndReviewsOnlyExplicitlyConfirmedIncome"
+if ($LASTEXITCODE -ne 0) { throw "HTTP/workspace/notices checks failed." }
+& tests\HouseholdLedger.EndToEndTests\Run-FreshSetupBrowserRegression.ps1
+if ($LASTEXITCODE -ne 0) { throw "Fresh setup failed." }
+```
+
+Do not select all four cases in one invocation: the workspace journey leaves
+sample accounts behind, whereas fresh setup asserts an empty household.
+The notices host also requires `HOUSEHOLDLEDGER_E2E_POSTGRES_CONNECTION_STRING`,
+which this runner supplies; its child environment does not inherit local
+operator authentication or secret-file overrides. The generic browser runner
+owns the shared output root and final cleanup. Individual cases clean only
+their own profiles, never that shared root.
+
 To validate the existing desktop/mobile workspace journey with the same isolated
 database lifecycle:
 

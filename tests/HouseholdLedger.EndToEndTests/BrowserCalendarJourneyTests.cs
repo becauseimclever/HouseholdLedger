@@ -140,7 +140,6 @@ public sealed partial class BrowserCalendarJourneyTests
             }
 
             DeleteDirectory(Path.GetDirectoryName(profilePath)!);
-            DeleteDirectory(inputs.OutputDirectory);
             AssertPortsReleased(inputs.ApiPort, driverPort);
         }
     }
