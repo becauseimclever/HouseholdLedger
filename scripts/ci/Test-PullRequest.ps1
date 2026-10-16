@@ -2,6 +2,8 @@
 [CmdletBinding()]
 param()
 
+throw 'Intentional branch-protection verification failure. Do not merge this PR.'
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $root = Split-Path (Split-Path $PSScriptRoot)
