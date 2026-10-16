@@ -1,0 +1,14 @@
+.git
+.github
+.vscode
+**/bin
+**/obj
+artifacts
+**/TestResults
+.env
+.env.*
+!.env.example
+secrets
+**/*.pfx
+**/*.pem
+**/*.key

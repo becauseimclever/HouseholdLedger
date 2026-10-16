@@ -1,0 +1,26 @@
+@page "/sign-out"
+@using Microsoft.AspNetCore.Components.Web
+
+<PageTitle>Sign out - HouseholdLedger</PageTitle>
+<h1>Sign out</h1>
+@if (error)
+{
+    <p role="alert">Your session could not be checked. Your work has not been resubmitted.</p>
+    <a href="/auth/login" target="_top" class="session-sign-in-link">Sign in again</a>
+}
+else if (session is null)
+{
+    <p role="status">Checking your session...</p>
+}
+else if (session.AuthenticationEnabled)
+{
+    <p>This ends your HouseholdLedger session. Your identity-provider session may remain active.</p>
+    <form method="post" action="/auth/logout">
+        <input type="hidden" name="__RequestVerificationToken" value="@session.RequestToken" />
+        <button type="submit">Sign out</button>
+    </form>
+}
+else
+{
+    <p>This local development host does not use sign-in.</p>
+}

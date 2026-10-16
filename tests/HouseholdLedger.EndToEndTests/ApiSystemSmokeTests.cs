@@ -45,7 +45,8 @@ public sealed class ApiSystemSmokeTests
             TestContext.Current.TestOutputHelper?.WriteLine(
                 $"API system smoke process={process.Id} port={port} artifact={apiAssemblyPath}");
 
-            using var client = new HttpClient
+            using var handler = new HttpClientHandler { AllowAutoRedirect = false };
+            using var client = new HttpClient(handler)
             {
                 BaseAddress = baseAddress,
                 Timeout = TimeSpan.FromSeconds(5),
@@ -156,6 +157,10 @@ public sealed class ApiSystemSmokeTests
         startInfo.Environment["DOTNET_ENVIRONMENT"] = "Production";
         startInfo.Environment["ASPNETCORE_URLS"] = baseAddress.AbsoluteUri;
         startInfo.Environment["ConnectionStrings__HouseholdLedger"] = string.Empty;
+        startInfo.Environment["Authentication__Authority"] = "https://identity.example/application/o/ledger/";
+        startInfo.Environment["Authentication__ClientId"] = "ledger";
+        startInfo.Environment["Authentication__ClientSecret"] = "test-only-not-a-real-secret";
+        startInfo.Environment["Authentication__OwnerSubject"] = "owner";
 
         var process = new Process { StartInfo = startInfo };
         process.OutputDataReceived += (_, eventArgs) => diagnostics.AppendOutput(eventArgs.Data);
@@ -246,13 +251,15 @@ public sealed class ApiSystemSmokeTests
     {
         using var rootResponse = await client.GetAsync("/");
         using var frameworkResponse = await client.GetAsync("/_framework/blazor.webassembly.js");
-        var rootBody = await rootResponse.Content.ReadAsStringAsync();
         var frameworkBody = await frameworkResponse.Content.ReadAsStringAsync();
+        using var protectedResponse = await client.GetAsync("/api/v1/accounts");
+        using var readyResponse = await client.GetAsync("/health/ready");
 
         Assert.Multiple(
-            () => Assert.Equal(HttpStatusCode.OK, rootResponse.StatusCode),
-            () => Assert.Equal("text/html", rootResponse.Content.Headers.ContentType?.MediaType),
-            () => Assert.Contains("_framework/blazor.webassembly.js", rootBody, StringComparison.Ordinal),
+            () => Assert.Equal(HttpStatusCode.Redirect, rootResponse.StatusCode),
+            () => Assert.Contains("/auth/login", rootResponse.Headers.Location?.OriginalString, StringComparison.Ordinal),
+            () => Assert.Equal(HttpStatusCode.Unauthorized, protectedResponse.StatusCode),
+            () => Assert.Equal(HttpStatusCode.ServiceUnavailable, readyResponse.StatusCode),
             () => Assert.Equal(HttpStatusCode.OK, frameworkResponse.StatusCode),
             () => Assert.Equal("text/javascript", frameworkResponse.Content.Headers.ContentType?.MediaType),
             () => Assert.NotEmpty(frameworkBody));

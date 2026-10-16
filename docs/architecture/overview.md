@@ -1,5 +1,9 @@
 # Architecture Overview
 
+The [Global Requirements](../requirements.md) define the cross-cutting standards
+for technology, frontend independence, code organization, and testing. This
+overview describes how the current implementation is organized.
+
 ## Product Direction
 
 HouseholdLedger is a calendar-centered household ledger informed by Kakeibo.
@@ -24,7 +28,7 @@ The solution contains six production projects:
 | `HouseholdLedger.Application` | Use cases, orchestration, and application-owned ports | Domain |
 | `HouseholdLedger.Infrastructure` | EF Core, PostgreSQL registration, and the persistence boundary | Application, Domain |
 | `HouseholdLedger.Api.Contracts` | Convenience transport types for .NET clients | None |
-| `HouseholdLedger.Api` | MVC, OpenAPI, CORS, configuration, and hosted-client composition | Application, Infrastructure, API Contracts, Client (hosting assets) |
+| `HouseholdLedger.Api` | MVC, OpenAPI, owner OIDC/cookie authentication, antiforgery, health, configuration, and hosted-client composition | Application, Infrastructure, API Contracts, Client (hosting assets) |
 | `HouseholdLedger.Client` | Standalone Blazor WebAssembly UI and HTTP consumption | API Contracts |
 
 ```mermaid
@@ -115,9 +119,18 @@ explicit setup, transport and domain mapping stays visible, and application
 services are invoked through direct interfaces or concrete services registered
 with built-in dependency injection.
 
-Authentication, authorization, deployment, observability, and operational
-health are unresolved future features. The current health endpoint proves the
-HTTP boundary; it is not evidence that the application is production-ready.
+The host now supports owner-only OIDC authorization-code/PKCE authentication,
+server-owned cookies, and framework antiforgery. Production requires trusted
+issuer/client/owner configuration. Only local Development may omit it.
+Browser secrets and provider tokens are not exposed to the client. This
+hosted-session transport is not yet a machine-token or cross-origin-client
+authentication design.
+
+Docker deployment persists PostgreSQL and Data Protection keys, uses explicit
+EF migrations, and distinguishes process liveness from database/schema
+readiness. See [Self-Hosted Deployment](../development/deployment.md). Broad
+observability, a real Authentik acceptance journey, and minimum-host
+qualification remain outstanding; the B04 baseline is not yet verified.
 
 The separate-process HTTP system smoke has no product project reference. It
 launches built API output and verifies health and OpenAPI through HTTP. It does
@@ -129,5 +142,6 @@ viewport, interaction, or accessibility evidence.
 - [Feature Index](../features/README.md)
 - [Development Setup](../development/setup.md)
 - [Testing](../development/testing.md)
+- [Self-Hosted Deployment](../development/deployment.md)
 - [Dependency Governance](../development/dependency-governance.md)
 - [Browser E2E Dependency Review](../development/browser-e2e-dependency-review.md)

@@ -13,15 +13,17 @@ than duplicating exhaustive validation cases from lower-layer tests.
 
 The dedicated runner creates a uniquely named Docker container, a fresh database,
 and a dynamically assigned loopback database port. It migrates that database
-through the environment-only EF design factory and delegates fresh temporary
-publish/profile handling to the existing browser runner. The test host runs in
-Production to exclude User Secrets. All data creation occurs through UI forms;
+through the explicit API `--migrate-database` command and delegates fresh temporary
+publish/profile handling to the existing browser runner. The workflow host runs
+in Development with OIDC explicitly disabled and the disposable database
+connection supplied to the child process. It is not a production login test.
+All data creation occurs through UI forms;
 there is no API seeding. The isolated-run marker is required, so do not invoke
 this fact with an application database connection. Containers and their volumes,
 browser/API/driver processes, profiles, and temporary publish output are cleaned
 on success and failure. Existing installed packages are used with `--no-restore`.
 
-Prerequisites: Docker with the approved `postgres:18` image, the existing EF tool,
+Prerequisites: Docker with the approved `postgres:18` image, the repository SDK,
 trusted ASP.NET HTTPS development certificate, and approved local Firefox
 153.0.1/geckodriver 0.37.1 binaries in the paths used by
 `Run-BrowserEndToEndTests.ps1`. No additional browser/test packages are required.
@@ -82,6 +84,12 @@ historical confirmation remains entirely manual, without schedule association.
 There is no expiring execution window or production clock override.
 
 ## Validation
+
+The B01-B04 update replaces the global EF tool dependency with the application's
+explicit migration command. The production HTTP boundary and signed OIDC
+middleware fixture run separately. Real Authentik and the authenticated
+production calendar journey remain acceptance work; see
+[Self-Hosted Deployment](../../docs/development/deployment.md).
 
 Audit follow-up validated October 4, 2026: **1 passed, 0 failed, 0 skipped**
 in 19 seconds (isolated runner 29.48 seconds). Added explicit receipt correction

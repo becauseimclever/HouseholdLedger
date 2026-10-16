@@ -32,6 +32,7 @@ Changing the display currency changes formatting only, never amount values.
 - ASP.NET Core MVC and OpenAPI
 - EF Core, Npgsql, and PostgreSQL at the Infrastructure boundary
 - xUnit v3 and bUnit tests
+- Owner-only OIDC/Authentik hosting with server-side sessions and antiforgery
 
 The API references, publishes, and serves the Blazor WebAssembly Client as one
 hosted application. Any replacement frontend can consume the HTTP/OpenAPI
@@ -41,7 +42,16 @@ journeys validate persistence and user workflows in isolated test databases.
 Pinned Firefox and geckodriver hashes are enforced. Automated tests must never
 use the persistent manual-development database.
 
+Docker/Compose deployment, explicit migrations, health checks, and operator
+backup/restore steps are in [Self-Hosted Deployment](docs/development/deployment.md).
+The first deployable baseline remains unverified pending real Authentik,
+minimum-host/browser acceptance, and remote PR protections; see the
+[Delivery Plan](docs/development/delivery-plan.md#implementation-and-evidence).
+
 ## Start Contributing
+
+The [Global Requirements](docs/requirements.md) define the shared technology,
+architecture, frontend independence, TDD, and testing-pyramid standards.
 
 1. Read [Development Setup](docs/development/setup.md).
 2. Review the [Architecture Overview](docs/architecture/overview.md).

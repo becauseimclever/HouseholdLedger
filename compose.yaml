@@ -1,0 +1,54 @@
+services:
+  database:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: householdledger
+      POSTGRES_USER: householdledger
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U householdledger -d householdledger"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  ledger:
+    image: ${HL_IMAGE:-householdledger:baseline}
+    build:
+      context: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      AllowedHosts: ${HL_HOSTNAME:?Set the public ledger hostname}
+      ConnectionStrings__HouseholdLedgerFile: /run/secrets/connection_string
+      Authentication__Authority: ${HL_AUTHORITY:?Set the OIDC issuer}
+      Authentication__ClientId: ${HL_CLIENT_ID:?Set the OIDC client ID}
+      Authentication__ClientSecretFile: /run/secrets/oidc_client_secret
+      Authentication__OwnerSubject: ${HL_OWNER_SUBJECT:?Set the authorized owner subject}
+      ReverseProxy__KnownProxies__0: ${HL_PROXY_IP:?Set the trusted reverse proxy source IP}
+    secrets:
+      - connection_string
+      - oidc_client_secret
+    volumes:
+      - protection_keys:/var/lib/householdledger/keys
+    depends_on:
+      database:
+        condition: service_healthy
+
+secrets:
+  postgres_password:
+    file: ${HL_POSTGRES_PASSWORD_FILE:?Set the absolute password-file path}
+  connection_string:
+    file: ${HL_CONNECTION_STRING_FILE:?Set the absolute connection-string-file path}
+  oidc_client_secret:
+    file: ${HL_OIDC_SECRET_FILE:?Set the absolute OIDC-secret-file path}
+
+volumes:
+  postgres_data:
+  protection_keys:

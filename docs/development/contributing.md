@@ -25,6 +25,35 @@ or accumulated architecture.
 
 ## Approval and Completion
 
+### Trunk-Based Delivery
+
+Use small, short-lived branches from `main` and a pull request for every merge
+into `main`. Do not push changes directly to `main` or accumulate work on
+long-lived integration branches. Branch creation, commits, pushes, and merges
+still require the user's explicit authorization for those actions.
+
+The [Delivery Plan](delivery-plan.md) defines the first deployable baseline and
+subsequent testable slices. After that baseline is verified, each PR must keep
+`main` deployable: build and relevant tests pass, existing workflows still work,
+persisted data remains compatible, and the documented deployment still starts.
+Repository rules must require PRs and applicable checks; this guide is not
+evidence that those remote protections have been configured.
+
+Run `pwsh scripts\ci\Test-PullRequest.ps1` for the local resource-free PR gate.
+The [workflow](../../.github/workflows/pull-request.yml) exposes
+`Build and resource-free tests` and `PostgreSQL migrations and persistence`.
+The latter also validates the deployment image; the former verifies a fresh
+published HTTP host. Require both checks once the workflow has run and remote
+rules have been explicitly authorized. The workflow does not publish images
+or deploy the application.
+
+Keep each PR independently safe to merge. If an outcome needs several PRs,
+preserve existing behavior until its replacement is complete; use disabled,
+unreachable increments only when genuinely necessary. Do not merge broken
+behavior with the expectation that the next PR will fix it. Include acceptance
+criteria, relevant requirement IDs, exact validation results, and any upgrade
+or operator steps. Merging does not itself authorize a deployment or release.
+
 User approval of a feature scope authorizes every documented implementation
 wave through completion. Do not request a separate wave or phase approval
 unless the work materially expands product behavior, scope, dependencies, risk,

@@ -72,6 +72,26 @@ notices. These classifications describe this inventory boundary only; they do
 not state that Microsoft assets or HouseholdLedger are exempt from any future
 policy review.
 
+### B01-B04 Hosting Update
+
+The baseline adds Microsoft.AspNetCore.Authentication.OpenIdConnect 10.0.13
+and its Microsoft IdentityModel 8.19.2 closure. The restored direct-package
+and IdentityModel protocol package metadata identify Microsoft, MIT licenses,
+and their Microsoft source repositories. A fresh hosted container publish
+includes the OIDC handler, Microsoft.IdentityModel assemblies, and
+System.IdentityModel.Tokens.Jwt; they are covered by the Microsoft framework
+exclusion, which is reflected in the in-app manifest. ASP.NET Core/WASM and
+OpenAPI patches do not change the five-package non-platform notice closure
+above. Locked restore and the resolved-package vulnerability check passed.
+
+The base runtime image also installs Ubuntu's `libgssapi-krb5-2` and its
+runtime dependencies for PostgreSQL's platform authentication support. These
+remain operating-system image assets, not browser libraries or NuGet packages;
+their distribution notices remain in the image's package documentation.
+No new paid service or telemetry dependency is introduced. This update is a
+focused hosting dependency reconciliation, not a new exhaustive legal audit
+or a claim to close historical governance findings.
+
 ## Update and Reconciliation Process
 
 The Documentation and Attribution owner must reconcile this record and the

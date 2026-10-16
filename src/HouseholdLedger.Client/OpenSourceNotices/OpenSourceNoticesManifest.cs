@@ -128,7 +128,7 @@ public static class OpenSourceNoticesManifest
         new(
             "Microsoft platform and framework package assets",
             OpenSourceNoticeExclusionKind.GeneralFrameworkDependency,
-            "The hosted publish output includes Microsoft.AspNetCore.OpenApi.dll, Microsoft.OpenApi.dll, Microsoft.EntityFrameworkCore.dll, Microsoft.EntityFrameworkCore.Abstractions.dll, and Microsoft.EntityFrameworkCore.Relational.dll. Dependency Governance classifies the Microsoft ASP.NET Core, EF Core, and OpenAPI.NET families as Microsoft platform/framework dependencies with direct-family provenance, MIT-license, and commercial-model review. They are not independently maintained third-party package notices in this manifest."),
+            "The hosted publish output includes the Microsoft ASP.NET Core, EF Core, OpenAPI.NET, and IdentityModel assemblies, including Microsoft.AspNetCore.Authentication.OpenIdConnect.dll and System.IdentityModel.Tokens.Jwt.dll. These Microsoft platform/framework package families use MIT licenses and are not independently maintained third-party package notices in this manifest."),
     ];
 
     private const string MitKyleHerzog2024 = """

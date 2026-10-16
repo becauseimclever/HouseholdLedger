@@ -1,0 +1,21 @@
+@baseUrl = https://ledger.home.example
+
+### Process liveness (anonymous; does not prove database availability)
+GET {{baseUrl}}/api/v1/health
+
+### Database connectivity and applied migrations (anonymous)
+GET {{baseUrl}}/health/ready
+
+### Interactive login (open this address in a browser)
+GET {{baseUrl}}/auth/login
+
+### Session and antiforgery token (requires the owner's session cookie)
+GET {{baseUrl}}/auth/session
+
+### Ledger API rejects an unauthenticated request with 401
+GET {{baseUrl}}/api/v1/accounts
+
+### Authenticated logout without a verification token is rejected with 400
+# With an authenticated cookie, supply the requestToken from /auth/session
+# in X-CSRF-TOKEN to perform a successful logout.
+POST {{baseUrl}}/auth/logout

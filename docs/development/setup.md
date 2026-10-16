@@ -4,8 +4,9 @@ This guide prepares a contributor to build and run HouseholdLedger locally.
 
 ## Prerequisites
 
-- .NET SDK 10.0.302. The repository's `global.json` allows a later patch in the
-  same 10.0.3xx feature band.
+- .NET SDK 10.0.402. The repository's `global.json` allows a later patch in the
+  same 10.0.4xx feature band. This aligns the build toolchain with the patched
+  ASP.NET Core and WebAssembly 10.0.13 runtime used by the baseline container.
 - PowerShell 7 for the commands below.
 - A trusted ASP.NET Core development certificate for local HTTPS.
 - Docker (or Podman using the integration runner's `-ContainerCommand podman`)
@@ -88,11 +89,15 @@ accounts or transactions already exist. Do not use it for a fresh manual setup
 walkthrough or an existing ledger: apply schema migrations explicitly instead.
 Normal API startup never migrates, resets, or seeds the database.
 
-The EF design-time factory reads `ConnectionStrings__HouseholdLedger`, not API
-User Secrets. Privately supply that process-scoped value, build Infrastructure,
-then use the installed EF tool's `database update` against Infrastructure.
-Do not echo the value or put it in a script or committed configuration. Clear
-the environment variable after the migration.
+To apply schema migrations without sample data, use the configured API host:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+dotnet run --project src\HouseholdLedger.Api -- --migrate-database
+```
+
+This reads the same API User Secrets as local startup and requires no global
+EF tool. It exits after migration. Never point automated tests at this database.
 
 Once the schema is current, run the API:
 
@@ -126,14 +131,19 @@ referenced Blazor WebAssembly Client. A replacement frontend may still consume
 the language-neutral HTTP/OpenAPI contract without referencing server
 implementation assemblies.
 
-Run the published application from its output directory so that the process
-uses the deployed `wwwroot` as its content root:
+Production now requires HTTPS OIDC issuer, confidential client, and exact owner
+subject configuration. Follow [Self-Hosted Deployment](deployment.md) for
+Authentik, secret files, TLS forwarding, migrations, and persistent keys.
+Do not start a published Production host with missing authentication settings.
+For an unauthenticated **loopback-only development smoke**, run from the output
+directory so the process uses the deployed `wwwroot` as its content root:
 
 ```powershell
 Push-Location artifacts/publish/api
-$env:ASPNETCORE_ENVIRONMENT = "Production"
+$env:ASPNETCORE_ENVIRONMENT = "Development"
 $env:ASPNETCORE_URLS = "https://localhost:7241"
 dotnet HouseholdLedger.Api.dll
+Pop-Location
 ```
 
 Starting the published DLL from another working directory requires setting its
@@ -178,6 +188,7 @@ process-scoped environment variables in `finally`.
 ## Next Steps
 
 - [Testing](testing.md)
+- [Self-Hosted Deployment](deployment.md)
 - [Contribution Guide](contributing.md)
 - [Troubleshooting](troubleshooting.md)
 - [Architecture Overview](../architecture/overview.md)

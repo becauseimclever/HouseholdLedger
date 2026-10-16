@@ -5,12 +5,14 @@
 namespace HouseholdLedger.Api.Controllers;
 
 using HouseholdLedger.Api.Contracts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 /// <summary>
 /// Reports API service availability.
 /// </summary>
 [ApiController]
+[AllowAnonymous]
 [Route("api/v1/health")]
 public sealed class HealthController : ControllerBase
 {

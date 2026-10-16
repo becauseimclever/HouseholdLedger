@@ -97,7 +97,14 @@ public sealed class InfrastructureCompositionTests
     }
 
     private static WebApplicationFactory<Program> CreateFactory() =>
-        new WebApplicationFactory<Program>().WithWebHostBuilder(builder => builder.UseEnvironment("Production"));
+        new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.UseEnvironment("Production");
+            builder.UseSetting("Authentication:Authority", "https://identity.example/application/o/ledger/");
+            builder.UseSetting("Authentication:ClientId", "ledger");
+            builder.UseSetting("Authentication:ClientSecret", "test-only-not-a-real-secret");
+            builder.UseSetting("Authentication:OwnerSubject", "owner");
+        });
 
     /// <summary>
     /// Prevents tests that mutate process environment variables from overlapping other collections.

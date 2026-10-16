@@ -6,6 +6,20 @@ decisions and acceptance boundaries; historical audits remain under
 
 ## Active Roadmap
 
+The [Delivery Plan](../development/delivery-plan.md) breaks the
+[Global Requirements](../requirements.md) into testable slices, starting with
+a verified deployable baseline. It is the forward delivery order; the older
+audit below remains historical guidance rather than the current priority list.
+Slice IDs are not reserved feature numbers and do not claim implementation.
+
+The first global requirements round is complete as of October 15, 2026.
+B01-B04 are implemented locally with automated host, authentication,
+persistence, and workflow checks. The
+[delivery status](../development/delivery-plan.md#implementation-and-evidence)
+records the remaining real Authentik, minimum-host/browser, and remote-rule
+acceptance. The deployable-baseline milestone remains unverified until that
+B04 evidence exists.
+
 | Feature | Status | Outcome |
 | --- | --- | --- |
 | [029](029-establish-performance-benchmark-suite.md) | Deferred | Measure and protect production performance and memory efficiency with repeatable benchmarks. |
@@ -13,9 +27,10 @@ decisions and acceptance boundaries; historical audits remain under
 [Completed Feature 024](archive/024-plan-and-review-a-month-with-intention.md)
 centers a deliberate monthly plan and review. Schedules may help
 anticipate income, but only user-confirmed receipts count as actuals. Display
-currency remains an intentional presentation culture and indicator: changing
-it never converts ledger values, and the Settings flow requires acknowledgement
-of that behavior before saving.
+currency was originally an intentional presentation culture and indicator:
+changing it never converted ledger values. The new global fixed-currency and
+balance-tracking requirements supersede that earlier scope; transition work
+must follow an explicit, tested data-compatibility decision.
 
 ## Archive
 

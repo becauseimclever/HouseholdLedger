@@ -1172,6 +1172,10 @@ public sealed partial class BrowserCalendarJourneyTests
         startInfo.ArgumentList.Add(assemblyPath);
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
         startInfo.Environment["DOTNET_ENVIRONMENT"] = "Development";
+        startInfo.Environment["Authentication__Authority"] = string.Empty;
+        startInfo.Environment["Authentication__ClientSecretFile"] = string.Empty;
+        startInfo.Environment["ConnectionStrings__HouseholdLedgerFile"] = string.Empty;
+        startInfo.Environment["DataProtection__KeyPath"] = string.Empty;
         startInfo.Environment["ASPNETCORE_URLS"] = origin.AbsoluteUri;
         startInfo.Environment["ConnectionStrings__HouseholdLedger"] = postgreSqlConnectionString;
         return StartProcess(startInfo);
@@ -1198,6 +1202,7 @@ public sealed partial class BrowserCalendarJourneyTests
             RedirectStandardError = true,
             CreateNoWindow = true,
         };
+        startInfo.Environment.Clear();
         CopyEnvironmentVariable(startInfo, "SystemRoot");
         CopyEnvironmentVariable(startInfo, "WINDIR");
         CopyEnvironmentVariable(startInfo, "DOTNET_ROOT");

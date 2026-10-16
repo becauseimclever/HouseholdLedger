@@ -1,5 +1,10 @@
 # Testing
 
+The [Global Requirements](../requirements.md#test-driven-development) require
+test-driven development and a testing pyramid with broad unit coverage, fewer
+component and integration tests, and focused full-system end-to-end journeys.
+This guide describes the existing test layers and how to execute them.
+
 HouseholdLedger places tests at the boundary they are intended to prove. Run a
 focused project while developing, escalating only when the change crosses
 boundaries. Database and system tests have additional gates described below.
@@ -39,6 +44,12 @@ HouseholdLedger project reference. The HTTP smoke starts a freshly published
 API assembly with a minimal environment, calls health and runtime OpenAPI over
 HTTP, and stops its owned process. Run it alone when the approved browser
 runtime is not available.
+
+For B01-B04, use `pwsh scripts\ci\Test-PullRequest.ps1` for the resource-free
+Release gate and contract comparison. The
+[local baseline evidence](delivery-plan.md#implementation-and-evidence) records
+passing focused system/browser checks and the still-failing legacy notices
+journey separately; no full-suite or real Authentik login pass is claimed.
 
 The test does not discover an arbitrary build artifact. Set
 `HOUSEHOLDLEDGER_API_ARTIFACT` to the normalized absolute path of a freshly
@@ -117,6 +128,14 @@ real-provider and development-initialization tests have passed against isolated
 PostgreSQL 18; absence of a test connection is not a provider-validation pass.
 
 ## Browser End-to-End Tests
+
+The fresh-setup calendar journey runs the published artifact in **Development**
+without authentication. It is a workflow regression, not evidence of production
+Authentik login. Production boundary coverage is separate: the HTTP system
+smoke verifies anonymous rejection, while API tests exercise owner/non-owner
+authorization, antiforgery, and a signed OIDC callback fixture. B04 still needs
+the assembled authenticated production journey described in
+[Self-Hosted Deployment](deployment.md#executable-evidence-and-remaining-acceptance).
 
 Browser E2E uses a package-free test-owned W3C WebDriver client built with
 `HttpClient` and `System.Text.Json`. It talks directly to the pinned user-local

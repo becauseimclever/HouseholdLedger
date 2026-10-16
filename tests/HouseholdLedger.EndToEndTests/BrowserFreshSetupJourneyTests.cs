@@ -41,14 +41,8 @@ public sealed partial class BrowserCalendarJourneyTests
         Directory.CreateDirectory(profile);
         try
         {
-            // Production deliberately excludes User Secrets; the runner supplies only its disposable database.
-            var start = CreateStartInfo(FindDotNetHost(), Path.GetDirectoryName(inputs.ApiAssemblyPath)!);
-            start.ArgumentList.Add(inputs.ApiAssemblyPath);
-            start.Environment["ASPNETCORE_ENVIRONMENT"] = "Production";
-            start.Environment["DOTNET_ENVIRONMENT"] = "Production";
-            start.Environment["ASPNETCORE_URLS"] = origin.AbsoluteUri;
-            start.Environment["ConnectionStrings__HouseholdLedger"] = inputs.PostgreSqlConnectionString;
-            api = StartProcess(start);
+            // This UI regression journey deliberately excludes OIDC; production access has separate acceptance checks.
+            api = StartApi(inputs.ApiAssemblyPath, origin, inputs.PostgreSqlConnectionString);
             await WaitForOkAsync(origin, "/api/v1/health", api);
             driver = StartGeckodriver(inputs.GeckodriverPath, driverPort);
             browser = new W3cWebDriver(new Uri($"http://127.0.0.1:{driverPort}"));

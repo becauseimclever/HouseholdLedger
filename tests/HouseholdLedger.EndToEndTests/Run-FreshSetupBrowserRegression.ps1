@@ -34,10 +34,10 @@ try {
     $port = $Matches[1]
     $env:ConnectionStrings__HouseholdLedger = "Host=127.0.0.1;Port=$port;Database=$database;Username=fresh_browser;Password=$password"
     $env:HOUSEHOLDLEDGER_FRESH_SETUP_DATABASE = "postgres18-disposable"
-    $infrastructure = Join-Path $PSScriptRoot "..\..\src\HouseholdLedger.Infrastructure"
-    & dotnet build $infrastructure --configuration Release --no-restore
-    if ($LASTEXITCODE -ne 0) { throw "Infrastructure build failed." }
-    & dotnet ef database update --project $infrastructure --configuration Release --no-build
+    $api = Join-Path $PSScriptRoot "..\..\src\HouseholdLedger.Api"
+    & dotnet run --project $api --configuration Release --no-restore --no-launch-profile -- `
+        --migrate-database --environment Development --Authentication:Authority= `
+        --Authentication:ClientSecretFile= --ConnectionStrings:HouseholdLedgerFile= --DataProtection:KeyPath=
     if ($LASTEXITCODE -ne 0) { throw "Disposable database migration failed." }
 
     $secureConnection = ConvertTo-SecureString $env:ConnectionStrings__HouseholdLedger -AsPlainText -Force

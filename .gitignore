@@ -38,6 +38,7 @@ coverage.opencover.xml
 .env.*
 !.env.example
 *.secrets.json
+/secrets/
 appsettings.Local.json
 appsettings.*.local.json
 

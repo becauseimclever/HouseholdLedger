@@ -2,6 +2,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <StaticWebAssetProjectMode>Default</StaticWebAssetProjectMode>
+    <RuntimeFrameworkVersion>10.0.13</RuntimeFrameworkVersion>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,0 +1,62 @@
+name: Pull request validation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application:
+    name: Build and resource-free tests
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Validate application and contract
+        shell: pwsh
+        run: .\scripts\ci\Test-PullRequest.ps1
+      - name: Publish hosted application
+        shell: pwsh
+        run: |
+          dotnet publish src\HouseholdLedger.Api --configuration Release --no-restore --output artifacts\ci-api
+          if ($LASTEXITCODE -ne 0) { throw "Publish failed." }
+          $env:HOUSEHOLDLEDGER_API_ARTIFACT = Join-Path $PWD "artifacts\ci-api\HouseholdLedger.Api.dll"
+          dotnet test tests\HouseholdLedger.EndToEndTests --configuration Release --no-build --no-restore --filter FullyQualifiedName~ApiSystemSmokeTests
+          if ($LASTEXITCODE -ne 0) { throw "Published host smoke failed." }
+
+  persistence:
+    name: PostgreSQL migrations and persistence
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Locked restore
+        shell: pwsh
+        run: dotnet restore HouseholdLedger.slnx --locked-mode
+      - name: Run isolated PostgreSQL tests
+        shell: pwsh
+        run: .\tests\HouseholdLedger.Infrastructure.IntegrationTests\Run-PostgreSqlTests.ps1
+      - name: Build deployment image
+        run: docker build --tag householdledger:ci .
+      - name: Verify container migration and replacement
+        shell: pwsh
+        run: .\scripts\deployment\Test-ContainerBaseline.ps1 -Image householdledger:ci -SkipBuild
